@@ -202,20 +202,21 @@ def _card_props(grp, gi) -> str:
     """Top 5 prop edges for one game, plus every projected prop with a line checker."""
     if grp is None or len(grp) == 0:
         return ""
-    have = grp[grp.line.notna() & (grp.ev > 0)].sort_values("ev", ascending=False).head(5)
+    priced = grp[grp.line.notna()].sort_values("ev", ascending=False)
+    have = priced[priced.ev > 0].head(5)
+    if not len(have):
+        have = priced.head(5)   # no positive edges: show the closest ones, marked No edge
     if len(have):
         top = "".join(
             f"""<li><span class="tdn"><b>{escape(r.player)}</b> {'anytime TD' if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
             <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
             {'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}
-            <span class="n tdp {'good' if r.flag else ''}">{_signed_pct(r.ev)}</span>
-            <span class="n tdo">{'Bet' if r.flag else 'Lean'}</span></li>"""
+            <span class="n tdp {'good' if r.flag else ('bad' if r.ev <= 0 else '')}">{_signed_pct(r.ev)}</span>
+            <span class="n tdo">{'Bet' if r.flag else ('Lean' if r.ev > 0 else 'No edge')}</span></li>"""
             for r in have.itertuples())
         top = f"<ol>{top}</ol>"
     else:
-        n = int(grp.line.notna().sum())
-        top = (f'<p class="cell-sub" style="margin:0">No positive edges yet · {n} DraftKings lines found for this game. '
-               'Compare the fair lines below with your app.</p>')
+        top = '<p class="cell-sub" style="margin:0">No edge · no DraftKings prop lines found yet for this game.</p>'
     return f"""<div class="tds"><h4>Top prop edges</h4>{top}</div>
       <details class="allprops"><summary>All {len(grp)} props</summary>
         <div class="tablebox"><table class="props">
