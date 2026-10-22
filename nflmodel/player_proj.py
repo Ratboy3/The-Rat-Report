@@ -37,12 +37,12 @@ STATS = {
     "anytime_td": (("rushing_tds", "receiving_tds"), "td"),
 }
 BY_POS = {
-    "QB": ["pass_yds", "pass_tds", "rush_yds"],
+    "QB": ["pass_yds", "pass_tds", "rush_yds", "anytime_td"],
     "RB": ["rush_yds", "rec_yds", "receptions", "anytime_td"],
     "WR": ["rec_yds", "receptions", "anytime_td"],
     "TE": ["rec_yds", "receptions", "anytime_td"],
 }
-MIN_MEAN = {"pass_yds": 100, "pass_tds": 0.5, "rush_yds": 12, "rec_yds": 15, "receptions": 1.5, "anytime_td": 0.08}
+MIN_MEAN = {"pass_yds": 100, "pass_tds": 0.5, "rush_yds": 12, "rec_yds": 15, "receptions": 1.5, "anytime_td": 0.0}
 RECENCY = 0.85          # each older game counts 15% less
 PRIOR_SEASON_W = 0.5    # last season's games count half on top of recency
 SHRINK_GAMES = 1.0      # pseudo-games of a typical player in the same role
@@ -79,7 +79,42 @@ def _weighted(rows: pd.DataFrame, stat: str, season: int) -> tuple[float, float]
     return (float((w * v).sum() / w.sum()), float(w.sum())) if len(r) else (0.0, 0.0)
 
 
-def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -> pd.DataFrame:
+XTD_PER_CARRY = 0.030   # league-typical touchdowns per carry
+XTD_PER_TARGET = 0.045  # and per target
+TD_HISTORY_W = 0.35     # weight on a player's actual TD rate vs. the rate his usage implies
+
+
+def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list) -> dict:
+    """Each player's expected share of his team's rushing + receiving touchdowns, from usage and scoring."""
+    rate = {}
+    for pid in ids:
+        r = stats[stats.player_id == pid].sort_values(["season", "week"], ascending=False)
+        if r.empty:
+            continue
+        w = RECENCY ** np.arange(len(r)) * np.where(r.season < season, PRIOR_SEASON_W, 1.0)
+        car = r.carries.fillna(0).to_numpy(float)
+        tgt = r.targets.fillna(0).to_numpy(float)
+        tds = (r.rushing_tds.fillna(0) + r.receiving_tds.fillna(0)).to_numpy(float)
+        xtd = (w * (car * XTD_PER_CARRY + tgt * XTD_PER_TARGET)).sum() / w.sum()
+        act = (w * tds).sum() / w.sum()
+        rate[pid] = max(0.0, (1 - TD_HISTORY_W) * xtd + TD_HISTORY_W * act)
+    tot = sum(rate.values())
+    return {k: v / tot for k, v in rate.items()} if tot > 0 else {}
+
+
+def _td_per_point(stats: pd.DataFrame, games: pd.DataFrame | None, season: int) -> float:
+    """Rushing + receiving touchdowns per point scored, from recent seasons (about 0.10)."""
+    try:
+        g = games[(games.season >= season - 1) & games.result.notna()]
+        pts = float(g.home_score.sum() + g.away_score.sum())
+        s = stats[stats.season >= season - 1]
+        tds = float(s.rushing_tds.fillna(0).sum() + s.receiving_tds.fillna(0).sum())
+        return tds / pts if pts > 0 else 0.10
+    except Exception:
+        return 0.10
+
+
+def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, games: pd.DataFrame | None = None) -> pd.DataFrame:
     """proj: this week's game projections (home/away team, QB names, projected points)."""
     cur = _load("stats", season, refresh)
     if cur is None:
@@ -120,6 +155,12 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -
                 per = per[per > 0]
                 typical[(pos, st)] = float(per.quantile(0.6)) if len(per) else 0.0
 
+    tpp = _td_per_point(stats, games, season)
+    team_pts = {}
+    for g in proj.itertuples():
+        team_pts[g.home_team] = g.proj_home_pts
+        team_pts[g.away_team] = g.proj_away_pts
+
     team_game = {}
     for g in proj.itertuples():
         team_game[g.home_team] = (g, "home")
@@ -131,6 +172,20 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -
         opp = g.away_team if side == "home" else g.home_team
         game = f"{g.away_team} @ {g.home_team}"
         on_team = recent[(recent.team == team)].player_id.unique()
+        # players who can score this week: active, not Out/Doubtful, on this team, and (for QBs) the starter
+        eligible = []
+        for pid in on_team:
+            last = stats[stats.player_id == pid].sort_values(["season", "week"]).iloc[-1]
+            if last.team != team or (active is not None and pid not in active):
+                continue
+            inj_ = injury.get(pid)
+            if inj_ and inj_[0] in ("Out", "Doubtful"):
+                continue
+            if last.position == "QB" and last.player_display_name != qb_name:
+                continue
+            eligible.append(pid)
+        shares = _td_shares(stats, season, team, eligible)
+        team_tds = team_pts.get(team, 22.0) * tpp
         for pid in on_team:
             rows = stats[stats.player_id == pid]
             last = rows.sort_values(["season", "week"]).iloc[-1]
@@ -161,7 +216,10 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -
                 if mean < MIN_MEAN[st] or est < MIN_MEAN[st]:
                     continue
                 if st == "anytime_td":
-                    est = 1 - math.exp(-est)               # P(at least one TD)
+                    lam = shares.get(pid, 0.0) * team_tds  # this player's expected TDs this game
+                    if lam < 0.06:
+                        continue
+                    est = 1 - math.exp(-lam)               # P(at least one TD)
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
                                 projection=round(est, 3), injury=note, games=int(len(rows))))
     if not out:

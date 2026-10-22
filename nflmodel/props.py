@@ -93,8 +93,23 @@ def _fair_line(d: dict) -> float | None:
     return best[1]
 
 
+TD_MODEL_WEIGHT = 0.4      # touchdown chance = 40% model + 60% betting market, when market prices exist
+TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; scale their implied chance down
+
+
+def _td_market(player: str, book_row, market: dict) -> float | None:
+    """Market chance to score: prediction-market price and/or sportsbook price, averaged."""
+    vals = []
+    if player.lower() in market:
+        vals.append(market[player.lower()])
+    if book_row is not None and pd.notna(getattr(book_row, "over_odds", np.nan)):
+        vals.append(min(0.97, (1 / (1 + (book_row.over_odds / 100 if book_row.over_odds > 0
+                                         else 100 / abs(book_row.over_odds)))) * TD_BOOK_MARGIN))
+    return float(np.mean(vals)) if vals else None
+
+
 def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
-               lines: pd.DataFrame | None) -> pd.DataFrame:
+               lines: pd.DataFrame | None, td_market: pd.DataFrame | None = None) -> pd.DataFrame:
     """players: output of player_proj.project. lines: player, stat, line, over_odds, under_odds, source, as_of."""
     if players is None or players.empty:
         return pd.DataFrame()
@@ -106,18 +121,25 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     if lines is not None and len(lines):
         for r in lines.itertuples():
             book[(str(r.player).strip().lower(), str(r.stat).strip())] = r
+    market = {}
+    if td_market is not None and len(td_market):
+        market = {str(r.player).strip().lower(): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
     rows = []
     for p in players.itertuples():
         f = _script_factor(p.team, team_pts, team_ppg)
+        model_p, market_p = None, None
         if p.stat == "anytime_td":
-            lam = -math.log(1 - min(0.95, max(0.01, p.projection))) * f
-            adj = 1 - math.exp(-lam)
+            f = 1.0                     # already built from the team's projected points
+            model_p = min(0.95, max(0.01, p.projection))
+            market_p = _td_market(p.player, book.get((p.player.lower(), p.stat)), market)
+            adj = model_p if market_p is None else TD_MODEL_WEIGHT * model_p + (1 - TD_MODEL_WEIGHT) * market_p
         else:
             adj = p.projection * f
         d = _dist(p.stat, adj)
         row = dict(game=p.game, team=p.team, opp=p.opp, player=p.player, position=p.position, stat=p.stat,
                    injury=p.injury, script_factor=round(f, 3), adj_projection=round(adj, 3),
                    fair_line=_fair_line(d), dist=d["dist"], a=round(d["a"], 4), b=round(d["b"], 4),
+                   model_prob=model_p, market_prob=market_p,
                    line=np.nan, over_odds=np.nan, under_odds=np.nan, source="", as_of="",
                    p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False)
         b = book.get((p.player.lower(), p.stat))

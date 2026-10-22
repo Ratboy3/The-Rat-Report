@@ -206,7 +206,7 @@ def cmd_report(a):
                 for t in set(played.home_team) | set(played.away_team)}
     auto_props, lines_checked = None, None
     try:
-        players = player_proj.project(season, week, proj, refresh=a.refresh)
+        players = player_proj.project(season, week, proj, refresh=a.refresh, games=games)
         plines = None
         if a.prop_lines and Path(a.prop_lines).exists():
             plines = pd.read_csv(a.prop_lines, comment="#")
@@ -214,7 +214,8 @@ def cmd_report(a):
                 first = fh.readline()
             if first.startswith("# checked:"):
                 lines_checked = first.split(":", 1)[1].strip()
-        auto_props = price_auto(players, proj, team_ppg, plines)
+        tdm = pd.read_csv(a.td_market, comment="#") if a.td_market and Path(a.td_market).exists() else None
+        auto_props = price_auto(players, proj, team_ppg, plines, tdm)
         auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
     except Exception as e:  # props are an extra; never block the main report
         print(f"Props skipped: {e}")
@@ -286,6 +287,7 @@ def main():
     rp.add_argument("--overrides", default="overrides.csv")
     rp.add_argument("--props", default=None)
     rp.add_argument("--news", default="news.csv", help="per-game QB/injury/line notes shown on the page")
+    rp.add_argument("--td-market", default="td_market.csv", help="market touchdown chances: player,prob,source,as_of")
     rp.add_argument("--prop-lines", default="prop_lines.csv", help="DraftKings prop lines: player,stat,line,over_odds,under_odds,source,as_of")
     rp.add_argument("--start", type=int, default=2012)
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
