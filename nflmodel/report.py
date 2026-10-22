@@ -328,13 +328,13 @@ def _auto_props_section(props: pd.DataFrame | None, lines_checked: str | None) -
             line_cell = ('<span class="muted">Scores</span>' if r.stat == "anytime_td" else
                          f'<input id="{rid}_l" class="pin" inputmode="decimal" value="{line_val}" aria-label="Line">')
             under_cell = ('' if r.stat == "anytime_td" else
-                          f'<input id="{rid}_u" class="pin" inputmode="numeric" value="{uo}" aria-label="Under odds">')
+                          f'<input id="{rid}_u" class="pin" inputmode="text" value="{uo}" aria-label="Under odds">')
             rows.append(f"""<tr class="pr" data-d="{r.dist}" data-a="{r.a}" data-b="{r.b}">
               <td><b>{escape(r.player)}</b><span class="cell-sub">{r.position} · {r.team}</span>{inj}</td>
               <td>{STAT_LABEL.get(r.stat, r.stat)}</td>
               <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n">{fair}</td>
               <td class="n">{line_cell}{src}</td>
-              <td class="n"><input id="{rid}_o" class="pin" inputmode="numeric" value="{oo}" aria-label="Over odds"></td>
+              <td class="n"><input id="{rid}_o" class="pin" inputmode="text" value="{oo}" aria-label="Over odds"></td>
               <td class="n">{under_cell}</td>
               <td class="n out">—</td></tr>""")
         n_dk = int(grp.line.notna().sum())
