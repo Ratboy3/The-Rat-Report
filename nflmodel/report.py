@@ -279,6 +279,123 @@ def _news_section(news: pd.DataFrame | None, checked: str | None) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
+def _fmt_proj(stat, x) -> str:
+    if stat == "anytime_td":
+        return f"{x * 100:.0f}%"
+    if stat in ("receptions", "pass_tds"):
+        return f"{x:.1f}"
+    return f"{x:.0f}"
+
+
+def _auto_props_section(props: pd.DataFrame | None, lines_checked: str | None) -> str:
+    """Model projections for every starter, a line checker per row, and edges where DraftKings lines are known."""
+    if props is None or props.empty:
+        return ""
+    have = props[props.line.notna()]
+    flagged = have[have.flag].sort_values("ev", ascending=False)
+    if len(flagged):
+        bet_rows = "".join(
+            f"""<tr><td><b>{escape(r.player)}</b><span class="cell-sub">{r.team} vs {r.opp} · {r.position}</span></td>
+            <td>{STAT_LABEL.get(r.stat, r.stat)}</td>
+            <td class="n">{'Yes' if r.stat == 'anytime_td' else f'{r.best_side} {r.line:g}'}</td>
+            <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
+            <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td>
+            <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td>
+            <td class="n good">{_signed_pct(r.ev)}</td><td class="n">${r.stake:,.0f}</td>
+            <td><span class="cell-sub">{escape(r.source)} · {escape(r.as_of)}</span></td></tr>"""
+            for r in flagged.itertuples())
+        bets = f"""<div class="tablebox"><table>
+          <thead><tr><th>Player</th><th>Prop</th><th class="n">Bet</th><th class="n">Odds</th><th class="n">Projection</th>
+          <th class="n">Model chance</th><th class="n">Edge</th><th class="n">Stake</th><th>Line from</th></tr></thead>
+          <tbody>{bet_rows}</tbody></table></div>"""
+    else:
+        bets = (f'<p class="lede">No prop clears the {C.MIN_EV:.0%} bar yet. '
+                f'DraftKings lines found so far: {len(have)} of {len(props)} props. '
+                'Use the checker below with the lines in your app.</p>')
+
+    games = []
+    for gi, (game, grp) in enumerate(props.groupby("game", sort=False)):
+        rows = []
+        for i, r in enumerate(grp.itertuples()):
+            rid = f"p{gi}_{i}"
+            inj = f'<span class="inj">{escape(r.injury)}</span>' if r.injury else ""
+            known = pd.notna(r.line)
+            line_val = "" if r.stat == "anytime_td" else (f"{r.line:g}" if known else f"{r.fair_line:g}")
+            oo = f"{int(r.over_odds):+d}" if known and pd.notna(r.over_odds) else ("" if r.stat == "anytime_td" else "-110")
+            uo = f"{int(r.under_odds):+d}" if known and pd.notna(r.under_odds) else ("" if r.stat == "anytime_td" or known else "-110")
+            fair = (_odds(fair_american(r.a)) if r.stat == "anytime_td" else f"{r.fair_line:g}")
+            src = f'<span class="cell-sub">DK {escape(r.as_of)}</span>' if known else ""
+            line_cell = ('<span class="muted">Scores</span>' if r.stat == "anytime_td" else
+                         f'<input id="{rid}_l" class="pin" inputmode="decimal" value="{line_val}" aria-label="Line">')
+            under_cell = ('' if r.stat == "anytime_td" else
+                          f'<input id="{rid}_u" class="pin" inputmode="numeric" value="{uo}" aria-label="Under odds">')
+            rows.append(f"""<tr class="pr" data-d="{r.dist}" data-a="{r.a}" data-b="{r.b}">
+              <td><b>{escape(r.player)}</b><span class="cell-sub">{r.position} · {r.team}</span>{inj}</td>
+              <td>{STAT_LABEL.get(r.stat, r.stat)}</td>
+              <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n">{fair}</td>
+              <td class="n">{line_cell}{src}</td>
+              <td class="n"><input id="{rid}_o" class="pin" inputmode="numeric" value="{oo}" aria-label="Over odds"></td>
+              <td class="n">{under_cell}</td>
+              <td class="n out">—</td></tr>""")
+        n_dk = int(grp.line.notna().sum())
+        games.append(f"""<details class="pg"><summary><b>{escape(game)}</b>
+          <span class="muted">{grp.player.nunique()} players · {len(grp)} props{f' · {n_dk} DraftKings lines' if n_dk else ''}</span></summary>
+          <div class="tablebox"><table class="props">
+          <thead><tr><th>Player</th><th>Prop</th><th class="n">Projection</th><th class="n">Fair line</th>
+          <th class="n">Line</th><th class="n">Over odds</th><th class="n">Under odds</th><th class="n">Best side</th></tr></thead>
+          <tbody>{''.join(rows)}</tbody></table></div></details>""")
+    when = f" DraftKings prop lines last checked {escape(lines_checked)}." if lines_checked else ""
+    return f"""<section id="props"><h2>Player props</h2>
+      <p class="lede">Projections for every starting QB and the main backs, receivers and tight ends, from their recent games,
+      scaled by how many points the model expects their team to score. Type the line and odds from your app to see the edge.</p>
+      <h3>Prop bets</h3>{bets}
+      <p class="note">Only DraftKings prop lines published in the last 24 hours are used, and each shows when it was published.{when} Prop projections are new and haven't been
+      tested against past seasons the way the game model has, and they don't adjust for the opponent's defense yet, so treat edges as a starting point.</p>
+      <h3>Every player</h3>
+      <p class="note" style="margin-bottom:10px">Fair line is the line where over and under are equally likely; for touchdowns it's fair odds to score.
+      Players on IR and players listed Out or Doubtful are left out.</p>
+      {''.join(games)}
+      <script>{PROPS_JS}</script></section>"""
+
+
+PROPS_JS = r"""
+(function(){
+function erf(x){var t=1/(1+0.3275911*Math.abs(x));var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return x>=0?y:-y;}
+function ncdf(x,m,s){return 0.5*(1+erf((x-m)/(s*Math.SQRT2)));}
+function pcdf(k,l){if(k<0)return 0;var p=Math.exp(-l),s=p;for(var i=1;i<=k;i++){p*=l/i;s+=p;}return s;}
+function ppmf(k,l){if(k<0)return 0;var p=Math.exp(-l);for(var i=1;i<=k;i++){p*=l/i;}return p;}
+function dec(a){a=parseFloat(a);if(!isFinite(a)||a===0||Math.abs(a)<100)return NaN;return a>0?1+a/100:1+100/Math.abs(a);}
+function probs(d,a,b,line){
+  if(d==='td')return [a,0,1-a];
+  if(d==='normal'){var o=1-ncdf(line,a,b);return [o,0,1-o];}
+  var k=Math.floor(line);
+  if(line===k)return [1-pcdf(k,a),ppmf(k,a),pcdf(k-1,a)];
+  return [1-pcdf(k,a),0,pcdf(k,a)];
+}
+function ev(p,o){var x=dec(o);return isFinite(x)?p[0]*(x-1)-p[2]:NaN;}
+function run(tr){
+  var d=tr.dataset.d,a=parseFloat(tr.dataset.a),b=parseFloat(tr.dataset.b);
+  var li=tr.querySelector('input[id$="_l"]'),oi=tr.querySelector('input[id$="_o"]'),ui=tr.querySelector('input[id$="_u"]');
+  var line=d==='td'?0.5:parseFloat(li&&li.value);
+  var out=tr.querySelector('.out');
+  if(!isFinite(line)){out.textContent='—';out.className='n out';return;}
+  var p=probs(d,a,b,line),q=[p[2],p[1],p[0]];
+  var eo=ev(p,oi.value),eu=ui?ev(q,ui.value):NaN;
+  var best=null;
+  if(isFinite(eo))best=['Over',eo,p[0]];
+  if(isFinite(eu)&&(!best||eu>best[1]))best=['Under',eu,q[0]];
+  if(!best){out.textContent=(p[0]*100).toFixed(0)+'% over';out.className='n out';return;}
+  var lbl=d==='td'?'Yes':best[0];
+  out.textContent=lbl+' '+(best[1]>=0?'+':'')+(best[1]*100).toFixed(1)+'%';
+  out.className='n out '+(best[1]>=0.03?'hit':(best[1]>0?'lean':'no'));
+  out.title='Model chance '+(best[2]*100).toFixed(1)+'%';
+}
+var rows=document.querySelectorAll('tr.pr');
+for(var i=0;i<rows.length;i++){(function(tr){run(tr);tr.addEventListener('input',function(){run(tr);});})(rows[i]);}
+})();
+"""
+
+
 # ------------------------------------------------------------------ page
 CSS = """
 :root{--bg:#F1F4F2;--surface:#FFFFFF;--ink:#14211A;--muted:#5C6C63;--line:#D6DED9;--chip:#E6ECE8;
@@ -372,6 +489,15 @@ dt{color:var(--muted)} dd{margin:0;text-align:right;white-space:nowrap}
 .bpos{fill:var(--good)} .bneg{fill:var(--bad)}
 .st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--chip);color:var(--muted);white-space:nowrap}
 .st.good{color:var(--good)} .st.bad{color:var(--bad)} .st.watch{color:var(--flag);background:var(--flag-soft)} .st.upd{color:var(--accent)}
+.pg{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.pg summary{cursor:pointer;padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.pg summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pg .tablebox{border:0;border-top:1px solid var(--line);border-radius:0 0 6px 6px}
+.pin{width:64px;font:inherit;font-family:var(--mono);font-size:13px;text-align:right;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink)}
+.pin:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.inj{display:block;font-size:11.5px;color:var(--flag);font-weight:600}
+.out.hit{color:var(--good);font-weight:700} .out.lean{color:var(--ink)} .out.no{color:var(--muted)}
+table.props td{vertical-align:middle}
 .ex{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--flag);background:var(--flag-soft);padding:1px 5px;border-radius:3px;margin-left:6px}
 .glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px 28px}
 .glossary div b{display:block;font-family:var(--display);text-transform:uppercase;letter-spacing:.03em;font-size:16px}
@@ -387,11 +513,11 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 
 def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize, data_through,
-           news=None, checked=None) -> str:
+           news=None, checked=None, auto_props=None, lines_checked=None) -> str:
     n_bets = sum(1 for it in games for o in it["opts"] if o["ev"] >= C.MIN_EV)
     cards = "".join(_game_card(it) for it in games)
     toc = ['<a href="#bets">Bets</a>', '<a href="#games">Games</a>']
-    if props is not None and not props.empty:
+    if (props is not None and not props.empty) or (auto_props is not None and not auto_props.empty):
         toc.append('<a href="#props">Props</a>')
     toc += ['<a href="#ratings">Ratings</a>', '<a href="#backtest">Track record</a>', '<a href="#how">How to read</a>']
     from zoneinfo import ZoneInfo
@@ -423,7 +549,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     <p class="lede">Projected score on the right of each team. "Pure model" is the model on its own; "Projection" blends it with
     the market the way history says works best. A gold bar marks a game with a flagged bet.</p>
     <div class="cards">{cards}</div></section>
-  {_props_section(props)}
+  {_auto_props_section(auto_props, lines_checked) if auto_props is not None and not auto_props.empty else _props_section(props)}
   <section id="ratings"><h2>Power ratings</h2>
     <p class="lede">Ranked by points-based net rating, built from the last two-plus seasons with recent games weighted most.
     Play-by-play efficiency (EPA and success rate) sits alongside and feeds the projections too.</p>

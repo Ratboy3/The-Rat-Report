@@ -198,6 +198,26 @@ def cmd_report(a):
                              played.loc[played.away_team == t, "away_score"]]).mean()
                for t in set(played.home_team) | set(played.away_team)}
         props = price_props(pd.read_csv(a.props, comment="#"), proj, ppg)
+    from nflmodel import player_proj
+    from nflmodel.props import price_auto
+    played = games[games.played & (games.season == season)]
+    team_ppg = {t: pd.concat([played.loc[played.home_team == t, "home_score"],
+                              played.loc[played.away_team == t, "away_score"]]).mean()
+                for t in set(played.home_team) | set(played.away_team)}
+    auto_props, lines_checked = None, None
+    try:
+        players = player_proj.project(season, week, proj, refresh=a.refresh)
+        plines = None
+        if a.prop_lines and Path(a.prop_lines).exists():
+            plines = pd.read_csv(a.prop_lines, comment="#")
+            with open(a.prop_lines) as fh:
+                first = fh.readline()
+            if first.startswith("# checked:"):
+                lines_checked = first.split(":", 1)[1].strip()
+        auto_props = price_auto(players, proj, team_ppg, plines)
+        auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
+    except Exception as e:  # props are an extra; never block the main report
+        print(f"Props skipped: {e}")
     news, checked = None, None
     if a.news and Path(a.news).exists():
         news = pd.read_csv(a.news, comment="#")
@@ -207,7 +227,8 @@ def cmd_report(a):
             checked = first.split(":", 1)[1].strip()
     html = render(season=season, week=week, sm=sm, games=games_out, ratings=ratings, play=play,
                   acc=acc, rec=rec, props=props, summarize=summarize,
-                  data_through=games[games.played].date.max(), news=news, checked=checked)
+                  data_through=games[games.played].date.max(), news=news, checked=checked,
+                  auto_props=auto_props, lines_checked=lines_checked)
     OUT.mkdir(exist_ok=True)
     path = OUT / f"report_{season}_wk{week}.html"
     path.write_text(html, encoding="utf-8")
@@ -224,7 +245,7 @@ def cmd_stamp_news(a):
     lines = [l for l in lines if not l.startswith("# checked:")]
     now = datetime.now(ZoneInfo("America/Chicago")).strftime("%a %b %-d, %-I:%M %p CT")
     path.write_text(f"# checked: {now}\n" + "".join(lines), encoding="utf-8")
-    print(f"news.csv stamped {now}")
+    print(f"{path.name} stamped {now}")
 
 
 # ------------------------------------------------------------------ ratings
@@ -265,8 +286,9 @@ def main():
     rp.add_argument("--overrides", default="overrides.csv")
     rp.add_argument("--props", default=None)
     rp.add_argument("--news", default="news.csv", help="per-game QB/injury/line notes shown on the page")
+    rp.add_argument("--prop-lines", default="prop_lines.csv", help="DraftKings prop lines: player,stat,line,over_odds,under_odds,source,as_of")
     rp.add_argument("--start", type=int, default=2012)
-    sn = sub.add_parser("stamp-news", help="stamp news.csv with the current Central time")
+    sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
         s.add_argument("--refresh", action="store_true", help="re-download data from nflverse")
