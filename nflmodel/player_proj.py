@@ -171,7 +171,14 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         qb_name = getattr(g, f"{side}_qb_name")
         opp = g.away_team if side == "home" else g.home_team
         game = f"{g.away_team} @ {g.home_team}"
-        on_team = recent[(recent.team == team)].player_id.unique()
+        on_team = list(recent[(recent.team == team)].player_id.unique())
+        # players back from injury who haven't played this season yet (e.g. a starter coming off IR)
+        if roster is not None and len(roster):
+            rw_t = roster[(roster.week == min(week, roster.week.max())) & (roster.team == team) & (roster.status == "ACT")
+                          & roster.position.isin(BY_POS)]
+            prior = stats[(stats.season == season - 1) & stats.player_id.isin(set(rw_t.gsis_id))]
+            back = prior.groupby("player_id").size()
+            on_team += [pid for pid in back[back >= 4].index if pid not in set(on_team)]
         # players who can score this week: active, not Out/Doubtful, on this team, and (for QBs) the starter
         eligible = []
         for pid in on_team:
