@@ -51,7 +51,8 @@ def run(games: pd.DataFrame, weeks: list[tuple[int, int]]) -> pd.DataFrame:
         a = a[a.week == week].melt(id_vars=["season", "week", "player_display_name", "team"], var_name="stat", value_name="actual")
         m = p.merge(a, left_on=["player", "team", "stat"], right_on=["player_display_name", "team", "stat"], how="inner")
         m["season"], m["week"] = season, week
-        rows.append(m[["season", "week", "player", "position", "stat", "projection", "actual"]])
+        rows.append(m[["season", "week", "player", "position", "stat", "projection", "actual"]
+                      + (["returning"] if "returning" in m else [])])
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 

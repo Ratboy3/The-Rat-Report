@@ -190,7 +190,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
           {lean('moneyline')}</div>
       </div>
       <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
-      {_card_injuries(g, inj)}
+      {_card_injuries(g, inj, (mkt or {}).get('qb'))}
       {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
     </article>"""
 
@@ -260,11 +260,19 @@ def _prop_bt_section(bt) -> str:
     Brier score: lower is better; 0.25 is a coin flip.</p>"""
 
 
-def _card_injuries(g, inj) -> str:
-    """Net injury effect on each team, with the players behind it."""
-    if not inj:
-        return ""
+def _card_injuries(g, inj, qbs=None) -> str:
+    """Net injury effect on each team, with the players behind it, plus any QB change."""
     parts = []
+    for t in (g.away_team, g.home_team):
+        q = (qbs or {}).get(t)
+        if not q:
+            continue
+        parts.append(f'<div><b>{t}</b> <span class="n {"bad" if q["pts"] < -0.05 else ("good" if q["pts"] > 0.05 else "")}">{q["pts"]:+.1f} pts</span>'
+                     f' <span class="muted">QB {escape(str(q["new"]))} ({q["new_rating"]:+.2f} EPA/dropback) in for '
+                     f'{escape(str(q["usual"]))} ({q["usual_rating"]:+.2f}), spread only</span></div>')
+    if not inj and not parts:
+        return ""
+    inj = inj or {}
     for t in (g.away_team, g.home_team):
         v = inj.get(t)
         if not v or not v["players"]:
@@ -278,7 +286,7 @@ def _card_injuries(g, inj) -> str:
                      f' <span class="muted">{who}</span></div>')
     if not parts:
         return ""
-    return (f'<div class="card-inj"><h4>Injuries (all positions, points)</h4>{"".join(parts)}'
+    return (f'<div class="card-inj"><h4>QB changes and injuries (points)</h4>{"".join(parts)}'
             '<p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. '
             'Already in the pure model line.</p></div>')
 
@@ -910,7 +918,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     <div class="glossary">
       <div><b>Spread</b><p>"CHI −2.5" means the Bears are projected to win by 2.5. Plus numbers are underdogs.</p></div>
       <div><b>Market</b><p>The betting line: DraftKings' number when we have a recent one, otherwise the consensus line across sportsbooks. It reflects everything bettors and bookmakers know, including injuries and news.</p></div>
-      <div><b>Pure model</b><p>The model's own number, built only from team ratings, play-by-play efficiency, injuries, rest, travel and weather, without looking at the betting line.</p></div>
+      <div><b>Pure model</b><p>The model's own number, built only from team ratings, play-by-play efficiency, quarterback ratings, injuries, rest, travel and weather, without looking at the betting line.</p></div>
+      <div><b>QB rating</b><p>Expected points added per dropback (passes, sacks and scrambles), recent games weighted most. QBs with little film are assumed to be typical backups until they show otherwise.</p></div>
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>

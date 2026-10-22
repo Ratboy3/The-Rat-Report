@@ -22,7 +22,9 @@ TEAM_FILE = ROOT / "data" / "pbp_team_games.csv"
 URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.csv.gz"
 COLS = ["game_id", "season", "week", "season_type", "posteam", "defteam", "play_type", "yardline_100", "down",
         "ydstogo", "wp", "half_seconds_remaining", "game_seconds_remaining", "drive", "pass", "rush", "xpass",
-        "rusher_player_id", "receiver_player_id", "qb_kneel", "qb_spike", "two_point_attempt"]
+        "rusher_player_id", "receiver_player_id", "qb_kneel", "qb_spike", "two_point_attempt",
+        "qb_dropback", "qb_epa", "passer_player_id", "passer_player_name", "rusher_player_name", "qb_hit", "sack"]
+QB_FILE = ROOT / "data" / "pbp_qb_games.csv"
 
 
 def _download(season: int, refresh: bool) -> Path | None:
@@ -73,22 +75,38 @@ def _season(src: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
         plays_faced=("play_type", "size"), pass_rate_faced=("pass", "mean")).reset_index().rename(columns={"defteam": "posteam"})
     tm = off.merge(neu, how="left").merge(go, how="left").merge(dfn, how="left").rename(columns={"posteam": "team"})
     tm[["fourth_tries", "fourth_go"]] = tm[["fourth_tries", "fourth_go"]].fillna(0)
+
+    # ---- pass rush vs. protection: sacks + QB hits per dropback, allowed (offense) and generated (defense)
+    db = d[(d.qb_dropback == 1) & (d.qb_kneel != 1) & (d.qb_spike != 1)].copy()
+    db["pressure"] = ((db.sack.fillna(0) > 0) | (db.qb_hit.fillna(0) > 0)).astype(float)
+    pa = db.groupby(["season", "week", "game_id", "posteam"]).agg(dropbacks=("pressure", "size"), pressured=("pressure", "sum")).reset_index()
+    pg = db.groupby(["season", "week", "game_id", "defteam"]).agg(dropbacks_faced=("pressure", "size"), pressures=("pressure", "sum")).reset_index()
+    tm = tm.merge(pa.rename(columns={"posteam": "team"}), how="left").merge(pg.rename(columns={"defteam": "team"}), how="left")
+
+    # ---- quarterbacks: EPA per dropback (scrambles credited to the QB)
+    db["qb_id"] = db.passer_player_id.fillna(db.rusher_player_id)
+    db["qb_name"] = db.passer_player_name.fillna(db.rusher_player_name)
+    qb = db.dropna(subset=["qb_id"]).groupby(["season", "week", "game_id", "posteam", "qb_id"]).agg(
+        qb_name=("qb_name", "first"), dropbacks=("qb_epa", "size"), epa=("qb_epa", "sum")).reset_index()
+    tm.attrs["qb"] = qb
     return pl, tm
 
 
 def build(seasons: list[int], refresh_current: bool = True) -> None:
-    pls, tms = [], []
+    pls, tms, qbs = [], [], []
     for i, s in enumerate(seasons):
         src = _download(s, refresh_current and i == len(seasons) - 1)
         if src is None:
             continue
         pl, tm = _season(src)
         pls.append(pl)
+        qbs.append(tm.attrs.pop("qb"))
         tms.append(tm)
     if pls:
         pd.concat(pls).to_csv(PLAYER_FILE, index=False)
         pd.concat(tms).to_csv(TEAM_FILE, index=False)
-        print(f"Wrote {PLAYER_FILE.name} and {TEAM_FILE.name}")
+        pd.concat(qbs).to_csv(QB_FILE, index=False)
+        print(f"Wrote {PLAYER_FILE.name}, {TEAM_FILE.name} and {QB_FILE.name}")
 
 
 def load() -> tuple[pd.DataFrame | None, pd.DataFrame | None]:

@@ -60,14 +60,21 @@ class SeasonModel:
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
         d = _design(df)
         out = df.copy()
-        Xm = np.column_stack([np.ones(len(d)), d[margin_features()].to_numpy(float)])
+        dm = d
+        if "home_qb_pts" in d:   # QB ratings replace the yes/no flag for the spread (see qb.py)
+            dm = d.copy()
+            for side in ("home", "away"):
+                dm.loc[d[f"{side}_qb_pts"].notna(), f"{side}_qb_change"] = 0
+        Xm = np.column_stack([np.ones(len(d)), dm[margin_features()].to_numpy(float)])
         Xt = np.column_stack([np.ones(len(d)), d[total_features()].to_numpy(float)])
         inj = {c: (d[c].fillna(0.0).to_numpy(float) if c in d else np.zeros(len(d)))
                for c in ("home_inj_off", "home_inj_def", "away_inj_off", "away_inj_def")}
         # offensive losses cut a team's own points; defensive losses add to the opponent's
         inj_margin = -inj["home_inj_off"] - inj["home_inj_def"] + inj["away_inj_off"] + inj["away_inj_def"]
         inj_total = -inj["home_inj_off"] - inj["away_inj_off"] + inj["home_inj_def"] + inj["away_inj_def"]
-        model_margin = Xm @ self.b_margin + (d.home_adj - d.away_adj).to_numpy() + inj_margin
+        qb_m = ((d.home_qb_pts.fillna(0) - d.away_qb_pts.fillna(0)).to_numpy(float)
+                if "home_qb_pts" in d else np.zeros(len(d)))
+        model_margin = Xm @ self.b_margin + (d.home_adj - d.away_adj).to_numpy() + inj_margin + qb_m
         model_total = (Xt @ self.b_total + 0.5 * (d.home_adj + d.away_adj).to_numpy() + PRECIP_TOTAL * d.precip.to_numpy()
                        + inj_total)
         out["model_margin"] = model_margin

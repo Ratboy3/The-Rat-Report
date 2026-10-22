@@ -177,6 +177,14 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
     role = _snap_roles(season, week, roster)
     opp_f = _opponent_factors(stats, season, week)
+    man, splits, lg_man = ({}, {}, 0.3)
+    if USE["coverage"]:
+        try:
+            from . import coverage
+            man, splits, lg_man = coverage.tables(season)
+        except Exception as e:
+            print(f"  coverage data skipped ({e})")
+    press = _pressure(tm, season, week) if USE["pressure"] else {}
 
     team_game = {}
     for g in proj.itertuples():
@@ -212,6 +220,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         redis = _redistribution(stats, season, week, team, on_team, set(eligible))
         vol = _volume_factors(tend, team, opp)
         team_tds = team_pts.get(team, 22.0) * tpp
+        team_weeks = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
         for pid in on_team:
             rows = stats[stats.player_id == pid]
             last = rows.sort_values(["season", "week"]).iloc[-1]
@@ -234,6 +243,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     note = f"Missed practice ({what})" if what else "Missed practice"
                 elif practice and "Limited" in practice:
                     note = f"Limited in practice ({what})" if what else "Limited in practice"
+            # back after missing the team's last game (but a regular before that)
+            pw = set(rows[rows.season == season].week)
+            returning = bool(team_weeks) and team_weeks[-1] not in pw and len(pw & set(team_weeks[-5:-1])) >= 2
             for st in BY_POS[pos]:
                 mean, wsum = _weighted(rows, st, season)
                 prior = typical.get((pos, st), mean)
@@ -249,6 +261,15 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                         est *= role.get(pid, 1.0)                       # snap share trending up or down
                     if USE["redis"]:
                         est *= redis["rec" if st in ("rec_yds", "receptions") else "rush"]
+                if USE["airyards"] and pos in ("WR", "TE", "RB") and st in ("rec_yds", "receptions"):
+                    est = AIR_W * _usage_est(rows, st, season) + (1 - AIR_W) * est
+                if USE["coverage"] and st == "rec_yds" and pos in ("WR", "TE"):
+                    from .coverage import factor as cov_factor
+                    est *= cov_factor(splits, man, lg_man, pid, opp, COVERAGE_W)
+                if USE["pressure"] and pos == "QB" and st in ("pass_yds", "pass_tds"):
+                    est *= press.get((team, opp), 1.0)
+                if USE["returning"] and returning and st != "anytime_td":
+                    est *= RETURN_FACTOR
                 if st != "anytime_td":
                     if USE["opp"]:
                         est *= opp_f.get((opp, pos, st), 1.0)
@@ -260,7 +281,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                         continue
                     est = 1 - math.exp(-lam)               # P(at least one TD)
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
-                                projection=round(est, 3), injury=note, games=int(len(rows))))
+                                projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning))
     if not out:
         return pd.DataFrame()
     df = pd.DataFrame(out)
@@ -284,7 +305,18 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # switches the prop backtest uses to measure each factor (props_backtest.py)
 # tested on 2025-26 (props-backtest): opponent defense and pace/pass mix improved projections; recent-3-game
 # weighting, snap-share trend and teammate-usage redistribution made them worse, so they are off.
-USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True}
+# Second round (Oct 22): air yards + targets helped receiving yards in both seasons (miss 22.71 -> 22.48) and is on.
+# Man/zone coverage matchups (last season's charting) were neutral, pass rush vs. protection made passing yards
+# worse (57.9 -> 59.1; the opponent factor already covers it), and a first-game-back discount held in 2025
+# (-18%) but reversed in 2026 (+5%), so those three are off.
+USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
+       "airyards": True, "coverage": False, "pressure": False, "returning": False}
+AIR_W = 0.5             # weight on the usage-based estimate (air yards + targets) for receiving props
+AIR_YDS_COEF, TGT_YDS_COEF = 0.204, 5.812   # receiving yards ~ 0.204 x air yards + 5.8 x targets (fit on 2025)
+LG_CATCH, CATCH_SHRINK = 0.675, 20
+COVERAGE_W = 0.5
+PRESSURE_W = 0.3
+RETURN_FACTOR = 1.0     # set from the backtest
 RECENT3_W = 0.3
 
 ROLE_WEIGHT = 0.6       # how much of a snap-share change carries into the projection
@@ -351,3 +383,31 @@ def _volume_factors(tend, team: str, opp: str) -> dict:
     vol = plays / t.plays
     return {"pass": float(np.clip(vol * pr / t.pass_rate, 0.9, 1.1)),
             "rush": float(np.clip(vol * (1 - pr) / (1 - t.pass_rate), 0.9, 1.1))}
+
+
+def _usage_est(rows: pd.DataFrame, stat: str, season: int) -> float:
+    """Receiving yards / receptions implied by targets, air yards and catch rate (steadier than raw totals)."""
+    r = rows.sort_values(["season", "week"], ascending=False)
+    w = RECENCY ** np.arange(len(r)) * np.where(r.season < season, PRIOR_SEASON_W, 1.0)
+    tgt = r.targets.fillna(0).to_numpy(float)
+    if stat == "rec_yds":
+        x = AIR_YDS_COEF * r.receiving_air_yards.fillna(0).clip(lower=0).to_numpy(float) + TGT_YDS_COEF * tgt
+        return float((w * x).sum() / w.sum())
+    catch = (r.receptions.fillna(0).sum() + LG_CATCH * CATCH_SHRINK) / (tgt.sum() + CATCH_SHRINK)
+    return float((w * tgt).sum() / w.sum() * catch)
+
+
+def _pressure(tm, season: int, week: int) -> dict:
+    """(team, opponent) -> passing multiplier from the team's pressure allowed vs. the opponent's pressure generated."""
+    if tm is None or "pressured" not in tm:
+        return {}
+    t = tm[(tm.season < season) | ((tm.season == season) & (tm.week < week))].sort_values(["season", "week"])
+    off = t.groupby("team").tail(8).groupby("team").apply(lambda g: g.pressured.sum() / max(1, g.dropbacks.sum()), include_groups=False)
+    dfn = t.groupby("team").tail(8).groupby("team").apply(lambda g: g.pressures.sum() / max(1, g.dropbacks_faced.sum()), include_groups=False)
+    lg = float(t.pressured.sum() / max(1, t.dropbacks.sum()))
+    out = {}
+    for a in off.index:
+        for b in dfn.index:
+            exp = (off[a] + dfn[b]) / 2
+            out[(a, b)] = float(np.clip(1 - PRESSURE_W * (exp / lg - 1), 0.9, 1.1))
+    return out

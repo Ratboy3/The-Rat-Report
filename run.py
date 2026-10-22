@@ -79,6 +79,8 @@ def cmd_picks(a):
         raise SystemExit(f"No games found for {season} week {week}")
     from nflmodel import injuries
     wk, _ = injuries.attach(wk, season, week, a.refresh)
+    from nflmodel import qb
+    wk, _ = qb.attach(wk, games, season, week)
     proj = sm.predict(wk)
 
     print(f"\n{season} Week {week}  |  model weight vs market: spread {sm.w_margin:.0%}, total {sm.w_total:.0%}"
@@ -192,6 +194,8 @@ def cmd_report(a):
     sm = fit_season_model(wf, season, key_number_multipliers(games[games.season < season]))
     from nflmodel import injuries
     wk, inj = injuries.attach(wf[(wf.season == season) & (wf.week == week)], season, week, a.refresh)
+    from nflmodel import qb
+    wk, qb_info = qb.attach(wk, games, season, week)
     proj = sm.predict(wk)
     if proj.empty:
         raise SystemExit(f"No games found for {season} week {week}")
@@ -236,7 +240,8 @@ def cmd_report(a):
     _, tm = pbp_extra.load()
     mkt = dict(history=market.record_history(a.lines_history, proj), best_games=market.best_game_prices(a.game_lines),
                best_props=market.best_prop_prices(a.prop_books), dk_used=getattr(a, "_dk_used", {}),
-               tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None)
+               tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None,
+               qb=qb_info)
     prop_bt = pd.read_csv("prop_backtest.csv") if Path("prop_backtest.csv").exists() else None
     clv_log = None
     if a.bets_log:
@@ -357,7 +362,7 @@ def main():
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
      "build-extras": lambda a: __import__("nflmodel.pbp_extra", fromlist=["build"]).build(
-         [load_games(False).season.max() - 1, load_games(False).season.max()]),
+         [load_games(False).season.max() - 2, load_games(False).season.max() - 1, load_games(False).season.max()]),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 
 

@@ -59,11 +59,12 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
     """{team: {"off": pts lost, "def": pts lost (positive = worse), "players": [(name, pos, pts, note)]}}"""
     out = {t: {"off": 0.0, "def": 0.0, "players": []} for t in teams}
     snaps = _load_snaps(season, refresh)
-    roster_p, inj_p = DATA / f"roster_{season}.csv", DATA / f"injuries_{season}.csv"
-    if snaps is None or not roster_p.exists():
+    from .player_proj import _load            # downloads the roster / injury report if this run hasn't yet
+    roster = _load("roster", season, refresh)
+    inj = _load("injuries", season, refresh)
+    inj = inj if inj is not None else pd.DataFrame()
+    if snaps is None or roster is None:
         return out
-    roster = pd.read_csv(roster_p, low_memory=False)
-    inj = pd.read_csv(inj_p, low_memory=False) if inj_p.exists() else pd.DataFrame()
     rw = roster[roster.week == min(week, roster.week.max())]
     pfr_to = rw.dropna(subset=["pfr_id"]).set_index("pfr_id")
     status_by_gsis = dict(zip(rw.gsis_id, rw.status))
