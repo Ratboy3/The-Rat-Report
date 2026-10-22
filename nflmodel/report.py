@@ -191,7 +191,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
       </div>
       <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
       {_card_injuries(g, inj)}
-      {_card_news(news)}
+      {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
     </article>"""
 
 
@@ -209,8 +209,6 @@ def _movement_html(g, mkt) -> str:
             bits.append(f"Total {t0:g} → {t1:g}")
         if bits:
             bits[0] = f"Since {escape(str(mv['since']))}: " + bits[0]
-    if src:
-        bits.append(f"DraftKings lines {escape(src)}")
     return f'<div class="move cell-sub">{" · ".join(bits)}</div>' if bits else ""
 
 
@@ -369,10 +367,23 @@ def _card_props(grp, gi, best=None) -> str:
       </details>"""
 
 
-def _card_news(n) -> str:
+def _game_lines_label(raw: str, dk_api: str | None) -> str:
+    """Plain-English source of the game's spread / total / moneyline."""
+    if dk_api:
+        return f"Game lines: DraftKings ({dk_api})"
+    raw = (raw or "").strip()
+    if not raw or raw.lower().startswith("feed"):
+        return "Game lines: sportsbook consensus (no recent DraftKings line)"
+    if raw.lower().startswith("draftkings"):
+        return "Game lines: " + raw
+    return "Game lines: " + raw
+
+
+def _card_news(n, dk_api=None) -> str:
     if n is None:
         return ""
-    lines = f'<span class="cell-sub">Lines: {escape(str(n.get("lines", "")))}</span>' if n.get("lines") else ""
+    label = _game_lines_label(str(n.get("lines", "")), dk_api)
+    lines = f'<span class="cell-sub">{escape(label)}</span>'
     status = str(n.get("status", ""))
     return f"""<footer class="card-news"><span class="st {STATUS_CLASS.get(status.lower(), '')}">{escape(status)}</span>
       <p>{escape(str(n.get("note", "")))}{lines}</p></footer>"""
