@@ -5,7 +5,7 @@ import math
 
 import numpy as np
 import pandas as pd
-from scipy.stats import norm, poisson
+from scipy.stats import nbinom, norm, poisson
 
 from . import config as C
 from .betting import ev, kelly_stake
@@ -68,7 +68,18 @@ def _dist(stat: str, adj: float) -> dict:
         return dict(dist="td", a=adj, b=0.0)
     if stat in C.PROP_CV:
         return dict(dist="normal", a=adj, b=max(1.0, adj * C.PROP_CV[stat]))
+    if stat in C.PROP_NB_SIZE:
+        return dict(dist="nbinom", a=adj, b=C.PROP_NB_SIZE[stat])
     return dict(dist="poisson", a=adj, b=0.0)
+
+
+def _cdf(d: dict, k: int) -> float:
+    if k < 0:
+        return 0.0
+    if d["dist"] == "nbinom":
+        r = d["b"]
+        return float(nbinom.cdf(k, r, r / (r + max(1e-6, d["a"]))))
+    return float(poisson.cdf(k, d["a"]))
 
 
 def _probs(d: dict, line: float) -> tuple[float, float, float]:
@@ -80,8 +91,8 @@ def _probs(d: dict, line: float) -> tuple[float, float, float]:
         return (o, 0.0, 1 - o)
     k = math.floor(line)
     if float(line).is_integer():
-        return (1 - poisson.cdf(k, d["a"]), poisson.pmf(k, d["a"]), poisson.cdf(k - 1, d["a"]))
-    return (1 - poisson.cdf(k, d["a"]), 0.0, poisson.cdf(k, d["a"]))
+        return (1 - _cdf(d, k), _cdf(d, k) - _cdf(d, k - 1), _cdf(d, k - 1))
+    return (1 - _cdf(d, k), 0.0, _cdf(d, k))
 
 
 def _fair_line(d: dict) -> float | None:
@@ -126,10 +137,10 @@ def _market_mean(stat: str, line: float, p_over: float | None) -> float:
         cv = C.PROP_CV[stat]
         z = norm.ppf(p)                   # P(X > line) = p with X ~ N(m, cv*m)  ->  m = line / (1 - z*cv)
         return line / max(0.3, 1 - z * cv)
-    lo, hi = 0.01, 30.0                   # poisson: find lambda with P(X > line) = p
+    lo, hi = 0.01, 30.0                   # count stats: find the mean with P(X > line) = p
     for _ in range(60):
         mid = (lo + hi) / 2
-        if 1 - poisson.cdf(math.floor(line), mid) < p:
+        if 1 - _cdf(_dist(stat, mid), math.floor(line)) < p:
             lo = mid
         else:
             hi = mid

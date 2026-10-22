@@ -26,7 +26,8 @@ MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0
 
 # --- props ---
-PROP_CV = {"pass_yds": 0.30, "rush_yds": 0.70, "rec_yds": 0.80}   # game-to-game spread (sd / mean); yardage is very volatile
+PROP_CV = {"pass_yds": 0.33, "rush_yds": 0.78, "rec_yds": 0.79}   # sd / mean of projection misses, measured by props-backtest 2025-26
+PROP_NB_SIZE = {"receptions": 7.5}  # receptions vary more than a Poisson count: negative binomial with this size
 PROP_COUNT = {"receptions", "pass_tds", "anytime_td"}
 PROP_SCRIPT_WEIGHT = 0.5       # how much a team's projected points move its players' projections
 

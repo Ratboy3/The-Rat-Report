@@ -62,8 +62,14 @@ class SeasonModel:
         out = df.copy()
         Xm = np.column_stack([np.ones(len(d)), d[margin_features()].to_numpy(float)])
         Xt = np.column_stack([np.ones(len(d)), d[total_features()].to_numpy(float)])
-        model_margin = Xm @ self.b_margin + (d.home_adj - d.away_adj).to_numpy()
-        model_total = Xt @ self.b_total + 0.5 * (d.home_adj + d.away_adj).to_numpy() + PRECIP_TOTAL * d.precip.to_numpy()
+        inj = {c: (d[c].fillna(0.0).to_numpy(float) if c in d else np.zeros(len(d)))
+               for c in ("home_inj_off", "home_inj_def", "away_inj_off", "away_inj_def")}
+        # offensive losses cut a team's own points; defensive losses add to the opponent's
+        inj_margin = -inj["home_inj_off"] - inj["home_inj_def"] + inj["away_inj_off"] + inj["away_inj_def"]
+        inj_total = -inj["home_inj_off"] - inj["away_inj_off"] + inj["home_inj_def"] + inj["away_inj_def"]
+        model_margin = Xm @ self.b_margin + (d.home_adj - d.away_adj).to_numpy() + inj_margin
+        model_total = (Xt @ self.b_total + 0.5 * (d.home_adj + d.away_adj).to_numpy() + PRECIP_TOTAL * d.precip.to_numpy()
+                       + inj_total)
         out["model_margin"] = model_margin
         out["model_total"] = model_total
         mm = d.mkt_margin.fillna(pd.Series(model_margin, index=d.index)).to_numpy()

@@ -84,8 +84,13 @@ XTD_PER_TARGET = 0.045  # and per target
 TD_HISTORY_W = 0.35     # weight on a player's actual TD rate vs. the rate his usage implies
 
 
-def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list) -> dict:
-    """Each player's expected share of his team's rushing + receiving touchdowns, from usage and scoring."""
+RZ_TD = {"rz_carries": 0.10, "gl_carries": 0.25, "rz_targets": 0.14, "gl_targets": 0.20}  # TDs per opportunity
+RZ_WEIGHT = 0.3         # red-zone rate vs. overall usage: a wash in testing (Brier 0.1901 vs 0.1903), kept light
+
+
+def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list, rz: pd.DataFrame | None = None) -> dict:
+    """Each player's expected share of his team's rushing + receiving touchdowns, from red-zone and overall
+    usage plus actual scoring."""
     rate = {}
     for pid in ids:
         r = stats[stats.player_id == pid].sort_values(["season", "week"], ascending=False)
@@ -96,6 +101,12 @@ def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list) -> dict:
         tgt = r.targets.fillna(0).to_numpy(float)
         tds = (r.rushing_tds.fillna(0) + r.receiving_tds.fillna(0)).to_numpy(float)
         xtd = (w * (car * XTD_PER_CARRY + tgt * XTD_PER_TARGET)).sum() / w.sum()
+        if rz is not None and len(rz):
+            g = r[["season", "week"]].merge(rz[rz.player_id == pid], on=["season", "week"], how="left").fillna(0)
+            rz_x = sum(g[c].to_numpy(float) * v for c, v in RZ_TD.items())
+            rz_x = rz_x + (np.maximum(0, car - g.rz_carries.to_numpy(float)) * 0.006
+                           + np.maximum(0, tgt - g.rz_targets.to_numpy(float)) * 0.02)   # long touchdowns
+            xtd = (1 - RZ_WEIGHT) * xtd + RZ_WEIGHT * (w * rz_x).sum() / w.sum()
         act = (w * tds).sum() / w.sum()
         rate[pid] = max(0.0, (1 - TD_HISTORY_W) * xtd + TD_HISTORY_W * act)
     tot = sum(rate.values())
@@ -161,6 +172,12 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         team_pts[g.home_team] = g.proj_home_pts
         team_pts[g.away_team] = g.proj_away_pts
 
+    from . import pbp_extra
+    rz, tm = pbp_extra.load()
+    tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
+    role = _snap_roles(season, week, roster)
+    opp_f = _opponent_factors(stats, season, week)
+
     team_game = {}
     for g in proj.itertuples():
         team_game[g.home_team] = (g, "home")
@@ -191,7 +208,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             if last.position == "QB" and last.player_display_name != qb_name:
                 continue
             eligible.append(pid)
-        shares = _td_shares(stats, season, team, eligible)
+        shares = _td_shares(stats, season, team, eligible, rz)
+        redis = _redistribution(stats, season, week, team, on_team, set(eligible))
+        vol = _volume_factors(tend, team, opp)
         team_tds = team_pts.get(team, 22.0) * tpp
         for pid in on_team:
             rows = stats[stats.player_id == pid]
@@ -222,6 +241,19 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                 est = (mean * wsum + prior * k) / (wsum + k)
                 if mean < MIN_MEAN[st] or est < MIN_MEAN[st]:
                     continue
+                if st != "anytime_td" and pos != "QB":
+                    recent3 = float(_value(rows.sort_values(["season", "week"]).tail(3), st).mean())
+                    if USE["recent3"]:
+                        est = (1 - RECENT3_W) * est + RECENT3_W * recent3   # lean toward the last 3 games
+                    if USE["role"]:
+                        est *= role.get(pid, 1.0)                       # snap share trending up or down
+                    if USE["redis"]:
+                        est *= redis["rec" if st in ("rec_yds", "receptions") else "rush"]
+                if st != "anytime_td":
+                    if USE["opp"]:
+                        est *= opp_f.get((opp, pos, st), 1.0)
+                    if USE["vol"]:
+                        est *= vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
                 if st == "anytime_td":
                     lam = shares.get(pid, 0.0) * team_tds  # this player's expected TDs this game
                     if lam < 0.06:
@@ -247,3 +279,75 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                              .player.head(1)]).drop_duplicates()
         keep.append(grp[grp.player.isin(top)])
     return pd.concat(keep, ignore_index=True)
+
+
+# switches the prop backtest uses to measure each factor (props_backtest.py)
+# tested on 2025-26 (props-backtest): opponent defense and pace/pass mix improved projections; recent-3-game
+# weighting, snap-share trend and teammate-usage redistribution made them worse, so they are off.
+USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True}
+RECENT3_W = 0.3
+
+ROLE_WEIGHT = 0.6       # how much of a snap-share change carries into the projection
+OPP_SHRINK = 0.5        # opponent effects are noisy: use half of what the data shows
+REDIS_WEIGHT = 0.7      # share of an injured teammate's targets/carries that go to the remaining players
+
+
+def _snap_roles(season: int, week: int, roster) -> dict:
+    """gsis_id -> factor from the player's last 2 games' snap share vs. his usual share."""
+    from . import injuries
+    snaps = injuries._load_snaps(season, False)
+    if snaps is None or roster is None:
+        return {}
+    pfr = dict(zip(roster.pfr_id, roster.gsis_id))
+    sn = snaps[(snaps.game_type == "REG") & (snaps.week < week) & (snaps.offense_pct > 0)].sort_values("week")
+    out = {}
+    for pid, g in sn.groupby("pfr_player_id"):
+        if pid not in pfr or len(g) < 3:
+            continue
+        usual = g.offense_pct.iloc[:-2].tail(6).mean()
+        last2 = g.offense_pct.tail(2).mean()
+        if usual > 0.05:
+            out[pfr[pid]] = float(np.clip(1 + ROLE_WEIGHT * (last2 / usual - 1), 0.6, 1.3))
+    return out
+
+
+def _opponent_factors(stats: pd.DataFrame, season: int, week: int) -> dict:
+    """(opponent, position, stat) -> how much more/less that defense allows than average, last 8 games."""
+    s = stats[(stats.season == season) | ((stats.season == season - 1) & (stats.week >= 12))]
+    out = {}
+    for stat in ("rush_yds", "rec_yds", "receptions", "pass_yds", "pass_tds"):
+        col = STATS[stat][0]
+        g = s.groupby(["opponent_team", "position", "season", "week"])[col].sum().reset_index()
+        g = g.sort_values(["season", "week"]).groupby(["opponent_team", "position"]).tail(8)
+        per = g.groupby(["opponent_team", "position"])[col].mean()
+        lg = per.groupby(level="position").mean()
+        for (opp, pos), v in per.items():
+            if lg.get(pos, 0) > 0:
+                out[(opp, pos, stat)] = float(np.clip(1 + OPP_SHRINK * (v / lg[pos] - 1), 0.85, 1.15))
+    return out
+
+
+def _redistribution(stats, season, week, team, on_team, eligible) -> dict:
+    """Boost for the remaining players when teammates who were getting targets/carries are out."""
+    r = stats[(stats.season == season) & (stats.team == team) & (stats.week < week)]
+    recent = sorted(r.week.unique())[-3:]
+    r = r[r.week.isin(recent)]
+    out = {}
+    for key, col in (("rec", "targets"), ("rush", "carries")):
+        tot = r[col].fillna(0).sum()
+        gone = r[~r.player_id.isin(eligible) & r.player_id.isin(on_team) & (r.position != "QB")][col].fillna(0).sum()
+        share = gone / tot if tot > 0 else 0.0
+        out[key] = float(np.clip(1 + REDIS_WEIGHT * share / max(0.2, 1 - share), 1.0, 1.35))
+    return out
+
+
+def _volume_factors(tend, team: str, opp: str) -> dict:
+    """Plays and pass/run mix expected this game (team tendency met by opponent's) vs. the team's norm."""
+    if tend is None or team not in tend.index or opp not in tend.index:
+        return {"pass": 1.0, "rush": 1.0}
+    t, o = tend.loc[team], tend.loc[opp]
+    plays = (t.plays + o.plays_faced) / 2
+    pr = (t.pass_rate + o.pass_rate_faced) / 2
+    vol = plays / t.plays
+    return {"pass": float(np.clip(vol * pr / t.pass_rate, 0.9, 1.1)),
+            "rush": float(np.clip(vol * (1 - pr) / (1 - t.pass_rate), 0.9, 1.1))}

@@ -6,7 +6,6 @@
   python run.py ratings                    # current power ratings
   python run.py report --props props.csv   # everything above as one readable HTML page
   python run.py build-epa                  # rebuild the play-by-play EPA file from scratch
-  python run.py fetch-props                # live DraftKings prop lines -> prop_lines.csv (needs ODDS_API_KEY)
   add --refresh to any command to re-download the latest data from nflverse
 """
 from __future__ import annotations
@@ -59,16 +58,27 @@ def next_week(games: pd.DataFrame) -> tuple[int, int]:
     return int(r.season), int(r.week)
 
 
+def _prepare(games: pd.DataFrame, a) -> pd.DataFrame:
+    """Forecast weather, DraftKings' own game lines (The Odds API), then manual overrides on top."""
+    from nflmodel import market, weather
+    games = weather.apply(games, getattr(a, "weather", None) or "weather.csv")
+    games, used = market.apply_dk_game_lines(games, getattr(a, "game_lines", None) or "game_lines.csv")
+    a._dk_used = used
+    return apply_overrides(games, a.overrides)
+
+
 # ------------------------------------------------------------------ picks
 def cmd_picks(a):
     games = load_games(refresh=a.refresh)
     season, week = (a.season, a.week) if a.week else next_week(games)
-    games = apply_overrides(games, a.overrides)
+    games = _prepare(games, a)
     wf = get_walk_forward(games, a.refresh)
     sm = fit_season_model(wf, season, key_number_multipliers(games[games.season < season]))
     wk = wf[(wf.season == season) & (wf.week == week)]
     if wk.empty:
         raise SystemExit(f"No games found for {season} week {week}")
+    from nflmodel import injuries
+    wk, _ = injuries.attach(wk, season, week, a.refresh)
     proj = sm.predict(wk)
 
     print(f"\n{season} Week {week}  |  model weight vs market: spread {sm.w_margin:.0%}, total {sm.w_total:.0%}"
@@ -177,10 +187,12 @@ def cmd_report(a):
     from nflmodel.report import render
     games = load_games(refresh=a.refresh)
     season, week = (a.season, a.week) if a.week else next_week(games)
-    games = apply_overrides(games, a.overrides)
+    games = _prepare(games, a)
     wf = get_walk_forward(games, a.refresh)
     sm = fit_season_model(wf, season, key_number_multipliers(games[games.season < season]))
-    proj = sm.predict(wf[(wf.season == season) & (wf.week == week)])
+    from nflmodel import injuries
+    wk, inj = injuries.attach(wf[(wf.season == season) & (wf.week == week)], season, week, a.refresh)
+    proj = sm.predict(wk)
     if proj.empty:
         raise SystemExit(f"No games found for {season} week {week}")
     games_out = []
@@ -220,6 +232,19 @@ def cmd_report(a):
         auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
     except Exception as e:  # props are an extra; never block the main report
         print(f"Props skipped: {e}")
+    from nflmodel import market, pbp_extra
+    _, tm = pbp_extra.load()
+    mkt = dict(history=market.record_history(a.lines_history, proj), best_games=market.best_game_prices(a.game_lines),
+               best_props=market.best_prop_prices(a.prop_books), dk_used=getattr(a, "_dk_used", {}),
+               tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None)
+    prop_bt = pd.read_csv("prop_backtest.csv") if Path("prop_backtest.csv").exists() else None
+    clv_log = None
+    if a.bets_log:
+        try:
+            from nflmodel import clv
+            clv_log = clv.update(a.bets_log, season, week, proj, games_out, sm, auto_props, games)
+        except Exception as e:
+            print(f"Bet log skipped: {e}")
     news, checked = None, None
     if a.news and Path(a.news).exists():
         news = pd.read_csv(a.news, comment="#")
@@ -230,11 +255,27 @@ def cmd_report(a):
     html = render(season=season, week=week, sm=sm, games=games_out, ratings=ratings, play=play,
                   acc=acc, rec=rec, props=props, summarize=summarize,
                   data_through=games[games.played].date.max(), news=news, checked=checked,
-                  auto_props=auto_props, lines_checked=lines_checked)
+                  auto_props=auto_props, lines_checked=lines_checked, injuries=inj, clv_log=clv_log,
+                  prop_bt=prop_bt, market_info=mkt)
     OUT.mkdir(exist_ok=True)
     path = OUT / f"report_{season}_wk{week}.html"
     path.write_text(html, encoding="utf-8")
     print(f"Wrote {path}  (open it in any browser)")
+
+
+def cmd_props_backtest(a):
+    """Replay past weeks of player projections; save a per-stat summary the report shows."""
+    import warnings
+    warnings.filterwarnings("ignore")
+    from nflmodel import props_backtest as B
+    games = load_games(refresh=False)
+    s, w = next_week(games)
+    rows = B.run(games, B.default_weeks(games, (s, w)))
+    sc = B.score(rows)
+    base = B.baseline(rows, games)
+    sc = sc.merge(base, on="stat", how="left")
+    sc.to_csv(a.out, index=False)
+    print(sc.round(3).to_string(index=False))
 
 
 # ------------------------------------------------------------------ news timestamp
@@ -289,19 +330,34 @@ def main():
     rp.add_argument("--props", default=None)
     rp.add_argument("--news", default="news.csv", help="per-game QB/injury/line notes shown on the page")
     rp.add_argument("--td-market", default="td_market.csv", help="market touchdown chances: player,prob,source,as_of")
+    rp.add_argument("--bets-log", default="bets_log.csv", help="closing-line tracker log (every flagged bet)")
     rp.add_argument("--prop-lines", default="prop_lines.csv", help="DraftKings prop lines: player,stat,line,over_odds,under_odds,source,as_of")
     rp.add_argument("--start", type=int, default=2012)
-    fp = sub.add_parser("fetch-props", help="pull live DraftKings player props from The Odds API into prop_lines.csv")
+    for x in (pk, rp):
+        x.add_argument("--weather", default="weather.csv", help="game-time forecasts (fetch-weather)")
+        x.add_argument("--game-lines", default="game_lines.csv", help="all books' game lines (fetch-games)")
+    rp.add_argument("--prop-books", default="prop_books.csv", help="all books' prop lines (fetch-props)")
+    rp.add_argument("--lines-history", default="lines_history.csv", help="market line at every run, for line movement")
+    fp = sub.add_parser("fetch-props", help="live player props from The Odds API: DraftKings -> prop_lines.csv, all books -> prop_books.csv")
     fp.add_argument("--prop-lines", default="prop_lines.csv")
     fp.add_argument("--hours", type=float, default=None, help="only games kicking off within this many hours (saves API credits)")
+    sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
+    sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
+    sub.add_parser("build-extras", help="red-zone usage and team tendencies from play-by-play")
+    pb = sub.add_parser("props-backtest", help="replay past weeks of player projections against results")
+    pb.add_argument("--out", default="prop_backtest.csv")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
         s.add_argument("--refresh", action="store_true", help="re-download data from nflverse")
     a = p.parse_args()
     {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
-     "stamp-news": cmd_stamp_news,
+     "stamp-news": cmd_stamp_news, "props-backtest": cmd_props_backtest,
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
+     "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
+     "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
+     "build-extras": lambda a: __import__("nflmodel.pbp_extra", fromlist=["build"]).build(
+         [load_games(False).season.max() - 1, load_games(False).season.max()]),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 
 

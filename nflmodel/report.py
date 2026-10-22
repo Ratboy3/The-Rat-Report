@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as C
-from .betting import fair_american, implied
+from .betting import decimal, fair_american, implied
 
 NAMES = {
     "ARI": "Cardinals", "ATL": "Falcons", "BAL": "Ravens", "BUF": "Bills", "CAR": "Panthers", "CHI": "Bears",
@@ -94,7 +94,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
-def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
+def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) -> str:
     g, opts, hw = item["g"], item["opts"], item["home_win"]
     flagged = [o for o in opts if o["ev"] >= C.MIN_EV]
     best = {}
@@ -118,6 +118,31 @@ def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
         tags.append(f"{g.away_team} QB change")
     if g.away_west_early:
         tags.append(f"{g.away_team} early body clock")
+    mkt = mkt or {}
+    if not g.dome and pd.notna(g.get("wind")) and g.get("wind_excess", 0) > 0:
+        tags.append(f"Wind {g.wind:.0f} mph")
+    if not g.dome and g.get("cold", 0):
+        tags.append(f"{g.temp:.0f}°F")
+    if not g.dome and g.get("precip", 0):
+        tags.append("Rain/snow")
+    tend = mkt.get("tendencies")
+    if tend is not None:
+        for t in (g.away_team, g.home_team):
+            if t not in tend.index:
+                continue
+            r = tend.loc[t]
+            if r.sec_per_play < r.sec_per_play_lg - 2:
+                tags.append(f"{t} fast pace")
+            elif r.sec_per_play > r.sec_per_play_lg + 2:
+                tags.append(f"{t} slow pace")
+            if r.proe > 0.04:
+                tags.append(f"{t} pass-heavy")
+            elif r.proe < -0.04:
+                tags.append(f"{t} run-heavy")
+            if pd.notna(r.go_rate) and r.go_rate > r.go_rate_lg + 0.2:
+                tags.append(f"{t} aggressive on 4th")
+    game_key = f"{g.away_team} @ {g.home_team}"
+    best_px = mkt.get("best_games", {})
     tag_html = "".join(f'<span class="tag">{escape(t)}</span>' for t in tags)
 
     def lean(market):
@@ -126,7 +151,17 @@ def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
             return ""
         cls = "lean bet" if o["ev"] >= C.MIN_EV else ("lean" if o["ev"] > 0 else "lean pass")
         word = "Bet" if o["ev"] >= C.MIN_EV else ("Lean" if o["ev"] > 0 else "No edge ·")
-        return f'<div class="{cls}">{word} {escape(o["pick"])} <span class="n">{_signed_pct(o["ev"])}</span></div>'
+        bp = best_px.get((game_key, market, o["side"]))
+        alt = ""
+        if bp:
+            book, bl, bo = bp[0]
+            line_now = g.spread_line if market == "spread" else (g.total_line if market == "total" else None)
+            better = (book != "DraftKings") and (bo != o["odds"] or (line_now is not None and pd.notna(bl)
+                                                                     and abs(abs(bl) - abs(line_now)) > 0.01))
+            if better:
+                ln = "" if market == "moneyline" or pd.isna(bl) else (f"{bl:+g} " if market == "spread" else f"{bl:g} ")
+                alt = f'<span class="cell-sub">Best: {escape(book)} {ln}{_odds(bo)}</span>'
+        return f'<div class="{cls}">{word} {escape(o["pick"])} <span class="n">{_signed_pct(o["ev"])}</span>{alt}</div>'
 
     fav_home = g.proj_margin >= 0
     return f"""<article class="card{' has-bet' if flagged else ''}">
@@ -139,6 +174,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
         </div>
         <div class="when">{_kickoff(g)}</div>
         <div class="tags">{tag_html}</div>
+        {_movement_html(g, mkt)}
       </header>
       <div class="lines">
         <div class="line"><h4>Spread</h4>
@@ -157,9 +193,100 @@ def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
           <dt></dt><dd class="n">{g.away_team} {_odds(g.away_moneyline)}</dd></dl>
           {lean('moneyline')}</div>
       </div>
-      <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi)}</div>
+      <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
+      {_card_injuries(g, inj)}
       {_card_news(news)}
     </article>"""
+
+
+def _movement_html(g, mkt) -> str:
+    from .market import movement
+    mv = movement(mkt.get("history") if mkt else None, g.game_id)
+    src = (mkt or {}).get("dk_used", {}).get(f"{g.away_team} @ {g.home_team}")
+    bits = []
+    if mv:
+        (s0, s1), (t0, t1) = mv["spread"], mv["total"]
+        if pd.notna(s0) and pd.notna(s1) and s0 != s1:
+            fav = lambda x: _spread(g.home_team, -x)
+            bits.append(f"Spread {fav(s0)} → {fav(s1)}")
+        if pd.notna(t0) and pd.notna(t1) and t0 != t1:
+            bits.append(f"Total {t0:g} → {t1:g}")
+        if bits:
+            bits[0] = f"Since {escape(str(mv['since']))}: " + bits[0]
+    if src:
+        bits.append(f"DraftKings lines {escape(src)}")
+    return f'<div class="move cell-sub">{" · ".join(bits)}</div>' if bits else ""
+
+
+def _clv_section(log) -> str:
+    """Live results: every flagged bet against the closing line, then win/loss once settled."""
+    from .clv import summary
+    sm_ = summary(log)
+    if not sm_:
+        return ('<h3>Closing line value (live)</h3><p class="note">Starting now: every flagged bet is logged at its price and '
+                'compared with the closing DraftKings price at kickoff. Results appear after the first games close.</p>')
+    rows = "".join(
+        f"""<tr><td><b>{k}</b></td><td class="n">{v['bets']}</td><td class="n">{v['with_close']}</td>
+        <td class="n {'good' if v['clv'] > 0 else 'bad' if v['clv'] < 0 else ''}">{_signed_pct(v['clv']) if v['with_close'] else '—'}</td>
+        <td class="n">{f"{v['beat']:.0%}" if v['with_close'] else '—'}</td>
+        <td class="n">{v['wins']}-{v['losses']}</td><td class="n">{v['units']:+.1f}</td></tr>"""
+        for k, v in sm_.items() if v["bets"])
+    recent = log.sort_values("logged_at").tail(12).iloc[::-1]
+    rec_rows = "".join(
+        f"""<tr><td>{escape(str(r.pick))}<span class="cell-sub">{escape(str(r.game))} · logged {escape(str(r.logged_at))}</span></td>
+        <td class="n">{_odds(r.odds)}</td><td class="n">{_signed_pct(r.ev)}</td>
+        <td class="n {'good' if pd.notna(r.clv) and r.clv > 0 else 'bad' if pd.notna(r.clv) and r.clv < 0 else ''}">{_signed_pct(r.clv) if pd.notna(r.clv) else '—'}</td>
+        <td>{escape(str(r.result)) if isinstance(r.result, str) and r.result else 'Open'}</td></tr>"""
+        for r in recent.itertuples())
+    return f"""<h3>Closing line value (live)</h3>
+    <p class="lede">Every flagged bet is logged at the price when it was first flagged, then re-priced at the closing
+    DraftKings line. Positive CLV means the bet was worth more than the closing market said: the earliest reliable sign of a real edge.</p>
+    <div class="tablebox"><table><thead><tr><th>Bets</th><th class="n">Logged</th><th class="n">Closed</th><th class="n">Avg CLV</th>
+    <th class="n">Beat close</th><th class="n">W-L</th><th class="n">Units</th></tr></thead><tbody>{rows}</tbody></table></div>
+    <details class="more"><summary>Latest logged bets</summary><div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Price</th>
+    <th class="n">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead><tbody>{rec_rows}</tbody></table></div></details>"""
+
+
+def _prop_bt_section(bt) -> str:
+    if bt is None or len(bt) == 0:
+        return ""
+    lab = {"pass_yds": "Passing yards", "pass_tds": "Passing TDs", "rush_yds": "Rushing yards", "rec_yds": "Receiving yards",
+           "receptions": "Receptions", "anytime_td": "Anytime TD"}
+    rows = "".join(
+        f"""<tr><td><b>{lab.get(r.stat, r.stat)}</b></td><td class="n">{int(r.n):,}</td>
+        <td class="n">{'—' if pd.isna(r.mae) else f'{r.mae:.1f}'}</td><td class="n">{'—' if pd.isna(r.mae_base) else f'{r.mae_base:.1f}'}</td>
+        <td class="n">{r.bias:+.2f}</td><td class="n">{'—' if pd.isna(r.brier) else f'{r.brier:.3f}'}</td></tr>"""
+        for r in bt.itertuples())
+    return f"""<h3>Prop model, past weeks</h3>
+    <p class="lede">Player projections replayed for 2025 (weeks 5-18) and 2026 so far, using only information available before each game,
+    then compared with what players actually did. "Simple average" is a plain recent-games average for comparison.</p>
+    <div class="tablebox"><table><thead><tr><th>Stat</th><th class="n">Player-games</th><th class="n">Avg miss</th>
+    <th class="n">Simple average</th><th class="n">Bias</th><th class="n">TD accuracy (Brier)</th></tr></thead><tbody>{rows}</tbody></table></div>
+    <p class="note">Avg miss is the typical gap between projection and result (lower is better). Bias above zero means players beat the projections.
+    Brier score: lower is better; 0.25 is a coin flip.</p>"""
+
+
+def _card_injuries(g, inj) -> str:
+    """Net injury effect on each team, with the players behind it."""
+    if not inj:
+        return ""
+    parts = []
+    for t in (g.away_team, g.home_team):
+        v = inj.get(t)
+        if not v or not v["players"]:
+            continue
+        net = -(v["off"] + v["def"])
+        who = ", ".join(f"{escape(n.split()[-1] if len(n) > 18 else n)} {p} {x:+.1f}" + (f" ({escape(st)})" if st else "")
+                        for n, p, x, st in v["players"][:4] if abs(x) >= 0.05)
+        if not who:
+            continue
+        parts.append(f'<div><b>{t}</b> <span class="n {"bad" if net < -0.05 else ("good" if net > 0.05 else "")}">{net:+.1f} pts</span>'
+                     f' <span class="muted">{who}</span></div>')
+    if not parts:
+        return ""
+    return (f'<div class="card-inj"><h4>Injuries (all positions, points)</h4>{"".join(parts)}'
+            '<p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. '
+            'Already in the pure model line.</p></div>')
 
 
 def _card_tds(tds) -> str:
@@ -207,7 +334,7 @@ def _prop_rows(grp, gi) -> str:
     return "".join(rows)
 
 
-def _card_props(grp, gi) -> str:
+def _card_props(grp, gi, best=None) -> str:
     """Top 5 prop edges for one game, plus every projected prop with a line checker."""
     if grp is None or len(grp) == 0:
         return ""
@@ -224,6 +351,9 @@ def _card_props(grp, gi) -> str:
                 price = r.over_odds if r.best_side == "Over" else r.under_odds
                 what = f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
             tag = "Bet" if r.flag else ("Lean" if r.ev > 0 else "No edge")
+            b = (best or {}).get((r.player, r.stat, "Over" if r.stat == "anytime_td" else r.best_side, float(r.line)))
+            if b and b[0] != "DraftKings" and pd.notna(price) and decimal(b[1]) > decimal(price):
+                what += f" · Best: {b[0]} {_odds(b[1])}"
             warn = '<span class="inj">Big edge: check the line</span>' if r.ev > 0.15 else ""
             items.append(f"""<li><span class="tdn"><b>{escape(r.player)}</b>{warn}<span class="cell-sub">{escape(what)}</span></span>
             <span class="n tdk">{_odds(price)}</span>
@@ -630,6 +760,11 @@ table.props td{vertical-align:middle}
 @media (max-width:640px){.tdtable.edges li{grid-template-columns:16px minmax(0,1fr) 44px 50px 36px;gap:6px}}
 .tdtable.edges .tdn .cell-sub{margin:0}
 .tdtable.edges .tdn .inj{display:block;margin:0}
+.card-inj{padding:8px 14px;border-top:1px solid var(--line);font-size:13px;display:grid;gap:3px}
+.card-inj h4{margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.card-inj .cell-sub{margin:2px 0 0}
+.move{margin-top:4px}
+.lean .cell-sub{display:block;margin-top:2px}
 .tdk{font-weight:600} .tdk.good{color:var(--good,#17663F)}
 .tds .cell-sub{margin-top:6px}
 .card-news{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
@@ -658,7 +793,8 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 
 def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize, data_through,
-           news=None, checked=None, auto_props=None, lines_checked=None) -> str:
+           news=None, checked=None, auto_props=None, lines_checked=None, injuries=None, clv_log=None,
+           prop_bt=None, market_info=None) -> str:
     n_bets = sum(1 for it in games for o in it["opts"] if o["ev"] >= C.MIN_EV)
     n_props = int(auto_props.flag.sum()) if auto_props is not None and not auto_props.empty else 0
     news_by_game = {}
@@ -673,7 +809,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     if auto_props is not None and not auto_props.empty:
         props_by_game = {g: grp for g, grp in auto_props.groupby("game", sort=False)}
     key = lambda it: f"{it['g'].away_team} @ {it['g'].home_team}"
-    cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi)
+    cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi, injuries, market_info)
                     for gi, it in enumerate(games))
     toc = ['<a href="#bets">Best bets</a>', '<a href="#games">Games</a>']
     toc += ['<a href="#ratings">Ratings</a>', '<a href="#backtest">Track record</a>', '<a href="#how">Glossary</a>']
@@ -708,7 +844,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><h3>Top 5 prop edges</h3>{_top_props(auto_props)}</div>
     </div>
     <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
-    Prop projections are new, untested against past seasons and don't adjust for the opponent's defense yet.</p>
+    Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
@@ -721,7 +857,11 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     Play-by-play efficiency (EPA and success rate) sits alongside and feeds the projections too.</p>
     <details class="more"><summary>Show all 32 teams</summary>{_ratings_section(ratings, play)}</details></section>
   <section id="backtest"><h2>Track record</h2>
-    <p class="lede">Each season replayed week by week using only information available at the time, graded against closing lines.</p>
+    <p class="lede">Live results first, then the game and prop models replayed on past seasons using only information available at the time.</p>
+    {_clv_section(clv_log)}
+    {_prop_bt_section(prop_bt)}
+    <h3>Game model, past seasons</h3>
+    <p class="lede">Each season replayed week by week, graded against closing lines.</p>
     {_backtest_section(acc, rec, summarize)}</section>
   <section id="how"><h2>Glossary</h2>
     <div class="glossary">

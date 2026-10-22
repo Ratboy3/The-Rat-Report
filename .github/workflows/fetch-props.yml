@@ -1,4 +1,5 @@
-# Pulls live DraftKings player props from The Odds API into prop_lines.csv.
+# Pulls live player props from The Odds API: DraftKings -> prop_lines.csv, every US book -> prop_books.csv
+# (all books come back in the same call, so comparing books costs no extra credits).
 # The API key lives in the repo secret ODDS_API_KEY (Settings > Secrets and variables > Actions).
 # The hourly Rat Report update reads prop_lines.csv from this repo on its next run.
 #
@@ -43,8 +44,8 @@ jobs:
         run: |
           git config user.name "Rat Report props bot"
           git config user.email "actions@users.noreply.github.com"
-          git add prop_lines.csv
+          git add prop_lines.csv prop_books.csv
           git diff --cached --quiet && exit 0
-          git commit -m "DraftKings props from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
+          git commit -m "Props from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
           for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
           exit 1
