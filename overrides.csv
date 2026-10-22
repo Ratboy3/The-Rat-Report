@@ -1,0 +1,8 @@
+# Overrides for upcoming games. Blank cells keep the data feed's value.
+# QB: home_qb_change / away_qb_change = 1 when a backup starts, 0 when the established starter plays.
+# Lines: DraftKings only, and only when two sources published in the last 12 hours agree (check article dates;
+# many odds pages show days-old DraftKings numbers). spread_line > 0 means the HOME team is favored.
+game_id,home_qb_name,home_qb_change,spread_line,home_spread_odds,away_spread_odds,total_line,over_odds,under_odds,home_moneyline,away_moneyline
+2026_07_DAL_PHI,Tanner McKee,1,,,,,,,,
+2026_07_CIN_BAL,Lamar Jackson,0,,,,,,,,
+2026_07_KC_SEA,Sam Darnold,0,,,,,,,,

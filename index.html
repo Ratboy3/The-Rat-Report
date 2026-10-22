@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gridline Week 7 Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#F1F4F2;--surface:#FFFFFF;--ink:#14211A;--muted:#5C6C63;--line:#D6DED9;--chip:#E6ECE8;
+--accent:#17663F;--flag:#C99700;--flag-soft:#FBF1CF;--good:#17663F;--bad:#B23A2E;
+--display:"Saira Condensed","Arial Narrow",Arial,sans-serif;--body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1612;--surface:#17211B;--ink:#E5EEE8;--muted:#94A69B;
+--line:#2A3830;--chip:#223028;--accent:#4FC184;--flag:#F0C33C;--flag-soft:#3A3115;--good:#4FC184;--bad:#EE7A6C;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1612;--surface:#17211B;--ink:#E5EEE8;--muted:#94A69B;--line:#2A3830;--chip:#223028;
+--accent:#4FC184;--flag:#F0C33C;--flag-soft:#3A3115;--good:#4FC184;--bad:#EE7A6C;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mast{background:var(--ink);color:var(--bg)}
+.mast .wrap{padding-block:28px 22px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin:0 0 4px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,52px);line-height:.95;text-transform:uppercase;margin:0;letter-spacing:.01em;text-wrap:balance}
+.mast-stats{display:flex;gap:24px;flex-wrap:wrap}
+.mast-stats div{display:flex;flex-direction:column}
+.mast-stats b{font-family:var(--display);font-size:30px;line-height:1}
+.mast-stats span{font-size:12px;opacity:.7}
+nav.toc{border-bottom:1px solid var(--line);background:var(--surface)}
+nav.toc .wrap{display:flex;gap:20px;overflow-x:auto;padding-block:10px}
+nav.toc a{color:var(--muted);text-decoration:none;font-weight:600;font-size:13px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--accent)}
+main{padding-block:12px 56px}
+section{padding-top:32px}
+h2{font-family:var(--display);font-weight:700;font-size:28px;text-transform:uppercase;letter-spacing:.02em;margin:0 0 6px;text-wrap:balance}
+h3{font-family:var(--display);font-weight:700;font-size:19px;text-transform:uppercase;letter-spacing:.03em;margin:22px 0 8px}
+.lede{color:var(--muted);margin:0 0 16px;max-width:68ch}
+p{max-width:72ch}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.muted{color:var(--muted)}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.good{color:var(--good)} .bad{color:var(--bad)}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap}
+th.n,td.n{text-align:right;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tr.total td{border-top:2px solid var(--line)}
+.cell-sub{display:block;font-family:var(--body);font-size:12px;color:var(--muted);font-weight:400}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0}
+.card.has-bet{border-color:var(--flag);box-shadow:inset 0 3px 0 var(--flag)}
+.card-head{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.teams{display:flex;flex-direction:column;gap:4px}
+.team{display:grid;grid-template-columns:52px minmax(0,1fr) auto;column-gap:10px;align-items:baseline}
+.abbr{font-family:var(--display);font-weight:800;font-size:24px;line-height:1.1}
+.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qb{grid-column:2;grid-row:2;font-size:12px;color:var(--muted)}
+.pts{grid-column:3;grid-row:1/span 2;font-size:22px;font-weight:600;align-self:center}
+.when{margin-top:8px;font-size:13px;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tags:empty{display:none}
+.tag{font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;background:var(--chip);color:var(--muted)}
+.lines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1}
+.line{padding:12px 14px;border-right:1px solid var(--line);min-width:0;display:flex;flex-direction:column}
+.line:last-child{border-right:0}
+.line h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+dl{margin:0;display:grid;grid-template-columns:auto auto;gap:2px 8px;font-size:13px}
+dt{color:var(--muted)} dd{margin:0;text-align:right;white-space:nowrap}
+.lean{margin-top:auto;padding-top:10px;font-size:12.5px;font-weight:600}
+.lean .n{font-weight:500}
+.lean.bet{color:var(--ink)}
+.lean.bet::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--flag);margin-right:6px;vertical-align:1px}
+.lean.pass{color:var(--muted);font-weight:500}
+.wp{margin-bottom:8px}
+.wp-bar{height:8px;border-radius:4px;background:var(--accent);overflow:hidden}
+.wp-bar i{display:block;height:100%;background:var(--muted);opacity:.45}
+.wp-lbl{display:flex;justify-content:space-between;font-size:12px;margin-top:3px}
+.ratings td{vertical-align:middle}
+.rank{color:var(--muted);width:36px}
+.barcell{width:22%;min-width:120px}
+.sep{border-left:1px solid var(--line)}
+.group-head th{border-bottom:0;padding-block:10px 0}
+.grp{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:center}
+.dbar{position:relative;display:block;height:10px;background:var(--chip);border-radius:2px}
+.dbar::after{content:"";position:absolute;left:50%;top:-3px;width:1px;height:16px;background:var(--muted)}
+.dbar i{position:absolute;top:0;height:10px;border-radius:2px}
+.dbar i.pos{background:var(--good)} .dbar i.neg{background:var(--bad)}
+.callout{background:var(--flag-soft);border-left:4px solid var(--flag);border-radius:4px;padding:12px 16px;margin:6px 0 4px}
+.callout p{margin:0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.chartbox{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px;overflow-x:auto}
+.chartbox svg{display:block;width:100%;height:auto}
+.grid{stroke:var(--line);stroke-width:1} .axis{stroke:var(--muted);stroke-width:1}
+.tick{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.bpos{fill:var(--good)} .bneg{fill:var(--bad)}
+.st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--chip);color:var(--muted);white-space:nowrap}
+.st.good{color:var(--good)} .st.bad{color:var(--bad)} .st.watch{color:var(--flag);background:var(--flag-soft)} .st.upd{color:var(--accent)}
+.ex{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--flag);background:var(--flag-soft);padding:1px 5px;border-radius:3px;margin-left:6px}
+.glossary{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px 28px}
+.glossary div b{display:block;font-family:var(--display);text-transform:uppercase;letter-spacing:.03em;font-size:16px}
+.glossary div p{margin:2px 0 0;color:var(--muted);font-size:14px}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-block:16px 32px;font-size:12.5px;color:var(--muted)}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:860px){.cards{grid-template-columns:minmax(0,1fr)}.two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.lines{grid-template-columns:1fr}.line{border-right:0;border-bottom:1px solid var(--line)}.line:last-child{border-bottom:0}
+ .barcell{min-width:100px}}
+@media print{nav.toc{display:none}.card{break-inside:avoid}}
+</style></head>
+<body>
+<div class="mast"><div class="wrap">
+  <div><p class="kicker">Gridline NFL model · 2026 season</p><h1>Week 7 Report</h1></div>
+  <div class="mast-stats">
+    <div><b>14</b><span>games</span></div>
+    <div><b>2</b><span>flagged bets</span></div>
+    <div><b>13%</b><span>model weight on spreads</span></div>
+  </div>
+</div></div>
+<nav class="toc" aria-label="Sections"><div class="wrap"><a href="#bets">Bets</a><a href="#games">Games</a><a href="#ratings">Ratings</a><a href="#backtest">Track record</a><a href="#how">How to read</a></div></nav>
+<main class="wrap">
+  <section id="bets"><h2>This week's bets</h2>
+    <p class="lede">Every side where the model's win chance beats the price by at least 3%, best edge first.
+    Check injury news before betting any of them.</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Bet</th><th>Game</th><th class="n">Odds</th><th class="n">Model win %</th>
+      <th class="n">Break-even %</th><th class="n">Edge (EV)</th><th class="n">Stake</th></tr></thead>
+      <tbody><tr><td><b>Under 50.5</b><span class="cell-sub">Total</span></td>
+        <td>NE @ CHI<span class="cell-sub">Thu Oct 22 · 7:15 PM CT</span></td>
+        <td class="n">-102</td><td class="n">54.0%</td>
+        <td class="n">50.5%</td>
+        <td class="n good">+6.9%</td><td class="n">$17</td></tr><tr><td><b>Over 39.5</b><span class="cell-sub">Total</span></td>
+        <td>MIA @ NYJ<span class="cell-sub">Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-108</td><td class="n">54.4%</td>
+        <td class="n">51.9%</td>
+        <td class="n good">+4.7%</td><td class="n">$13</td></tr></tbody></table></div>
+      <p class="note">Stake is 25% Kelly on a $1,000 bankroll, capped at 3%.
+      Break-even % is the win rate the odds require. Edge is expected profit per dollar bet.</p>
+    <h3>News check · Thu Oct 22, 2:30 PM CT</h3>
+    <p class="lede">Starting quarterbacks, injuries and line moves checked against current reports.
+    "Updated" means the model was rerun with a correction for that game. Lines are DraftKings' when two sources from the last
+    12 hours confirm them; otherwise the model uses the nflverse consensus feed.</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>Game</th><th>Starting QBs</th><th>Status</th><th>Lines used</th><th>Notes</th></tr></thead>
+      <tbody><tr><td><b>NE @ CHI</b></td><td>Drake Maye · Caleb Williams</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Kicks off tonight. Under 50.5 at -102 (-105 to -108 at other books; a few at 51). NE out: guards Alijah Vera-Tucker and Ben Brown, CBs Carlton Davis, Karon Prunty, Channing Canada; WR Romeo Doubs on IR. CHI out: RB Kyle Monangai, LB Jack Sanborn; LB T.J. Edwards doubtful.</td></tr><tr><td><b>PIT @ NO</b></td><td>Aaron Rodgers · Tyler Shough</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Saints WR Jordyn Tyson (hamstring) not practicing this week. Steelers T.J. Watt, Jalen Ramsey and Cameron Heyward did not practice Wednesday; no game status yet.</td></tr><tr><td><b>CIN @ BAL</b></td><td>Joe Burrow · Lamar Jackson (unconfirmed)</td>
+        <td><span class="st watch">Watch</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Jackson practiced Thursday for the first time since his Oct. 4 ankle sprain; the OC says he still has a lot of work to do to play Sunday. Line sources conflict: the data feed has BAL -1.5 Thursday afternoon, while some odds pages showed CIN -1.5 earlier. No bet at BAL -1.5 with either QB. At CIN -1.5, still no bet if Jackson plays; if Tyler Huntley starts, CIN -1.5 (+100) is +4.6% and CIN ML -122 is +4.4%.</td></tr><tr><td><b>CLE @ TEN</b></td><td>Deshaun Watson · Cam Ward</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Watson is QB1 on the Browns&#x27; Week 7 depth chart.</td></tr><tr><td><b>IND @ MIN</b></td><td>Daniel Jones · Kyler Murray</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>No QB changes reported.</td></tr><tr><td><b>MIA @ NYJ</b></td><td>Malik Willis · Geno Smith</td>
+        <td><span class="st watch">Watch</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Total 39.5 at most books Thursday (39 at one; DraftKings was at 38.5 earlier in the week). Willis full practice (thumb). Jets RB Breece Hall (quad) did not practice Wednesday; WR Adonai Mitchell doubtful.</td></tr><tr><td><b>NYG @ HOU</b></td><td>J.J. McCarthy · C.J. Stroud</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>McCarthy confirmed as the Giants&#x27; starter over Jameis Winston.</td></tr><tr><td><b>SF @ ATL</b></td><td>Brock Purdy · Michael Penix Jr.</td>
+        <td><span class="st watch">Watch</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>No QB changes. 49ers DE Nick Bosa, LT Trent Williams and WR Mike Evans (Achilles) did not practice Wednesday; no game status yet.</td></tr><tr><td><b>TB @ CAR</b></td><td>Jalon Daniels · Bryce Young</td>
+        <td><span class="st watch">Watch</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Daniels is the planned starter. Baker Mayfield (thumb) practiced fully Wednesday and Tampa Bay decides Friday. If Mayfield starts, the model will be rerun with him.</td></tr><tr><td><b>DEN @ ARI</b></td><td>Bo Nix · Jacoby Brissett</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Denver says no QB change; Brissett starts at least one more week.</td></tr><tr><td><b>GB @ DET</b></td><td>Jordan Love · Jared Goff</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Love limited Wednesday (back) but not expected to miss the game.</td></tr><tr><td><b>LA @ LV</b></td><td>Matthew Stafford · Kirk Cousins</td>
+        <td><span class="st good">OK</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Rams WR Davante Adams on IR (6 to 8 weeks); K Blake Grupe tore his ACL, Brandon McManus signed. LV is +4 to +4.5 at several books, better than the +3.5 used here.</td></tr><tr><td><b>KC @ SEA</b></td><td>Patrick Mahomes · Sam Darnold</td>
+        <td><span class="st upd">Updated</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>QB corrected to Sam Darnold (the data feed listed Drew Lock). Seattle is sticking with Darnold; Lock (elbow) is the backup. The numbers don&#x27;t change, because the model only adjusts when a backup starts.</td></tr><tr><td><b>DAL @ PHI</b></td><td>Dak Prescott · Tanner McKee</td>
+        <td><span class="st upd">Updated</span></td>
+        <td>Feed (no DraftKings line from the last 12 hours)</td><td>Rerun with Tanner McKee; Jalen Hurts is out for the season. The model&#x27;s own line moved from PHI -1.8 to DAL -1.1, and the PHI +4.5 bet no longer has an edge. RB Saquon Barkley questionable (hamstring).</td></tr></tbody></table></div></section>
+  <section id="games"><h2>Every game</h2>
+    <p class="lede">Projected score on the right of each team. "Pure model" is the model on its own; "Projection" blends it with
+    the market the way history says works best. A gold bar marks a game with a flagged bet.</p>
+    <div class="cards"><article class="card has-bet">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">NE</span><span class="nm">Patriots</span>
+            <span class="qb">Drake Maye</span><span class="pts n">23.3</span></div>
+          <div class="team"><span class="abbr">CHI</span><span class="nm">Bears</span>
+            <span class="qb">Caleb Williams</span><span class="pts n">25.9</span></div>
+        </div>
+        <div class="when">Thu Oct 22 · 7:15 PM CT</div>
+        <div class="tags"></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">CHI -3.0</dd>
+          <dt>Pure model</dt><dd class="n">CHI PK</dd>
+          <dt>Projection</dt><dd class="n"><b>CHI -2.5</b></dd></dl><div class="lean pass">No edge · CHI -3.0 <span class="n">-2.7%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">50.5</dd>
+          <dt>Pure model</dt><dd class="n">46.3</dd>
+          <dt>Projection</dt><dd class="n"><b>49.2</b></dd></dl><div class="lean bet">Bet Under 50.5 <span class="n">+6.9%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:41.5%"></i></div>
+            <div class="wp-lbl n"><span>NE 42%</span><span>CHI 58%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">CHI -141</dd>
+          <dt>Book</dt><dd class="n">CHI -155</dd>
+          <dt></dt><dd class="n">NE +130</dd></dl>
+          <div class="lean pass">No edge · CHI ML -155 <span class="n">-3.7%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">PIT</span><span class="nm">Steelers</span>
+            <span class="qb">Aaron Rodgers</span><span class="pts n">24.6</span></div>
+          <div class="team"><span class="abbr">NO</span><span class="nm">Saints</span>
+            <span class="qb">Tyler Shough</span><span class="pts n">21.1</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 8:30 AM CT</div>
+        <div class="tags"><span class="tag">Neutral site</span><span class="tag">Dome</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">NO +3.5</dd>
+          <dt>Pure model</dt><dd class="n">NO +3.5</dd>
+          <dt>Projection</dt><dd class="n"><b>NO +3.5</b></dd></dl><div class="lean pass">No edge · NO +3.5 <span class="n">-3.9%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">44.5</dd>
+          <dt>Pure model</dt><dd class="n">48.6</dd>
+          <dt>Projection</dt><dd class="n"><b>45.8</b></dd></dl><div class="lean">Lean Over 44.5 <span class="n">+2.7%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:63.8%"></i></div>
+            <div class="wp-lbl n"><span>PIT 64%</span><span>NO 36%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">NO +176</dd>
+          <dt>Book</dt><dd class="n">NO +145</dd>
+          <dt></dt><dd class="n">PIT -175</dd></dl>
+          <div class="lean">Lean PIT ML -175 <span class="n">+0.3%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">CIN</span><span class="nm">Bengals</span>
+            <span class="qb">Joe Burrow</span><span class="pts n">23.8</span></div>
+          <div class="team"><span class="abbr">BAL</span><span class="nm">Ravens</span>
+            <span class="qb">Lamar Jackson</span><span class="pts n">25.1</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">Division</span><span class="tag">CIN off bye</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">BAL -1.5</dd>
+          <dt>Pure model</dt><dd class="n">BAL PK</dd>
+          <dt>Projection</dt><dd class="n"><b>BAL -1.5</b></dd></dl><div class="lean pass">No edge · BAL -1.5 <span class="n">-0.1%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">48.5</dd>
+          <dt>Pure model</dt><dd class="n">50.0</dd>
+          <dt>Projection</dt><dd class="n"><b>49.0</b></dd></dl><div class="lean pass">No edge · Over 48.5 <span class="n">-3.9%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:46.3%"></i></div>
+            <div class="wp-lbl n"><span>CIN 46%</span><span>BAL 54%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">BAL -116</dd>
+          <dt>Book</dt><dd class="n">BAL -118</dd>
+          <dt></dt><dd class="n">CIN -102</dd></dl>
+          <div class="lean pass">No edge · BAL ML -118 <span class="n">-0.7%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">CLE</span><span class="nm">Browns</span>
+            <span class="qb">Deshaun Watson</span><span class="pts n">19.8</span></div>
+          <div class="team"><span class="abbr">TEN</span><span class="nm">Titans</span>
+            <span class="qb">Cam Ward</span><span class="pts n">18.2</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">TEN +1.5</dd>
+          <dt>Pure model</dt><dd class="n">TEN +2.0</dd>
+          <dt>Projection</dt><dd class="n"><b>TEN +1.5</b></dd></dl><div class="lean">Lean CLE -1.5 <span class="n">+0.1%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">37.5</dd>
+          <dt>Pure model</dt><dd class="n">39.3</dd>
+          <dt>Projection</dt><dd class="n"><b>38.1</b></dd></dl><div class="lean">Lean Over 37.5 <span class="n">+2.3%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:56.9%"></i></div>
+            <div class="wp-lbl n"><span>CLE 57%</span><span>TEN 43%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">TEN +132</dd>
+          <dt>Book</dt><dd class="n">TEN +110</dd>
+          <dt></dt><dd class="n">CLE -130</dd></dl>
+          <div class="lean">Lean CLE ML -130 <span class="n">+0.8%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">IND</span><span class="nm">Colts</span>
+            <span class="qb">Daniel Jones</span><span class="pts n">18.1</span></div>
+          <div class="team"><span class="abbr">MIN</span><span class="nm">Vikings</span>
+            <span class="qb">Kyler Murray</span><span class="pts n">24.5</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">Dome</span><span class="tag">MIN off bye</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">MIN -6.5</dd>
+          <dt>Pure model</dt><dd class="n">MIN -6.0</dd>
+          <dt>Projection</dt><dd class="n"><b>MIN -6.5</b></dd></dl><div class="lean pass">No edge · IND +6.5 <span class="n">-4.1%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">41.5</dd>
+          <dt>Pure model</dt><dd class="n">45.1</dd>
+          <dt>Projection</dt><dd class="n"><b>42.6</b></dd></dl><div class="lean">Lean Over 41.5 <span class="n">+1.8%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:28.5%"></i></div>
+            <div class="wp-lbl n"><span>IND 28%</span><span>MIN 72%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">MIN -251</dd>
+          <dt>Book</dt><dd class="n">MIN -290</dd>
+          <dt></dt><dd class="n">IND +235</dd></dl>
+          <div class="lean pass">No edge · MIN ML -290 <span class="n">-3.7%</span></div></div>
+      </div>
+    </article><article class="card has-bet">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">MIA</span><span class="nm">Dolphins</span>
+            <span class="qb">Malik Willis</span><span class="pts n">18.4</span></div>
+          <div class="team"><span class="abbr">NYJ</span><span class="nm">Jets</span>
+            <span class="qb">Geno Smith</span><span class="pts n">22.6</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">Division</span><span class="tag">MIA off bye</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">NYJ -4.5</dd>
+          <dt>Pure model</dt><dd class="n">NYJ -2.5</dd>
+          <dt>Projection</dt><dd class="n"><b>NYJ -4.0</b></dd></dl><div class="lean">Lean MIA +4.5 <span class="n">+2.0%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">39.5</dd>
+          <dt>Pure model</dt><dd class="n">44.2</dd>
+          <dt>Projection</dt><dd class="n"><b>41.0</b></dd></dl><div class="lean bet">Bet Over 39.5 <span class="n">+4.7%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:35.7%"></i></div>
+            <div class="wp-lbl n"><span>MIA 36%</span><span>NYJ 64%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">NYJ -180</dd>
+          <dt>Book</dt><dd class="n">NYJ -225</dd>
+          <dt></dt><dd class="n">MIA +185</dd></dl>
+          <div class="lean">Lean MIA ML +185 <span class="n">+1.7%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">NYG</span><span class="nm">Giants</span>
+            <span class="qb">J.J. McCarthy</span><span class="pts n">16.0</span></div>
+          <div class="team"><span class="abbr">HOU</span><span class="nm">Texans</span>
+            <span class="qb">C.J. Stroud</span><span class="pts n">26.3</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">NYG QB change</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">HOU -10.5</dd>
+          <dt>Pure model</dt><dd class="n">HOU -9.5</dd>
+          <dt>Projection</dt><dd class="n"><b>HOU -10.5</b></dd></dl><div class="lean pass">No edge · NYG +10.5 <span class="n">-1.6%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">42.5</dd>
+          <dt>Pure model</dt><dd class="n">41.8</dd>
+          <dt>Projection</dt><dd class="n"><b>42.3</b></dd></dl><div class="lean pass">No edge · Under 42.5 <span class="n">-2.4%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:18.1%"></i></div>
+            <div class="wp-lbl n"><span>NYG 18%</span><span>HOU 82%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">HOU -452</dd>
+          <dt>Book</dt><dd class="n">HOU -520</dd>
+          <dt></dt><dd class="n">NYG +390</dd></dl>
+          <div class="lean pass">No edge · HOU ML -520 <span class="n">-2.2%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">SF</span><span class="nm">49ers</span>
+            <span class="qb">Brock Purdy</span><span class="pts n">26.1</span></div>
+          <div class="team"><span class="abbr">ATL</span><span class="nm">Falcons</span>
+            <span class="qb">Michael Penix Jr.</span><span class="pts n">23.3</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">SF early body clock</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">ATL +2.5</dd>
+          <dt>Pure model</dt><dd class="n">ATL +4.0</dd>
+          <dt>Projection</dt><dd class="n"><b>ATL +2.5</b></dd></dl><div class="lean pass">No edge · SF -2.5 <span class="n">-1.7%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">49.5</dd>
+          <dt>Pure model</dt><dd class="n">49.1</dd>
+          <dt>Projection</dt><dd class="n"><b>49.4</b></dd></dl><div class="lean pass">No edge · Under 49.5 <span class="n">-1.7%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:61.1%"></i></div>
+            <div class="wp-lbl n"><span>SF 61%</span><span>ATL 39%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">ATL +157</dd>
+          <dt>Book</dt><dd class="n">ATL +124</dd>
+          <dt></dt><dd class="n">SF -148</dd></dl>
+          <div class="lean">Lean SF ML -148 <span class="n">+2.5%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">TB</span><span class="nm">Buccaneers</span>
+            <span class="qb">Jalon Daniels</span><span class="pts n">21.1</span></div>
+          <div class="team"><span class="abbr">CAR</span><span class="nm">Panthers</span>
+            <span class="qb">Bryce Young</span><span class="pts n">24.1</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 12:00 PM CT</div>
+        <div class="tags"><span class="tag">Division</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">CAR -3.0</dd>
+          <dt>Pure model</dt><dd class="n">CAR -3.0</dd>
+          <dt>Projection</dt><dd class="n"><b>CAR -3.0</b></dd></dl><div class="lean pass">No edge · TB +3.0 <span class="n">-0.8%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">44.5</dd>
+          <dt>Pure model</dt><dd class="n">46.5</dd>
+          <dt>Projection</dt><dd class="n"><b>45.1</b></dd></dl><div class="lean pass">No edge · Over 44.5 <span class="n">-0.9%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:39.9%"></i></div>
+            <div class="wp-lbl n"><span>TB 40%</span><span>CAR 60%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">CAR -151</dd>
+          <dt>Book</dt><dd class="n">CAR -162</dd>
+          <dt></dt><dd class="n">TB +136</dd></dl>
+          <div class="lean pass">No edge · CAR ML -162 <span class="n">-2.7%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">DEN</span><span class="nm">Broncos</span>
+            <span class="qb">Bo Nix</span><span class="pts n">24.2</span></div>
+          <div class="team"><span class="abbr">ARI</span><span class="nm">Cardinals</span>
+            <span class="qb">Jacoby Brissett</span><span class="pts n">19.6</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 3:05 PM CT</div>
+        <div class="tags"></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">ARI +4.5</dd>
+          <dt>Pure model</dt><dd class="n">ARI +5.5</dd>
+          <dt>Projection</dt><dd class="n"><b>ARI +4.5</b></dd></dl><div class="lean pass">No edge · ARI +4.5 <span class="n">-2.6%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">43.5</dd>
+          <dt>Pure model</dt><dd class="n">44.6</dd>
+          <dt>Projection</dt><dd class="n"><b>43.9</b></dd></dl><div class="lean pass">No edge · Under 43.5 <span class="n">-4.4%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:67.6%"></i></div>
+            <div class="wp-lbl n"><span>DEN 68%</span><span>ARI 32%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">ARI +209</dd>
+          <dt>Book</dt><dd class="n">ARI +195</dd>
+          <dt></dt><dd class="n">DEN -238</dd></dl>
+          <div class="lean pass">No edge · DEN ML -238 <span class="n">-3.9%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">GB</span><span class="nm">Packers</span>
+            <span class="qb">Jordan Love</span><span class="pts n">25.0</span></div>
+          <div class="team"><span class="abbr">DET</span><span class="nm">Lions</span>
+            <span class="qb">Jared Goff</span><span class="pts n">28.1</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 3:25 PM CT</div>
+        <div class="tags"><span class="tag">Division</span><span class="tag">Dome</span><span class="tag">DET off bye</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">DET -3.0</dd>
+          <dt>Pure model</dt><dd class="n">DET -3.5</dd>
+          <dt>Projection</dt><dd class="n"><b>DET -3.0</b></dd></dl><div class="lean pass">No edge · DET -3.0 <span class="n">-3.0%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">53.5</dd>
+          <dt>Pure model</dt><dd class="n">52.1</dd>
+          <dt>Projection</dt><dd class="n"><b>53.1</b></dd></dl><div class="lean">Lean Under 53.5 <span class="n">+0.2%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:39.6%"></i></div>
+            <div class="wp-lbl n"><span>GB 40%</span><span>DET 60%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">DET -152</dd>
+          <dt>Book</dt><dd class="n">DET -166</dd>
+          <dt></dt><dd class="n">GB +140</dd></dl>
+          <div class="lean pass">No edge · DET ML -166 <span class="n">-3.2%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">LA</span><span class="nm">Rams</span>
+            <span class="qb">Matthew Stafford</span><span class="pts n">26.4</span></div>
+          <div class="team"><span class="abbr">LV</span><span class="nm">Raiders</span>
+            <span class="qb">Kirk Cousins</span><span class="pts n">22.7</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 3:25 PM CT</div>
+        <div class="tags"><span class="tag">Dome</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">LV +3.5</dd>
+          <dt>Pure model</dt><dd class="n">LV +5.0</dd>
+          <dt>Projection</dt><dd class="n"><b>LV +3.5</b></dd></dl><div class="lean">Lean LV +3.5 <span class="n">+0.1%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">48.5</dd>
+          <dt>Pure model</dt><dd class="n">50.7</dd>
+          <dt>Projection</dt><dd class="n"><b>49.2</b></dd></dl><div class="lean">Lean Over 48.5 <span class="n">+0.3%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:64.6%"></i></div>
+            <div class="wp-lbl n"><span>LA 65%</span><span>LV 35%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">LV +183</dd>
+          <dt>Book</dt><dd class="n">LV +180</dd>
+          <dt></dt><dd class="n">LA -218</dd></dl>
+          <div class="lean pass">No edge · LV ML +180 <span class="n">-1.0%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">KC</span><span class="nm">Chiefs</span>
+            <span class="qb">Patrick Mahomes</span><span class="pts n">20.0</span></div>
+          <div class="team"><span class="abbr">SEA</span><span class="nm">Seahawks</span>
+            <span class="qb">Sam Darnold</span><span class="pts n">23.1</span></div>
+        </div>
+        <div class="when">Sun Oct 25 · 7:20 PM CT</div>
+        <div class="tags"></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">SEA -3.0</dd>
+          <dt>Pure model</dt><dd class="n">SEA -3.5</dd>
+          <dt>Projection</dt><dd class="n"><b>SEA -3.0</b></dd></dl><div class="lean">Lean SEA -3.0 <span class="n">+0.1%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">42.5</dd>
+          <dt>Pure model</dt><dd class="n">44.5</dd>
+          <dt>Projection</dt><dd class="n"><b>43.1</b></dd></dl><div class="lean pass">No edge · Over 42.5 <span class="n">-1.0%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:39.8%"></i></div>
+            <div class="wp-lbl n"><span>KC 40%</span><span>SEA 60%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">SEA -151</dd>
+          <dt>Book</dt><dd class="n">SEA -142</dd>
+          <dt></dt><dd class="n">KC +120</dd></dl>
+          <div class="lean">Lean SEA ML -142 <span class="n">+2.7%</span></div></div>
+      </div>
+    </article><article class="card">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">DAL</span><span class="nm">Cowboys</span>
+            <span class="qb">Dak Prescott</span><span class="pts n">24.4</span></div>
+          <div class="team"><span class="abbr">PHI</span><span class="nm">Eagles</span>
+            <span class="qb">Tanner McKee</span><span class="pts n">20.3</span></div>
+        </div>
+        <div class="when">Mon Oct 26 · 7:15 PM CT</div>
+        <div class="tags"><span class="tag">Division</span><span class="tag">PHI QB change</span></div>
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">PHI +4.5</dd>
+          <dt>Pure model</dt><dd class="n">PHI +1.0</dd>
+          <dt>Projection</dt><dd class="n"><b>PHI +4.0</b></dd></dl><div class="lean">Lean PHI +4.5 <span class="n">+1.6%</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">44.5</dd>
+          <dt>Pure model</dt><dd class="n">45.2</dd>
+          <dt>Projection</dt><dd class="n"><b>44.7</b></dd></dl><div class="lean pass">No edge · Over 44.5 <span class="n">-3.4%</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:65.7%"></i></div>
+            <div class="wp-lbl n"><span>DAL 66%</span><span>PHI 34%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">PHI +192</dd>
+          <dt>Book</dt><dd class="n">PHI +185</dd>
+          <dt></dt><dd class="n">DAL -225</dd></dl>
+          <div class="lean pass">No edge · PHI ML +185 <span class="n">-2.4%</span></div></div>
+      </div>
+    </article></div></section>
+  
+  <section id="ratings"><h2>Power ratings</h2>
+    <p class="lede">Ranked by points-based net rating, built from the last two-plus seasons with recent games weighted most.
+    Play-by-play efficiency (EPA and success rate) sits alongside and feeds the projections too.</p>
+    <div class="tablebox"><table class="ratings">
+      <thead><tr class="group-head"><th colspan="2"></th><th colspan="3" class="grp">Points per game</th><th colspan="2" class="grp sep">EPA per play</th><th colspan="2" class="grp">Success rate, pct pts</th><th></th></tr>
+      <tr><th class="n">#</th><th>Team</th><th class="n">Offense</th><th class="n">Defense</th><th class="n">Net</th>
+      <th class="n sep">EPA off</th><th class="n">EPA def</th><th class="n">Success off</th><th class="n">Success def</th><th>Net vs. average</th></tr></thead>
+      <tbody><tr><td class="n rank">1</td><td><b>JAX</b> <span class="muted">Jaguars</span></td>
+          <td class="n">+2.9</td><td class="n">+2.5</td><td class="n"><b>+5.4</b></td>
+          <td class="n sep good">+0.168</td><td class="n good">+0.107</td>
+          <td class="n">+6.4</td><td class="n">+2.3</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:45.5%"></i></span></td></tr><tr><td class="n rank">2</td><td><b>SEA</b> <span class="muted">Seahawks</span></td>
+          <td class="n">+2.4</td><td class="n">+2.6</td><td class="n"><b>+5.1</b></td>
+          <td class="n sep good">+0.018</td><td class="n good">+0.237</td>
+          <td class="n">+0.7</td><td class="n">+8.6</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:42.5%"></i></span></td></tr><tr><td class="n rank">3</td><td><b>SF</b> <span class="muted">49ers</span></td>
+          <td class="n">+2.9</td><td class="n">+1.5</td><td class="n"><b>+4.4</b></td>
+          <td class="n sep good">+0.225</td><td class="n good">+0.001</td>
+          <td class="n">+10.1</td><td class="n">-2.0</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:36.6%"></i></span></td></tr><tr><td class="n rank">4</td><td><b>NE</b> <span class="muted">Patriots</span></td>
+          <td class="n">+0.7</td><td class="n">+3.4</td><td class="n"><b>+4.1</b></td>
+          <td class="n sep good">+0.101</td><td class="n good">+0.054</td>
+          <td class="n">+4.1</td><td class="n">+1.3</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:34.1%"></i></span></td></tr><tr><td class="n rank">5</td><td><b>BUF</b> <span class="muted">Bills</span></td>
+          <td class="n">+5.8</td><td class="n">-2.0</td><td class="n"><b>+3.9</b></td>
+          <td class="n sep good">+0.199</td><td class="n bad">-0.032</td>
+          <td class="n">+5.5</td><td class="n">-1.4</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:32.5%"></i></span></td></tr><tr><td class="n rank">6</td><td><b>KC</b> <span class="muted">Chiefs</span></td>
+          <td class="n">+0.8</td><td class="n">+2.8</td><td class="n"><b>+3.5</b></td>
+          <td class="n sep good">+0.091</td><td class="n good">+0.023</td>
+          <td class="n">+4.0</td><td class="n">+1.4</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:29.7%"></i></span></td></tr><tr><td class="n rank">7</td><td><b>MIN</b> <span class="muted">Vikings</span></td>
+          <td class="n">-1.4</td><td class="n">+4.8</td><td class="n"><b>+3.4</b></td>
+          <td class="n sep bad">-0.123</td><td class="n good">+0.163</td>
+          <td class="n">-6.6</td><td class="n">+6.9</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:28.5%"></i></span></td></tr><tr><td class="n rank">8</td><td><b>CHI</b> <span class="muted">Bears</span></td>
+          <td class="n">+1.6</td><td class="n">+0.8</td><td class="n"><b>+2.3</b></td>
+          <td class="n sep good">+0.066</td><td class="n good">+0.065</td>
+          <td class="n">+3.9</td><td class="n">+1.1</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:19.7%"></i></span></td></tr><tr><td class="n rank">9</td><td><b>LA</b> <span class="muted">Rams</span></td>
+          <td class="n">+1.6</td><td class="n">+0.7</td><td class="n"><b>+2.3</b></td>
+          <td class="n sep good">+0.115</td><td class="n good">+0.043</td>
+          <td class="n">+6.3</td><td class="n">+0.5</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:19.1%"></i></span></td></tr><tr><td class="n rank">10</td><td><b>DET</b> <span class="muted">Lions</span></td>
+          <td class="n">+4.8</td><td class="n">-2.6</td><td class="n"><b>+2.3</b></td>
+          <td class="n sep good">+0.104</td><td class="n bad">-0.057</td>
+          <td class="n">+3.2</td><td class="n">-1.1</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:19.0%"></i></span></td></tr><tr><td class="n rank">11</td><td><b>HOU</b> <span class="muted">Texans</span></td>
+          <td class="n">+0.3</td><td class="n">+1.7</td><td class="n"><b>+2.0</b></td>
+          <td class="n sep bad">-0.006</td><td class="n good">+0.108</td>
+          <td class="n">-1.0</td><td class="n">+6.2</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:16.4%"></i></span></td></tr><tr><td class="n rank">12</td><td><b>DEN</b> <span class="muted">Broncos</span></td>
+          <td class="n">-0.9</td><td class="n">+2.6</td><td class="n"><b>+1.7</b></td>
+          <td class="n sep good">+0.007</td><td class="n good">+0.108</td>
+          <td class="n">-2.4</td><td class="n">+6.9</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:14.1%"></i></span></td></tr><tr><td class="n rank">13</td><td><b>BAL</b> <span class="muted">Ravens</span></td>
+          <td class="n">+1.4</td><td class="n">+0.2</td><td class="n"><b>+1.6</b></td>
+          <td class="n sep good">+0.103</td><td class="n bad">-0.019</td>
+          <td class="n">+2.8</td><td class="n">+0.4</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:13.2%"></i></span></td></tr><tr><td class="n rank">14</td><td><b>CIN</b> <span class="muted">Bengals</span></td>
+          <td class="n">+2.0</td><td class="n">-1.0</td><td class="n"><b>+0.9</b></td>
+          <td class="n sep good">+0.085</td><td class="n bad">-0.008</td>
+          <td class="n">+4.9</td><td class="n">-0.9</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:7.6%"></i></span></td></tr><tr><td class="n rank">15</td><td><b>GB</b> <span class="muted">Packers</span></td>
+          <td class="n">-0.6</td><td class="n">+1.4</td><td class="n"><b>+0.8</b></td>
+          <td class="n sep good">+0.056</td><td class="n good">+0.009</td>
+          <td class="n">+0.9</td><td class="n">-1.4</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:6.5%"></i></span></td></tr><tr><td class="n rank">16</td><td><b>CAR</b> <span class="muted">Panthers</span></td>
+          <td class="n">+1.1</td><td class="n">-0.6</td><td class="n"><b>+0.5</b></td>
+          <td class="n sep good">+0.064</td><td class="n bad">-0.070</td>
+          <td class="n">+0.1</td><td class="n">-1.3</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:4.5%"></i></span></td></tr><tr><td class="n rank">17</td><td><b>PIT</b> <span class="muted">Steelers</span></td>
+          <td class="n">-0.3</td><td class="n">+0.7</td><td class="n"><b>+0.4</b></td>
+          <td class="n sep bad">-0.019</td><td class="n bad">-0.009</td>
+          <td class="n">-1.3</td><td class="n">-0.3</td>
+          <td class="barcell"><span class="dbar"><i class="pos" style="left:50%;width:3.6%"></i></span></td></tr><tr><td class="n rank">18</td><td><b>PHI</b> <span class="muted">Eagles</span></td>
+          <td class="n">-2.5</td><td class="n">+1.4</td><td class="n"><b>-1.1</b></td>
+          <td class="n sep bad">-0.079</td><td class="n good">+0.035</td>
+          <td class="n">-5.0</td><td class="n">+2.3</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:40.5%;width:9.5%"></i></span></td></tr><tr><td class="n rank">19</td><td><b>ATL</b> <span class="muted">Falcons</span></td>
+          <td class="n">-0.2</td><td class="n">-1.1</td><td class="n"><b>-1.3</b></td>
+          <td class="n sep bad">-0.097</td><td class="n good">+0.039</td>
+          <td class="n">-1.3</td><td class="n">+1.2</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:39.3%;width:10.7%"></i></span></td></tr><tr><td class="n rank">20</td><td><b>IND</b> <span class="muted">Colts</span></td>
+          <td class="n">+1.4</td><td class="n">-2.7</td><td class="n"><b>-1.3</b></td>
+          <td class="n sep bad">-0.023</td><td class="n bad">-0.071</td>
+          <td class="n">-0.5</td><td class="n">-0.2</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:39.0%;width:11.0%"></i></span></td></tr><tr><td class="n rank">21</td><td><b>TB</b> <span class="muted">Buccaneers</span></td>
+          <td class="n">-1.4</td><td class="n">-0.2</td><td class="n"><b>-1.6</b></td>
+          <td class="n sep bad">-0.068</td><td class="n good">+0.032</td>
+          <td class="n">-2.8</td><td class="n">+0.8</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:36.2%;width:13.8%"></i></span></td></tr><tr><td class="n rank">22</td><td><b>DAL</b> <span class="muted">Cowboys</span></td>
+          <td class="n">+1.6</td><td class="n">-3.5</td><td class="n"><b>-1.9</b></td>
+          <td class="n sep good">+0.059</td><td class="n bad">-0.196</td>
+          <td class="n">+3.2</td><td class="n">-6.5</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:34.2%;width:15.8%"></i></span></td></tr><tr><td class="n rank">23</td><td><b>CLE</b> <span class="muted">Browns</span></td>
+          <td class="n">-3.9</td><td class="n">+1.6</td><td class="n"><b>-2.3</b></td>
+          <td class="n sep bad">-0.220</td><td class="n good">+0.063</td>
+          <td class="n">-8.2</td><td class="n">+2.7</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:30.5%;width:19.5%"></i></span></td></tr><tr><td class="n rank">24</td><td><b>NYG</b> <span class="muted">Giants</span></td>
+          <td class="n">-1.4</td><td class="n">-1.2</td><td class="n"><b>-2.5</b></td>
+          <td class="n sep bad">-0.102</td><td class="n bad">-0.087</td>
+          <td class="n">-5.5</td><td class="n">-2.4</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:28.6%;width:21.4%"></i></span></td></tr><tr><td class="n rank">25</td><td><b>NO</b> <span class="muted">Saints</span></td>
+          <td class="n">-0.4</td><td class="n">-2.5</td><td class="n"><b>-2.9</b></td>
+          <td class="n sep bad">-0.072</td><td class="n bad">-0.073</td>
+          <td class="n">-1.7</td><td class="n">-4.9</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:25.4%;width:24.6%"></i></span></td></tr><tr><td class="n rank">26</td><td><b>LV</b> <span class="muted">Raiders</span></td>
+          <td class="n">-0.2</td><td class="n">-2.7</td><td class="n"><b>-2.9</b></td>
+          <td class="n sep bad">-0.062</td><td class="n bad">-0.067</td>
+          <td class="n">-3.7</td><td class="n">-2.4</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:25.4%;width:24.6%"></i></span></td></tr><tr><td class="n rank">27</td><td><b>NYJ</b> <span class="muted">Jets</span></td>
+          <td class="n">-3.0</td><td class="n">-0.4</td><td class="n"><b>-3.4</b></td>
+          <td class="n sep bad">-0.104</td><td class="n bad">-0.021</td>
+          <td class="n">-1.7</td><td class="n">-1.1</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:21.5%;width:28.5%"></i></span></td></tr><tr><td class="n rank">28</td><td><b>LAC</b> <span class="muted">Chargers</span></td>
+          <td class="n">-4.0</td><td class="n">+0.4</td><td class="n"><b>-3.5</b></td>
+          <td class="n sep bad">-0.168</td><td class="n good">+0.036</td>
+          <td class="n">-4.2</td><td class="n">-0.7</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:20.5%;width:29.5%"></i></span></td></tr><tr><td class="n rank">29</td><td><b>WAS</b> <span class="muted">Commanders</span></td>
+          <td class="n">-0.8</td><td class="n">-3.0</td><td class="n"><b>-3.9</b></td>
+          <td class="n sep bad">-0.030</td><td class="n bad">-0.102</td>
+          <td class="n">-2.4</td><td class="n">-5.0</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:17.6%;width:32.4%"></i></span></td></tr><tr><td class="n rank">30</td><td><b>ARI</b> <span class="muted">Cardinals</span></td>
+          <td class="n">-1.2</td><td class="n">-3.5</td><td class="n"><b>-4.7</b></td>
+          <td class="n sep bad">-0.036</td><td class="n bad">-0.041</td>
+          <td class="n">+0.4</td><td class="n">-0.3</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:10.4%;width:39.6%"></i></span></td></tr><tr><td class="n rank">31</td><td><b>MIA</b> <span class="muted">Dolphins</span></td>
+          <td class="n">-3.8</td><td class="n">-1.3</td><td class="n"><b>-5.0</b></td>
+          <td class="n sep bad">-0.072</td><td class="n bad">-0.131</td>
+          <td class="n">-3.6</td><td class="n">-7.1</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:7.8%;width:42.2%"></i></span></td></tr><tr><td class="n rank">32</td><td><b>TEN</b> <span class="muted">Titans</span></td>
+          <td class="n">-5.2</td><td class="n">-0.7</td><td class="n"><b>-5.9</b></td>
+          <td class="n sep bad">-0.179</td><td class="n bad">-0.139</td>
+          <td class="n">-4.8</td><td class="n">-3.7</td>
+          <td class="barcell"><span class="dbar"><i class="neg" style="left:0.0%;width:50.0%"></i></span></td></tr></tbody></table></div>
+      <p class="note">Every column is better (+) or worse (−) than an average team; on defense, + means the team allows less.
+      EPA (expected points added) grades each play by how much it changed a drive's scoring chances, leaving out garbage time.
+      Success rate is the share of plays that kept the offense on schedule. The points columns are per game on a neutral field.
+      League average is 22.6 points; home field is worth 1.0.
+      A +4 team would be about a 4-point favorite over an average opponent at a neutral site.</p></section>
+  <section id="backtest"><h2>Track record</h2>
+    <p class="lede">Each season replayed week by week using only information available at the time, graded against closing lines.</p>
+    
+    <div class="callout">
+      <p><b>The short version.</b> Over 2012–2026, bets the model flagged returned -1.2% per dollar at closing odds.
+      Random luck alone moves a sample this size by about ±2%, so the model has not shown a reliable edge.
+      Moneylines did a little better than break-even, spreads about broke even, and totals lost roughly the bookmaker's cut.</p>
+    </div>
+    <div class="two">
+      <div><h3>Results by bet type</h3>
+        <div class="tablebox"><table>
+          <thead><tr><th>Market</th><th class="n">Bets</th><th class="n">Won</th><th class="n">Units</th><th class="n">ROI</th></tr></thead>
+          <tbody><tr><td><b>Moneyline</b></td><td class="n">928</td><td class="n">43.8%</td>
+        <td class="n">+32.1</td><td class="n good">+3.5%</td></tr><tr><td><b>Spread</b></td><td class="n">812</td><td class="n">48.8%</td>
+        <td class="n">-16.3</td><td class="n bad">-2.0%</td></tr><tr><td><b>Total</b></td><td class="n">1,489</td><td class="n">49.1%</td>
+        <td class="n">-54.5</td><td class="n bad">-3.7%</td></tr><tr class="total"><td><b>All markets</b></td><td class="n">3,229</td><td class="n">47.5%</td>
+        <td class="n">-38.8</td><td class="n bad">-1.2%</td></tr></tbody></table></div>
+        <p class="note">One unit is one dollar risked per bet. Pushes count as bets but not as wins or losses.</p>
+      </div>
+      <div><h3>Return by season</h3><div class="chartbox"><svg viewBox="0 0 640 220" role="img" aria-label="Return on flagged bets by season"><line x1="44" x2="632" y1="160.7" y2="160.7" class="grid"/><text x="38" y="164.7" text-anchor="end" class="tick">-10%</text><line x1="44" x2="632" y1="131.3" y2="131.3" class="grid"/><text x="38" y="135.3" text-anchor="end" class="tick">-5%</text><line x1="44" x2="632" y1="102.0" y2="102.0" class="axis"/><text x="38" y="106.0" text-anchor="end" class="tick">+0%</text><line x1="44" x2="632" y1="72.7" y2="72.7" class="grid"/><text x="38" y="76.7" text-anchor="end" class="tick">+5%</text><line x1="44" x2="632" y1="43.3" y2="43.3" class="grid"/><text x="38" y="47.3" text-anchor="end" class="tick">+10%</text><rect x="51.1" y="102.0" width="25.1" height="45.6" class="bneg"><title>2012: -7.8% ROI</title></rect><rect x="90.3" y="59.6" width="25.1" height="42.4" class="bpos"><title>2013: +7.2% ROI</title></rect><rect x="129.5" y="102.0" width="25.1" height="26.8" class="bneg"><title>2014: -4.6% ROI</title></rect><rect x="168.7" y="59.2" width="25.1" height="42.8" class="bpos"><title>2015: +7.3% ROI</title></rect><rect x="207.9" y="102.0" width="25.1" height="30.8" class="bneg"><title>2016: -5.2% ROI</title></rect><rect x="247.1" y="102.0" width="25.1" height="34.0" class="bneg"><title>2017: -5.8% ROI</title></rect><rect x="286.3" y="68.3" width="25.1" height="33.7" class="bpos"><title>2018: +5.7% ROI</title></rect><rect x="325.5" y="102.0" width="25.1" height="36.5" class="bneg"><title>2019: -6.2% ROI</title></rect><rect x="364.7" y="102.0" width="25.1" height="26.7" class="bneg"><title>2020: -4.5% ROI</title></rect><rect x="403.9" y="92.1" width="25.1" height="9.9" class="bpos"><title>2021: +1.7% ROI</title></rect><rect x="443.1" y="98.2" width="25.1" height="3.8" class="bpos"><title>2022: +0.6% ROI</title></rect><rect x="482.3" y="102.0" width="25.1" height="30.6" class="bneg"><title>2023: -5.2% ROI</title></rect><rect x="521.5" y="60.9" width="25.1" height="41.1" class="bpos"><title>2024: +7.0% ROI</title></rect><rect x="560.7" y="102.0" width="25.1" height="44.6" class="bneg"><title>2025: -7.6% ROI</title></rect><rect x="599.9" y="102.0" width="25.1" height="17.2" class="bneg"><title>2026: -2.9% ROI</title></rect><text x="63.6" y="210" text-anchor="middle" class="tick">'12</text><text x="102.8" y="210" text-anchor="middle" class="tick">'13</text><text x="142.0" y="210" text-anchor="middle" class="tick">'14</text><text x="181.2" y="210" text-anchor="middle" class="tick">'15</text><text x="220.4" y="210" text-anchor="middle" class="tick">'16</text><text x="259.6" y="210" text-anchor="middle" class="tick">'17</text><text x="298.8" y="210" text-anchor="middle" class="tick">'18</text><text x="338.0" y="210" text-anchor="middle" class="tick">'19</text><text x="377.2" y="210" text-anchor="middle" class="tick">'20</text><text x="416.4" y="210" text-anchor="middle" class="tick">'21</text><text x="455.6" y="210" text-anchor="middle" class="tick">'22</text><text x="494.8" y="210" text-anchor="middle" class="tick">'23</text><text x="534.0" y="210" text-anchor="middle" class="tick">'24</text><text x="573.2" y="210" text-anchor="middle" class="tick">'25</text><text x="612.4" y="210" text-anchor="middle" class="tick">'26</text></svg></div>
+        <p class="note">Green seasons made money, red seasons lost. The swings are the noise you should expect week to week.</p></div>
+    </div>
+    <h3>How close the lines are</h3>
+    <p>Average miss on the final margin: market <b class="n">9.93</b> points, model alone <b class="n">10.20</b>,
+    blended projection <b class="n">9.95</b>. The market is the more accurate number, which is why the model
+    currently gives its own spread only <b>13%</b> weight and leans on the line for the rest.</p></section>
+  <section id="how"><h2>How to read this</h2>
+    <div class="glossary">
+      <div><b>Spread</b><p>"CHI −2.5" means the Bears are projected to win by 2.5. Plus numbers are underdogs.</p></div>
+      <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
+      <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
+      <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>
+      <div><b>Stake</b><p>A quarter of the Kelly formula, which sizes bets to the edge, capped at 3% of bankroll.</p></div>
+      <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
+    </div></section>
+</main>
+<footer><div class="wrap">Generated Oct 22, 2026 at 2:06 PM CT from nflverse data through Oct 19. Lines move all week, so rerun before betting.
+For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
+</body></html>
