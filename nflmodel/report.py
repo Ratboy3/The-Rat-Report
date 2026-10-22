@@ -399,13 +399,13 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     dt = pd.Timestamp(data_through).strftime("%b %-d")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Gridline Week {week} Report</title>
+<title>The Rat Report</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>{CSS}</style></head>
 <body>
 <div class="mast"><div class="wrap">
-  <div><p class="kicker">Gridline NFL model · {season} season</p><h1>Week {week} Report</h1></div>
+  <div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report</h1></div>
   <div class="mast-stats">
     <div><b>{len(games)}</b><span>games</span></div>
     <div><b>{n_bets}</b><span>flagged bets</span></div>

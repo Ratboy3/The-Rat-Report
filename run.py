@@ -214,6 +214,19 @@ def cmd_report(a):
     print(f"Wrote {path}  (open it in any browser)")
 
 
+# ------------------------------------------------------------------ news timestamp
+def cmd_stamp_news(a):
+    """Write the current Central time into news.csv's "# checked:" line (never type it by hand)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    path = Path(a.news)
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True) if path.exists() else []
+    lines = [l for l in lines if not l.startswith("# checked:")]
+    now = datetime.now(ZoneInfo("America/Chicago")).strftime("%a %b %-d, %-I:%M %p CT")
+    path.write_text(f"# checked: {now}\n" + "".join(lines), encoding="utf-8")
+    print(f"news.csv stamped {now}")
+
+
 # ------------------------------------------------------------------ ratings
 def cmd_ratings(a):
     games = load_games(refresh=a.refresh)
@@ -253,10 +266,13 @@ def main():
     rp.add_argument("--props", default=None)
     rp.add_argument("--news", default="news.csv", help="per-game QB/injury/line notes shown on the page")
     rp.add_argument("--start", type=int, default=2012)
+    sn = sub.add_parser("stamp-news", help="stamp news.csv with the current Central time")
+    sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
         s.add_argument("--refresh", action="store_true", help="re-download data from nflverse")
     a = p.parse_args()
     {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
+     "stamp-news": cmd_stamp_news,
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 
 

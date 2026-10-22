@@ -1,4 +1,4 @@
-# Gridline NFL model
+# The Rat Report
 
 Weekly NFL projections and bets from nflverse data. The live report is `index.html`, published with GitHub Pages and rebuilt every hour.
 

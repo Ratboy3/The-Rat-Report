@@ -1,4 +1,4 @@
-"""Turn output/report_<season>_wk<week>.html into the page published as the Gridline artifact.
+"""Turn output/report_<season>_wk<week>.html into the page published as The Rat Report.
 
   python make_page.py 2026 7 /path/to/gridline-week7.html
 
