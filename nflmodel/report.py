@@ -81,7 +81,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
     if have.empty:
         found = int(props.line.notna().sum())
         return (f'<p class="empty">No positive prop edges yet ({found} DraftKings lines found). '
-                'Lines fill in through the weekend; use the checker under Player props meanwhile.</p>')
+                'Lines fill in through the weekend.</p>')
     rows = "".join(
         f"""<tr><td><b>{escape(r.player)}</b> {'Anytime TD' if r.stat == 'anytime_td' else f'{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
         <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
@@ -175,27 +175,26 @@ def _card_tds(tds) -> str:
 
 
 def _prop_rows(grp, gi) -> str:
+    """Read-only rows: projection, fair line, and the DraftKings line and edge when one was found."""
     rows = []
-    for i, r in enumerate(grp.itertuples()):
-        rid = f"p{gi}_{i}"
+    for r in grp.itertuples():
         inj = f'<span class="inj">{escape(r.injury)}</span>' if r.injury else ""
         known = pd.notna(r.line)
-        line_val = "" if r.stat == "anytime_td" else (f"{r.line:g}" if known else f"{r.fair_line:g}")
-        oo = f"{int(r.over_odds):+d}" if known and pd.notna(r.over_odds) else ("" if r.stat == "anytime_td" else "-110")
-        uo = f"{int(r.under_odds):+d}" if known and pd.notna(r.under_odds) else ("" if r.stat == "anytime_td" or known else "-110")
         fair = (_odds(fair_american(r.a)) if r.stat == "anytime_td" else f"{r.fair_line:g}")
-        src = f'<span class="cell-sub">DK {escape(r.as_of)}</span>' if known else ""
-        line_cell = ('<span class="muted">Scores</span>' if r.stat == "anytime_td" else
-                     f'<input id="{rid}_l" class="pin" inputmode="decimal" value="{line_val}" aria-label="Line">')
-        under_cell = ('' if r.stat == "anytime_td" else
-                      f'<input id="{rid}_u" class="pin" inputmode="text" value="{uo}" aria-label="Under odds">')
-        rows.append(f"""<tr class="pr" data-d="{r.dist}" data-a="{r.a}" data-b="{r.b}">
+        if known:
+            line = "Yes" if r.stat == "anytime_td" else f"{r.line:g}"
+            line += f'<span class="cell-sub">DK {escape(r.as_of)}</span>'
+            over = _odds(r.over_odds) if pd.notna(r.over_odds) else "—"
+            under = _odds(r.under_odds) if pd.notna(r.under_odds) else "—"
+            cls = "hit" if r.flag else ("lean" if r.ev > 0 else "no")
+            side = "Yes" if r.stat == "anytime_td" else r.best_side
+            edge = f'<span class="out {cls}">{side} {_signed_pct(r.ev)}</span>'
+        else:
+            line, over, under, edge = '<span class="muted">—</span>', "", "", '<span class="muted">No line yet</span>'
+        rows.append(f"""<tr>
           <td><b>{escape(r.player)}</b><span class="cell-sub">{r.position} · {r.team} · {STAT_LABEL.get(r.stat, r.stat)}</span>{inj}</td>
           <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n">{fair}</td>
-          <td class="n">{line_cell}{src}</td>
-          <td class="n"><input id="{rid}_o" class="pin" inputmode="text" value="{oo}" aria-label="Over odds"></td>
-          <td class="n">{under_cell}</td>
-          <td class="n out">—</td></tr>""")
+          <td class="n">{line}</td><td class="n">{over}</td><td class="n">{under}</td><td class="n">{edge}</td></tr>""")
     return "".join(rows)
 
 
@@ -216,14 +215,14 @@ def _card_props(grp, gi) -> str:
     else:
         n = int(grp.line.notna().sum())
         top = (f'<p class="cell-sub" style="margin:0">No positive edges yet · {n} DraftKings lines found for this game. '
-               'Use the checker below with the lines in your app.</p>')
+               'Compare the fair lines below with your app.</p>')
     return f"""<div class="tds"><h4>Top prop edges</h4>{top}</div>
-      <details class="allprops"><summary>All {len(grp)} props · line checker</summary>
+      <details class="allprops"><summary>All {len(grp)} props</summary>
         <div class="tablebox"><table class="props">
-        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">Line</th>
-        <th class="n">Over</th><th class="n">Under</th><th class="n">Best side</th></tr></thead>
+        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">DK line</th>
+        <th class="n">Over</th><th class="n">Under</th><th class="n">Edge</th></tr></thead>
         <tbody>{_prop_rows(grp, gi)}</tbody></table></div>
-        <p class="cell-sub" style="margin:6px 0 0">Type the line and odds from your app. Fair is the line where over and under are equally likely (fair odds for touchdowns).</p>
+        <p class="cell-sub" style="margin:6px 0 0">Fair is the line where over and under are equally likely (fair odds to score for touchdowns). Compare it with the line in your app.</p>
       </details>"""
 
 
@@ -687,9 +686,9 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
-    A gold bar marks a game with a bet. Each card has the most likely touchdown scorers, the top prop edges, every prop with a line checker, and the latest news.</p>
+    A gold bar marks a game with a bet. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
     <div class="cards">{cards}</div></section>
-  {f'<script>{PROPS_JS}</script>' if auto_props is not None and not auto_props.empty else _props_section(props)}
+  {'' if auto_props is not None and not auto_props.empty else _props_section(props)}
   <section id="ratings"><h2>Power ratings</h2>
     <p class="lede">Ranked by points-based net rating, built from the last two-plus seasons with recent games weighted most.
     Play-by-play efficiency (EPA and success rate) sits alongside and feeds the projections too.</p>
