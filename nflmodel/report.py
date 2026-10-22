@@ -84,7 +84,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
                 'Lines fill in through the weekend; use the checker under Player props meanwhile.</p>')
     rows = "".join(
         f"""<tr><td><b>{escape(r.player)}</b> {'Anytime TD' if r.stat == 'anytime_td' else f'{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
-        <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}</span></td>
+        <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td>
         <td class="n {'good' if r.flag else ''}">{_signed_pct(r.ev)}</td>
@@ -209,6 +209,7 @@ def _card_props(grp, gi) -> str:
         top = "".join(
             f"""<li><span class="tdn"><b>{escape(r.player)}</b> {'anytime TD' if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
             <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
+            {'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}
             <span class="n tdp {'good' if r.flag else ''}">{_signed_pct(r.ev)}</span>
             <span class="n tdo">{f'${r.stake:,.0f}' if r.flag else 'Lean'}</span></li>"""
             for r in have.itertuples())
@@ -681,7 +682,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><h3>Games</h3>{_bets_section(games)}</div>
       <div><h3>Top 5 prop edges</h3>{_top_props(auto_props)}</div>
     </div>
-    <p class="note">Prop lines are DraftKings' from the last 24 hours, with the time each was published.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
+    <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
     Prop projections are new, untested against past seasons and don't adjust for the opponent's defense yet.</p>
     <p class="note">Edge is expected profit per dollar. Stake is {C.KELLY_FRACTION:.0%} Kelly on a ${C.BANKROLL:,.0f} bankroll, capped at {C.MAX_STAKE_PCT:.0%}; bets need a {C.MIN_EV:.0%} edge.
     Hover or long-press a win % to see the break-even rate.</p></section>

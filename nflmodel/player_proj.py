@@ -46,7 +46,7 @@ MIN_MEAN = {"pass_yds": 100, "pass_tds": 0.5, "rush_yds": 12, "rec_yds": 15, "re
 RECENCY = 0.85          # each older game counts 15% less
 PRIOR_SEASON_W = 0.5    # last season's games count half on top of recency
 SHRINK_GAMES = 1.0      # pseudo-games of a typical player in the same role
-SHRINK_TD_GAMES = 5.0   # touchdowns are streaky, so lean harder on the typical player
+SHRINK_TD_GAMES = 2.5   # touchdowns are streaky, so lean harder on the typical player
 
 
 def _load(kind: str, season: int, refresh: bool) -> pd.DataFrame | None:
