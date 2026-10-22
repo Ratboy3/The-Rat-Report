@@ -95,7 +95,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
-def _game_card(item, news=None, tds=None) -> str:
+def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
     g, opts, hw = item["g"], item["opts"], item["home_win"]
     flagged = [o for o in opts if o["ev"] >= C.MIN_EV]
     best = {}
@@ -158,7 +158,7 @@ def _game_card(item, news=None, tds=None) -> str:
           <dt></dt><dd class="n">{g.away_team} {_odds(g.away_moneyline)}</dd></dl>
           {lean('moneyline')}</div>
       </div>
-      {_card_tds(tds)}
+      <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi)}</div>
       {_card_news(news)}
     </article>"""
 
@@ -173,6 +173,58 @@ def _card_tds(tds) -> str:
         for r in tds.itertuples())
     return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol>{items}</ol>
       <p class="cell-sub">Model chance to score · fair odds. Bet only if your book pays more than the fair odds.</p></div>"""
+
+
+def _prop_rows(grp, gi) -> str:
+    rows = []
+    for i, r in enumerate(grp.itertuples()):
+        rid = f"p{gi}_{i}"
+        inj = f'<span class="inj">{escape(r.injury)}</span>' if r.injury else ""
+        known = pd.notna(r.line)
+        line_val = "" if r.stat == "anytime_td" else (f"{r.line:g}" if known else f"{r.fair_line:g}")
+        oo = f"{int(r.over_odds):+d}" if known and pd.notna(r.over_odds) else ("" if r.stat == "anytime_td" else "-110")
+        uo = f"{int(r.under_odds):+d}" if known and pd.notna(r.under_odds) else ("" if r.stat == "anytime_td" or known else "-110")
+        fair = (_odds(fair_american(r.a)) if r.stat == "anytime_td" else f"{r.fair_line:g}")
+        src = f'<span class="cell-sub">DK {escape(r.as_of)}</span>' if known else ""
+        line_cell = ('<span class="muted">Scores</span>' if r.stat == "anytime_td" else
+                     f'<input id="{rid}_l" class="pin" inputmode="decimal" value="{line_val}" aria-label="Line">')
+        under_cell = ('' if r.stat == "anytime_td" else
+                      f'<input id="{rid}_u" class="pin" inputmode="text" value="{uo}" aria-label="Under odds">')
+        rows.append(f"""<tr class="pr" data-d="{r.dist}" data-a="{r.a}" data-b="{r.b}">
+          <td><b>{escape(r.player)}</b><span class="cell-sub">{r.position} · {r.team} · {STAT_LABEL.get(r.stat, r.stat)}</span>{inj}</td>
+          <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n">{fair}</td>
+          <td class="n">{line_cell}{src}</td>
+          <td class="n"><input id="{rid}_o" class="pin" inputmode="text" value="{oo}" aria-label="Over odds"></td>
+          <td class="n">{under_cell}</td>
+          <td class="n out">—</td></tr>""")
+    return "".join(rows)
+
+
+def _card_props(grp, gi) -> str:
+    """Top 5 prop edges for one game, plus every projected prop with a line checker."""
+    if grp is None or len(grp) == 0:
+        return ""
+    have = grp[grp.line.notna() & (grp.ev > 0)].sort_values("ev", ascending=False).head(5)
+    if len(have):
+        top = "".join(
+            f"""<li><span class="tdn"><b>{escape(r.player)}</b> {'anytime TD' if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
+            <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
+            <span class="n tdp {'good' if r.flag else ''}">{_signed_pct(r.ev)}</span>
+            <span class="n tdo">{f'${r.stake:,.0f}' if r.flag else 'Lean'}</span></li>"""
+            for r in have.itertuples())
+        top = f"<ol>{top}</ol>"
+    else:
+        n = int(grp.line.notna().sum())
+        top = (f'<p class="cell-sub" style="margin:0">No positive edges yet · {n} DraftKings lines found for this game. '
+               'Use the checker below with the lines in your app.</p>')
+    return f"""<div class="tds"><h4>Top prop edges</h4>{top}</div>
+      <details class="allprops"><summary>All {len(grp)} props · line checker</summary>
+        <div class="tablebox"><table class="props">
+        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">Line</th>
+        <th class="n">Over</th><th class="n">Under</th><th class="n">Best side</th></tr></thead>
+        <tbody>{_prop_rows(grp, gi)}</tbody></table></div>
+        <p class="cell-sub" style="margin:6px 0 0">Type the line and odds from your app. Fair is the line where over and under are equally likely (fair odds for touchdowns).</p>
+      </details>"""
 
 
 def _card_news(n) -> str:
@@ -479,7 +531,7 @@ th.n,td.n{text-align:right;white-space:nowrap}
 tbody tr:last-child td{border-bottom:0}
 tr.total td{border-top:2px solid var(--line)}
 .cell-sub{display:block;font-family:var(--body);font-size:12px;color:var(--muted);font-weight:400}
-.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0}
 .card.has-bet{border-color:var(--flag);box-shadow:inset 0 3px 0 var(--flag)}
 .card-head{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
@@ -537,10 +589,18 @@ dt{color:var(--muted)} dd{margin:0;text-align:right;white-space:nowrap}
 .inj{display:block;font-size:11.5px;color:var(--flag);font-weight:600}
 .out.hit{color:var(--good);font-weight:700} .out.lean{color:var(--ink)} .out.no{color:var(--muted)}
 table.props td{vertical-align:middle}
+.card-extra{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);border-top:1px solid var(--line)}
+.card-extra>.tds{border-top:0}
+.card-extra>.tds+div,.card-extra>.tds+.tds{border-left:1px solid var(--line)}
+.card-extra details.allprops{grid-column:1/-1;border-top:1px solid var(--line);padding:8px 14px 10px}
+.allprops summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:13px}
+.allprops summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.allprops .tablebox{margin-top:8px}
+@media (max-width:640px){.card-extra{grid-template-columns:minmax(0,1fr)}.card-extra>.tds+.tds{border-left:0;border-top:1px solid var(--line)}}
 .tds{padding:10px 14px 8px;border-top:1px solid var(--line)}
 .tds h4{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .tds ol{margin:0;padding:0;list-style:none;display:grid;gap:3px;counter-reset:td}
-.tds li{display:grid;grid-template-columns:18px minmax(0,1fr) auto 52px;gap:8px;align-items:baseline;font-size:13px;counter-increment:td}
+.tds li{display:grid;grid-template-columns:18px minmax(0,1fr) auto 56px;gap:8px;align-items:baseline;font-size:13px;counter-increment:td}
 .tds li::before{content:counter(td);color:var(--muted);font-family:var(--mono);font-size:12px}
 .tdn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tdn .inj{display:inline;margin-left:4px}
@@ -564,7 +624,7 @@ details.more summary:focus-visible{outline:2px solid var(--accent);outline-offse
 footer{border-top:1px solid var(--line);margin-top:40px;padding-block:16px 32px;font-size:12.5px;color:var(--muted)}
 a{color:var(--accent)}
 a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-@media (max-width:860px){.cards{grid-template-columns:minmax(0,1fr)}.two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.lines{grid-template-columns:1fr}.line{border-right:0;border-bottom:1px solid var(--line)}.line:last-child{border-bottom:0}
  .barcell{min-width:100px}}
 @media print{nav.toc{display:none}.card{break-inside:avoid}}
@@ -583,11 +643,13 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     if auto_props is not None and not auto_props.empty:
         td = auto_props[auto_props.stat == "anytime_td"].sort_values("adj_projection", ascending=False)
         td_by_game = {g: grp.head(5) for g, grp in td.groupby("game", sort=False)}
-    cards = "".join(_game_card(it, news_by_game.get(f"{it['g'].away_team} @ {it['g'].home_team}"),
-                               td_by_game.get(f"{it['g'].away_team} @ {it['g'].home_team}")) for it in games)
+    props_by_game = {}
+    if auto_props is not None and not auto_props.empty:
+        props_by_game = {g: grp for g, grp in auto_props.groupby("game", sort=False)}
+    key = lambda it: f"{it['g'].away_team} @ {it['g'].home_team}"
+    cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi)
+                    for gi, it in enumerate(games))
     toc = ['<a href="#bets">Best bets</a>', '<a href="#games">Games</a>']
-    if (props is not None and not props.empty) or (auto_props is not None and not auto_props.empty):
-        toc.append('<a href="#props">Props</a>')
     toc += ['<a href="#ratings">Ratings</a>', '<a href="#backtest">Track record</a>', '<a href="#how">Glossary</a>']
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
@@ -619,13 +681,15 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><h3>Games</h3>{_bets_section(games)}</div>
       <div><h3>Top 5 prop edges</h3>{_top_props(auto_props)}</div>
     </div>
+    <p class="note">Prop lines are DraftKings' from the last 24 hours, with the time each was published.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
+    Prop projections are new, untested against past seasons and don't adjust for the opponent's defense yet.</p>
     <p class="note">Edge is expected profit per dollar. Stake is {C.KELLY_FRACTION:.0%} Kelly on a ${C.BANKROLL:,.0f} bankroll, capped at {C.MAX_STAKE_PCT:.0%}; bets need a {C.MIN_EV:.0%} edge.
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
-    A gold bar marks a game with a bet. Each card lists the five most likely touchdown scorers and the latest news.</p>
+    A gold bar marks a game with a bet. Each card has the most likely touchdown scorers, the top prop edges, every prop with a line checker, and the latest news.</p>
     <div class="cards">{cards}</div></section>
-  {_auto_props_section(auto_props, lines_checked) if auto_props is not None and not auto_props.empty else _props_section(props)}
+  {f'<script>{PROPS_JS}</script>' if auto_props is not None and not auto_props.empty else _props_section(props)}
   <section id="ratings"><h2>Power ratings</h2>
     <p class="lede">Ranked by points-based net rating, built from the last two-plus seasons with recent games weighted most.
     Play-by-play efficiency (EPA and success rate) sits alongside and feeds the projections too.</p>
