@@ -1,15 +1,15 @@
 # Game lines at every US sportsbook (The Odds API) and kickoff weather forecasts (Open-Meteo, free).
 #
 # Game lines: one call returns spreads, totals and moneylines for every game at every book = 3 credits.
-#   Runs Mon/Wed/Fri/Sun mornings: ~13 calls a month = ~40 credits. With the props schedule (~420)
-#   that stays under the free plan's 500.
+#   Wed and Fri mornings here (~26 credits a month); the pre-kickoff pulls (Thu/Mon 6:15 PM, Sun 11 AM)
+#   are in fetch-props.yml. Together ~480 credits a month, under the free plan's 500.
 # Weather: free, every 6 hours, outdoor stadiums only.
 name: Fetch game lines and weather
 
 on:
   schedule:
     - cron: "5 */6 * * *"          # weather only (free)
-    - cron: "10 14 * * 0,1,3,5"    # game lines + weather: Sun/Mon/Wed/Fri ~9 AM CDT
+    - cron: "10 14 * * 3,5"        # game lines + weather: Wed/Fri ~9:10 AM CDT (8:10 CST)
   workflow_dispatch:
     inputs:
       game_lines:
@@ -36,7 +36,7 @@ jobs:
       - name: Weather
         run: python run.py fetch-weather
       - name: Game lines
-        if: github.event.schedule == '10 14 * * 0,1,3,5' || inputs.game_lines
+        if: github.event.schedule == '10 14 * * 3,5' || inputs.game_lines
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-games
