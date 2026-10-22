@@ -26,7 +26,7 @@ MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0
 
 # --- props ---
-PROP_CV = {"pass_yds": 0.28, "rush_yds": 0.55, "rec_yds": 0.65}
+PROP_CV = {"pass_yds": 0.30, "rush_yds": 0.70, "rec_yds": 0.80}   # game-to-game spread (sd / mean); yardage is very volatile
 PROP_COUNT = {"receptions", "pass_tds", "anytime_td"}
 PROP_SCRIPT_WEIGHT = 0.5       # how much a team's projected points move its players' projections
 

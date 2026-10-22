@@ -93,6 +93,56 @@ def _fair_line(d: dict) -> float | None:
     return best[1]
 
 
+ALIASES = {"zonovan knight": "bam knight", "hollywood brown": "marquise brown"}
+
+
+def _key(name) -> str:
+    """Match player names across sources: no accents, punctuation or Jr./Sr./II-style suffixes."""
+    import re
+    import unicodedata
+    n = unicodedata.normalize("NFKD", str(name)).encode("ascii", "ignore").decode().lower()
+    n = re.sub(r"[^a-z ]", "", n.replace("-", " "))
+    n = re.sub(r"\s+(jr|sr|ii|iii|iv|v)$", "", n.strip())
+    n = re.sub(r"\s+", " ", n)
+    return ALIASES.get(n, n)
+
+
+PROP_MODEL_WEIGHT = 0.25  # yards/receptions/pass TDs: 25% model + 75% the DraftKings line (the market knows roles and injuries)
+
+
+def _no_vig_over(oo, uo) -> float | None:
+    def imp(o):
+        return 100 / (o + 100) if o > 0 else -o / (-o + 100)
+    if oo is None or uo is None or pd.isna(oo) or pd.isna(uo):
+        return None
+    a, b = imp(oo), imp(uo)
+    return a / (a + b)
+
+
+def _market_mean(stat: str, line: float, p_over: float | None) -> float:
+    """The mean the DraftKings line and prices imply."""
+    p = 0.5 if p_over is None else min(0.9, max(0.1, p_over))
+    if stat in C.PROP_CV:
+        cv = C.PROP_CV[stat]
+        z = norm.ppf(p)                   # P(X > line) = p with X ~ N(m, cv*m)  ->  m = line / (1 - z*cv)
+        return line / max(0.3, 1 - z * cv)
+    lo, hi = 0.01, 30.0                   # poisson: find lambda with P(X > line) = p
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if 1 - poisson.cdf(math.floor(line), mid) < p:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def _trust(base: float, model: float, market: float) -> float:
+    """Model weight, shrunk when the model and market disagree a lot (usually a role change or injury the
+    season averages haven't caught up with): 1.2x apart keeps ~80% of the weight, 2x apart ~25%, 3x ~12%."""
+    r = math.log(max(1e-6, model) / max(1e-6, market))
+    return base / (1 + (r / 0.4) ** 2)
+
+
 TD_MODEL_WEIGHT = 0.4      # touchdown chance = 40% model + 60% betting market, when market prices exist
 TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; scale their implied chance down
 
@@ -100,8 +150,8 @@ TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; sc
 def _td_market(player: str, book_row, market: dict) -> float | None:
     """Market chance to score: prediction-market price and/or sportsbook price, averaged."""
     vals = []
-    if player.lower() in market:
-        vals.append(market[player.lower()])
+    if _key(player) in market:
+        vals.append(market[_key(player)])
     if book_row is not None and pd.notna(getattr(book_row, "over_odds", np.nan)):
         vals.append(min(0.97, (1 / (1 + (book_row.over_odds / 100 if book_row.over_odds > 0
                                          else 100 / abs(book_row.over_odds)))) * TD_BOOK_MARGIN))
@@ -120,10 +170,10 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     book = {}
     if lines is not None and len(lines):
         for r in lines.itertuples():
-            book[(str(r.player).strip().lower(), str(r.stat).strip())] = r
+            book[(_key(r.player), str(r.stat).strip())] = r
     market = {}
     if td_market is not None and len(td_market):
-        market = {str(r.player).strip().lower(): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
+        market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
     rows = []
     for p in players.itertuples():
         f = _script_factor(p.team, team_pts, team_ppg)
@@ -131,10 +181,20 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         if p.stat == "anytime_td":
             f = 1.0                     # already built from the team's projected points
             model_p = min(0.95, max(0.01, p.projection))
-            market_p = _td_market(p.player, book.get((p.player.lower(), p.stat)), market)
-            adj = model_p if market_p is None else TD_MODEL_WEIGHT * model_p + (1 - TD_MODEL_WEIGHT) * market_p
+            market_p = _td_market(p.player, book.get((_key(p.player), p.stat)), market)
+            if market_p is None:
+                adj = model_p
+            else:
+                w = _trust(TD_MODEL_WEIGHT, model_p, market_p)
+                adj = w * model_p + (1 - w) * market_p
         else:
             adj = p.projection * f
+            b0 = book.get((_key(p.player), p.stat))
+            if b0 is not None and pd.notna(b0.line):
+                market_p = round(_market_mean(p.stat, float(b0.line), _no_vig_over(b0.over_odds, b0.under_odds)), 3)
+                model_p = round(adj, 3)
+                w = _trust(PROP_MODEL_WEIGHT, adj, market_p)
+                adj = w * adj + (1 - w) * market_p
         d = _dist(p.stat, adj)
         row = dict(game=p.game, team=p.team, opp=p.opp, player=p.player, position=p.position, stat=p.stat,
                    injury=p.injury, script_factor=round(f, 3), adj_projection=round(adj, 3),
@@ -142,7 +202,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                    model_prob=model_p, market_prob=market_p,
                    line=np.nan, over_odds=np.nan, under_odds=np.nan, source="", as_of="",
                    p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False)
-        b = book.get((p.player.lower(), p.stat))
+        b = book.get((_key(p.player), p.stat))
         if b is not None and (pd.notna(b.over_odds) or pd.notna(b.under_odds)):
             line = 0.5 if p.stat == "anytime_td" else float(b.line)
             over = _probs(d, line)
