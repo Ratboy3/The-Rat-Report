@@ -73,6 +73,7 @@ def apply(df: pd.DataFrame, path: str | Path) -> pd.DataFrame:
         m = (df.game_id == r.game_id) & (df.dome == 0)
         if not m.any():
             continue
+        df.loc[m, "wx"] = f"{r.temp_f:.0f}°F · wind {r.wind_mph:.0f} mph" + (" · rain/snow" if r.precip_mm >= 1.0 else "")
         df.loc[m, "wind"] = r.wind_mph
         df.loc[m, "temp"] = r.temp_f
         df.loc[m, "wind_excess"] = max(0.0, r.wind_mph - 10)

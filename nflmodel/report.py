@@ -119,12 +119,8 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
     if g.away_west_early:
         tags.append(f"{g.away_team} early body clock")
     mkt = mkt or {}
-    if not g.dome and pd.notna(g.get("wind")) and g.get("wind_excess", 0) > 0:
-        tags.append(f"Wind {g.wind:.0f} mph")
-    if not g.dome and g.get("cold", 0):
-        tags.append(f"{g.temp:.0f}°F")
-    if not g.dome and g.get("precip", 0):
-        tags.append("Rain/snow")
+    if not g.dome and isinstance(g.get("wx"), str):
+        tags.append(("⚠ " if g.get("wind_excess", 0) > 0 or g.get("cold", 0) or g.get("precip", 0) else "") + g.wx)
     tend = mkt.get("tendencies")
     if tend is not None:
         for t in (g.away_team, g.home_team):
