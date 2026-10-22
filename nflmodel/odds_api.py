@@ -93,10 +93,13 @@ def event_lines(key: str, event: dict) -> tuple[list[dict], str | None]:
     return list(rows.values()), left
 
 
-def fetch(path: str = "prop_lines.csv") -> None:
+def fetch(path: str = "prop_lines.csv", hours: float | None = None) -> None:
+    """hours: only fetch games kicking off within this many hours (saves credits); None = rest of the week."""
     key = api_key()
     now = datetime.now(CT)
     events = week_events(key, now)
+    if hours is not None:
+        events = [e for e in events if _ct(e["commence_time"]) < now + timedelta(hours=hours)]
     new, left = [], None
     for e in events:
         rows, left = event_lines(key, e)

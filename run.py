@@ -293,6 +293,7 @@ def main():
     rp.add_argument("--start", type=int, default=2012)
     fp = sub.add_parser("fetch-props", help="pull live DraftKings player props from The Odds API into prop_lines.csv")
     fp.add_argument("--prop-lines", default="prop_lines.csv")
+    fp.add_argument("--hours", type=float, default=None, help="only games kicking off within this many hours (saves API credits)")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
@@ -300,7 +301,7 @@ def main():
     a = p.parse_args()
     {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
      "stamp-news": cmd_stamp_news,
-     "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines),
+     "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 
 

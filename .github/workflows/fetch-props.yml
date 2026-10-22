@@ -2,9 +2,10 @@
 # The API key lives in the repo secret ODDS_API_KEY (Settings > Secrets and variables > Actions).
 # The hourly Rat Report update reads prop_lines.csv from this repo on its next run.
 #
-# Schedule is sized for the Odds API free plan (500 credits/month, about 6 credits per game):
-#   Sunday morning (full slate), Thursday and Monday afternoon (prime-time games).
-# Run it any time from the Actions tab with "Run workflow".
+# Sized for the Odds API FREE plan (500 credits/month). Each game costs 6 credits per fetch, and
+# each run only fetches games kicking off within the next 12 hours, so a week costs about
+# 6 (Thu) + 84 (Sun) + 6 (Mon) = ~96 credits, roughly 420 a month. Manual runs also use the
+# 12-hour window unless you change "hours"; a manual run of the whole week costs ~90 credits.
 name: Fetch DraftKings props
 
 on:
@@ -13,6 +14,10 @@ on:
     - cron: "30 19 * * 4"   # Thu 2:30 PM CDT / 1:30 PM CST
     - cron: "30 19 * * 1"   # Mon 2:30 PM CDT / 1:30 PM CST
   workflow_dispatch:
+    inputs:
+      hours:
+        description: "Only games kicking off within this many hours (each game costs 6 credits)"
+        default: "12"
 
 permissions:
   contents: write
@@ -33,7 +38,7 @@ jobs:
       - name: Fetch props
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python run.py fetch-props
+        run: python run.py fetch-props --hours "${{ inputs.hours || '12' }}"
       - name: Commit
         run: |
           git config user.name "Rat Report props bot"
