@@ -854,7 +854,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     key = lambda it: f"{it['g'].away_team} @ {it['g'].home_team}"
     cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi, injuries, market_info)
                     for gi, it in enumerate(games))
-    tabs = [("bets", "Best bets"), ("games", "Games"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
+    tabs = [("games", "Games"), ("bets", "Best bets"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
