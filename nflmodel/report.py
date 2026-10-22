@@ -163,16 +163,24 @@ def _game_card(item, news=None, tds=None, props=None, gi=0) -> str:
 
 
 def _card_tds(tds) -> str:
-    """Five most likely anytime touchdown scorers in a game, from the player projections."""
+    """Five most likely anytime touchdown scorers in a game: chance, fair odds and the DraftKings price."""
     if tds is None or len(tds) == 0:
         return ""
-    items = "".join(
-        f"""<li><span class="tdn">{escape(r.player)} <span class="muted">{r.position} · {r.team}</span>{' <span class="inj">' + escape(r.injury) + '</span>' if r.injury else ''}</span>
-        <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair_american(r.adj_projection))}<span class="cell-sub">{('DK ' + _odds(r.over_odds)) if pd.notna(getattr(r, 'over_odds', float('nan'))) else 'DK —'}</span></span></li>"""
-        for r in tds.itertuples())
-    return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol>{items}</ol>
-      <p class="cell-sub">Chance to score · fair odds · DraftKings price. The likeliest scorers are usually priced short, so the best touchdown bets
-      (under Top prop edges) are often players lower down whose DraftKings price pays more than their fair odds.</p></div>"""
+    rows = []
+    for r in tds.itertuples():
+        dk = getattr(r, "over_odds", float("nan"))
+        fair = fair_american(r.adj_projection)
+        if pd.notna(dk):
+            value = (dk / 100 + 1 if dk > 0 else 100 / -dk + 1) * r.adj_projection > 1
+            dk_cell = f'<span class="n tdk{" good" if value else ""}">{_odds(dk)}</span>'
+        else:
+            dk_cell = '<span class="n tdk muted">—</span>'
+        inj = f'<span class="inj">{escape(r.injury)}</span>' if r.injury else ""
+        rows.append(f"""<li><span class="tdn">{escape(r.player)} <span class="muted">{r.position} · {r.team}</span>{inj}</span>
+        <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair)}</span>{dk_cell}</li>""")
+    return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
+      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li>{"".join(rows)}</ol>
+      <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div>"""
 
 
 def _prop_rows(grp, gi) -> str:
@@ -208,14 +216,21 @@ def _card_props(grp, gi) -> str:
     if not len(have):
         have = priced.head(5)   # no positive edges: show the closest ones, marked No edge
     if len(have):
-        top = "".join(
-            f"""<li><span class="tdn"><b>{escape(r.player)}</b> {(f'anytime TD ({r.adj_projection * 100:.0f}% to score)') if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
-            <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
-            {'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}
+        items = []
+        for r in have.itertuples():
+            if r.stat == "anytime_td":
+                what, price = f"Anytime TD · {r.adj_projection * 100:.0f}% to score", r.over_odds
+            else:
+                price = r.over_odds if r.best_side == "Over" else r.under_odds
+                what = f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
+            tag = "Bet" if r.flag else ("Lean" if r.ev > 0 else "No edge")
+            warn = '<span class="inj">Big edge: check the line</span>' if r.ev > 0.15 else ""
+            items.append(f"""<li><span class="tdn"><b>{escape(r.player)}</b>{warn}<span class="cell-sub">{escape(what)}</span></span>
+            <span class="n tdk">{_odds(price)}</span>
             <span class="n tdp {'good' if r.flag else ('bad' if r.ev <= 0 else '')}">{_signed_pct(r.ev)}</span>
-            <span class="n tdo">{'Bet' if r.flag else ('Lean' if r.ev > 0 else 'No edge')}</span></li>"""
-            for r in have.itertuples())
-        top = f"<ol>{top}</ol>"
+            <span class="tdo">{tag}</span></li>""")
+        top = (f'<ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li>'
+               + "".join(items) + '</ol>')
     else:
         top = '<p class="cell-sub" style="margin:0">No edge · no DraftKings prop lines found yet for this game.</p>'
     return f"""<div class="tds"><h4>Top prop edges</h4>{top}</div>
@@ -606,6 +621,16 @@ table.props td{vertical-align:middle}
 .tdn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tdn .inj{display:inline;margin-left:4px}
 .tdp{font-weight:600} .tdo{color:var(--muted);text-align:right}
+.tdtable li{grid-template-columns:18px minmax(0,1fr) 46px 50px 50px}
+.tdtable li.hd{counter-increment:none;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-bottom:2px;border-bottom:1px solid var(--line)}
+.tdtable li.hd::before{content:""}
+.tdtable .tdp,.tdtable .tdo,.tdtable .tdk,.tdtable li.hd .n{text-align:right}
+.tdtable.edges li{grid-template-columns:18px minmax(0,1fr) 50px 54px 52px;align-items:center}
+.tdtable.edges .tdn{white-space:normal}
+@media (max-width:640px){.tdtable.edges li{grid-template-columns:16px minmax(0,1fr) 44px 50px 36px;gap:6px}}
+.tdtable.edges .tdn .cell-sub{margin:0}
+.tdtable.edges .tdn .inj{display:block;margin:0}
+.tdk{font-weight:600} .tdk.good{color:var(--good,#17663F)}
 .tds .cell-sub{margin-top:6px}
 .card-news{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .card-news p{margin:0;max-width:none}
