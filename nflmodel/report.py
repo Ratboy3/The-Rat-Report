@@ -786,6 +786,8 @@ table.props td{vertical-align:middle}
 .card-inj .cell-sub{margin:2px 0 0}
 .move{margin-top:4px}
 .lean .cell-sub{display:block;margin-top:2px}
+.beta{display:inline-block;vertical-align:middle;font-family:var(--body);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:3px;background:var(--flag);color:#14211A;margin-left:8px;position:relative;top:-4px}
+.beta-note{font-size:13px;color:var(--muted);background:var(--flag-soft);border-left:3px solid var(--flag);border-radius:4px;padding:8px 12px;margin:14px 0 0;max-width:none}
 .tdk{font-weight:600} .tdk.good{color:var(--good,#17663F)}
 .tds .cell-sub{margin-top:6px}
 .card-news{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
@@ -824,11 +826,12 @@ TABS_JS = """
     if(!document.getElementById(id)) id=links[0].dataset.tab;
     panels.forEach(function(p){p.classList.toggle('active', p.id===id)});
     links.forEach(function(a){var on=a.dataset.tab===id; a.setAttribute('aria-selected', on); a.tabIndex=on?0:-1;
-      if(on && a.scrollIntoView) a.scrollIntoView({block:'nearest',inline:'nearest'});});
+      if(on){var bar=a.parentNode, l=a.offsetLeft-bar.offsetLeft, r=l+a.offsetWidth;
+        if(l<bar.scrollLeft) bar.scrollLeft=l-8; else if(r>bar.scrollLeft+bar.clientWidth) bar.scrollLeft=r-bar.clientWidth+8;}});
     if(scroll){var nav=document.querySelector('nav.toc'), main=document.querySelector('main');
       var top=main.getBoundingClientRect().top+window.pageYOffset-nav.offsetHeight;
       if(window.pageYOffset>top) window.scrollTo(0, top);}
-    try{history.replaceState(null,'','#'+id)}catch(e){}
+    if(scroll){try{history.replaceState(null,'','#'+id)}catch(e){}}
   }
   links.forEach(function(a,i){
     a.addEventListener('click',function(e){e.preventDefault(); show(a.dataset.tab, true)});
@@ -839,6 +842,7 @@ TABS_JS = """
   });
   window.addEventListener('hashchange',function(){show(location.hash.slice(1), true)});
   show((location.hash||'').slice(1), false);
+  if(location.hash){window.addEventListener('load',function(){[0,150,400].forEach(function(t){setTimeout(function(){window.scrollTo(0,0)},t)})})}
 })();
 """
 
@@ -879,7 +883,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 <style>{CSS}</style></head>
 <body>
 <div class="mast"><div class="wrap">
-  <div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report</h1></div>
+  <div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div>
   <div class="mast-stats">
     <div><b>{n_bets}</b><span>game bets</span></div>
     <div><b>{n_props}</b><span>prop bets</span></div>
@@ -888,6 +892,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 </div></div>
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist">{''.join(toc)}</div></nav>
 <main class="wrap">
+  <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
   <section id="bets"><h2>Best bets</h2>
     {checked_line}
     <div class="best">
