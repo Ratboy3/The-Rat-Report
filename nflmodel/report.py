@@ -168,10 +168,11 @@ def _card_tds(tds) -> str:
         return ""
     items = "".join(
         f"""<li><span class="tdn">{escape(r.player)} <span class="muted">{r.position} · {r.team}</span>{' <span class="inj">' + escape(r.injury) + '</span>' if r.injury else ''}</span>
-        <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair_american(r.adj_projection))}</span></li>"""
+        <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair_american(r.adj_projection))}<span class="cell-sub">{('DK ' + _odds(r.over_odds)) if pd.notna(getattr(r, 'over_odds', float('nan'))) else 'DK —'}</span></span></li>"""
         for r in tds.itertuples())
     return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol>{items}</ol>
-      <p class="cell-sub">Model chance to score · fair odds. Bet only if your book pays more than the fair odds.</p></div>"""
+      <p class="cell-sub">Chance to score · fair odds · DraftKings price. The likeliest scorers are usually priced short, so the best touchdown bets
+      (under Top prop edges) are often players lower down whose DraftKings price pays more than their fair odds.</p></div>"""
 
 
 def _prop_rows(grp, gi) -> str:
@@ -208,7 +209,7 @@ def _card_props(grp, gi) -> str:
         have = priced.head(5)   # no positive edges: show the closest ones, marked No edge
     if len(have):
         top = "".join(
-            f"""<li><span class="tdn"><b>{escape(r.player)}</b> {'anytime TD' if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
+            f"""<li><span class="tdn"><b>{escape(r.player)}</b> {(f'anytime TD ({r.adj_projection * 100:.0f}% to score)') if r.stat == 'anytime_td' else f'{r.best_side.lower()} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
             <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
             {'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}
             <span class="n tdp {'good' if r.flag else ('bad' if r.ev <= 0 else '')}">{_signed_pct(r.ev)}</span>
