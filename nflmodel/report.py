@@ -862,6 +862,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
   <section id="how"><h2>Glossary</h2>
     <div class="glossary">
       <div><b>Spread</b><p>"CHI −2.5" means the Bears are projected to win by 2.5. Plus numbers are underdogs.</p></div>
+      <div><b>Market</b><p>The betting line: DraftKings' number when we have a recent one, otherwise the consensus line across sportsbooks. It reflects everything bettors and bookmakers know, including injuries and news.</p></div>
+      <div><b>Pure model</b><p>The model's own number, built only from team ratings, play-by-play efficiency, injuries, rest, travel and weather, without looking at the betting line.</p></div>
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>
