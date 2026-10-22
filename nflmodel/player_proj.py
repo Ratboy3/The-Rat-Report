@@ -46,6 +46,7 @@ MIN_MEAN = {"pass_yds": 100, "pass_tds": 0.5, "rush_yds": 12, "rec_yds": 15, "re
 RECENCY = 0.85          # each older game counts 15% less
 PRIOR_SEASON_W = 0.5    # last season's games count half on top of recency
 SHRINK_GAMES = 1.0      # pseudo-games of a typical player in the same role
+SHRINK_TD_GAMES = 5.0   # touchdowns are streaky, so lean harder on the typical player
 
 
 def _load(kind: str, season: int, refresh: bool) -> pd.DataFrame | None:
@@ -108,9 +109,16 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -
     for pos, sts in BY_POS.items():
         p = recent[recent.position == pos]
         for st in sts:
-            per = p.assign(v=_value(p, st)).groupby("player_id").v.mean()
-            per = per[per > 0]
-            typical[(pos, st)] = float(per.quantile(0.6)) if len(per) else 0.0
+            per = p.assign(v=_value(p, st)).groupby("player_id").v.agg(["mean", "size"])
+            per = per[per["size"] >= 2]["mean"]
+            if st == "anytime_td":   # average regular in the role, zeros included
+                usage = {"QB": "passing_yards", "RB": "rushing_yards", "WR": "receiving_yards", "TE": "receiving_yards"}[pos]
+                regs = p.groupby("player_id")[usage].mean()
+                per = per[per.index.isin(regs[regs >= regs.quantile(0.5)].index)]
+                typical[(pos, st)] = float(per.mean()) if len(per) else 0.0
+            else:
+                per = per[per > 0]
+                typical[(pos, st)] = float(per.quantile(0.6)) if len(per) else 0.0
 
     team_game = {}
     for g in proj.itertuples():
@@ -148,7 +156,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False) -
             for st in BY_POS[pos]:
                 mean, wsum = _weighted(rows, st, season)
                 prior = typical.get((pos, st), mean)
-                est = (mean * wsum + prior * SHRINK_GAMES) / (wsum + SHRINK_GAMES)
+                k = SHRINK_TD_GAMES if st == "anytime_td" else SHRINK_GAMES
+                est = (mean * wsum + prior * k) / (wsum + k)
                 if mean < MIN_MEAN[st] or est < MIN_MEAN[st]:
                     continue
                 if st == "anytime_td":
