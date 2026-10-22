@@ -1,0 +1,45 @@
+# Pulls live DraftKings player props from The Odds API into prop_lines.csv.
+# The API key lives in the repo secret ODDS_API_KEY (Settings > Secrets and variables > Actions).
+# The hourly Rat Report update reads prop_lines.csv from this repo on its next run.
+#
+# Schedule is sized for the Odds API free plan (500 credits/month, about 6 credits per game):
+#   Sunday morning (full slate), Thursday and Monday afternoon (prime-time games).
+# Run it any time from the Actions tab with "Run workflow".
+name: Fetch DraftKings props
+
+on:
+  schedule:
+    - cron: "20 15 * * 0"   # Sun 10:20 AM CDT / 9:20 AM CST
+    - cron: "30 19 * * 4"   # Thu 2:30 PM CDT / 1:30 PM CST
+    - cron: "30 19 * * 1"   # Mon 2:30 PM CDT / 1:30 PM CST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-props
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy scipy requests
+      - name: Fetch props
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python run.py fetch-props
+      - name: Commit
+        run: |
+          git config user.name "Rat Report props bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add prop_lines.csv
+          git diff --cached --quiet && exit 0
+          git commit -m "DraftKings props from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
+          for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
+          exit 1
