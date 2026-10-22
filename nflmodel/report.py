@@ -66,10 +66,10 @@ def _bets_section(games) -> str:
         f"""<tr><td><b>{escape(o['pick'])}</b><span class="cell-sub">{g.away_team} @ {g.home_team} · {_kickoff(g)}</span></td>
         <td class="n">{_odds(o['odds'])}</td>
         <td class="n" title="Break-even {_pct(implied(o['odds']), 1)}">{_pct(o['win_prob'], 1)}</td>
-        <td class="n good">{_signed_pct(ev)}</td><td class="n">${o['stake']:,.0f}</td></tr>"""
+        <td class="n good">{_signed_pct(ev)}</td></tr>"""
         for ev, g, o in rows)
     return f"""<div class="tablebox"><table>
-      <thead><tr><th>Bet</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th><th class="n">Stake</th></tr></thead>
+      <thead><tr><th>Bet</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
       <tbody>{body}</tbody></table></div>
 """
 
@@ -87,11 +87,10 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
         <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td>
-        <td class="n {'good' if r.flag else ''}">{_signed_pct(r.ev)}</td>
-        <td class="n">{f'${r.stake:,.0f}' if r.flag else '<span class="muted">Lean</span>'}</td></tr>"""
+        <td class="n {'good' if r.flag else ''}">{_signed_pct(r.ev)}{'' if r.flag else ' <span class="muted">lean</span>'}</td></tr>"""
         for r in have.itertuples())
     return f"""<div class="tablebox"><table>
-      <thead><tr><th>Prop</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th><th class="n">Stake</th></tr></thead>
+      <thead><tr><th>Prop</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
       <tbody>{rows}</tbody></table></div>"""
 
 
@@ -211,7 +210,7 @@ def _card_props(grp, gi) -> str:
             <span class="muted">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)} · DK {escape(r.as_of)}</span></span>
             {'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}
             <span class="n tdp {'good' if r.flag else ''}">{_signed_pct(r.ev)}</span>
-            <span class="n tdo">{f'${r.stake:,.0f}' if r.flag else 'Lean'}</span></li>"""
+            <span class="n tdo">{'Bet' if r.flag else 'Lean'}</span></li>"""
             for r in have.itertuples())
         top = f"<ol>{top}</ol>"
     else:
@@ -684,7 +683,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     </div>
     <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
     Prop projections are new, untested against past seasons and don't adjust for the opponent's defense yet.</p>
-    <p class="note">Edge is expected profit per dollar. Stake is {C.KELLY_FRACTION:.0%} Kelly on a ${C.BANKROLL:,.0f} bankroll, capped at {C.MAX_STAKE_PCT:.0%}; bets need a {C.MIN_EV:.0%} edge.
+    <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
@@ -704,7 +703,6 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>
-      <div><b>Stake</b><p>A quarter of the Kelly formula, which sizes bets to the edge, capped at {C.MAX_STAKE_PCT:.0%} of bankroll.</p></div>
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>
