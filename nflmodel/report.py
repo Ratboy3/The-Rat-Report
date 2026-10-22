@@ -662,10 +662,16 @@ h1{font-family:var(--display);font-weight:800;font-size:clamp(34px,6vw,52px);lin
 .mast-stats div{display:flex;flex-direction:column}
 .mast-stats b{font-family:var(--display);font-size:30px;line-height:1}
 .mast-stats span{font-size:12px;opacity:.7}
-nav.toc{border-bottom:1px solid var(--line);background:var(--surface)}
-nav.toc .wrap{display:flex;gap:20px;overflow-x:auto;padding-block:10px}
-nav.toc a{color:var(--muted);text-decoration:none;font-weight:600;font-size:13px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em}
-nav.toc a:hover,nav.toc a:focus-visible{color:var(--accent)}
+nav.toc{border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:10}
+nav.toc .wrap{display:flex;gap:4px;overflow-x:auto;padding-block:0;scrollbar-width:none}
+nav.toc .wrap::-webkit-scrollbar{display:none}
+nav.toc a{color:var(--muted);text-decoration:none;font-weight:600;font-size:13px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em;
+padding:13px 12px 11px;border-bottom:3px solid transparent;margin-bottom:-1px}
+nav.toc a:hover{color:var(--ink)}
+nav.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+nav.toc a[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+html.tabs main>section{display:none}
+html.tabs main>section.active{display:block}
 main{padding-block:12px 56px}
 section{padding-top:32px}
 h2{font-family:var(--display);font-weight:700;font-size:28px;text-transform:uppercase;letter-spacing:.02em;margin:0 0 6px;text-wrap:balance}
@@ -799,6 +805,36 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 """
 
 
+TABS_JS = """
+(function(){
+  var root=document.documentElement, links=[].slice.call(document.querySelectorAll('nav.toc a[data-tab]'));
+  var panels=links.map(function(a){return document.getElementById(a.dataset.tab)}).filter(Boolean);
+  if(!links.length||!panels.length) return;
+  root.classList.add('tabs');
+  panels.forEach(function(p){p.setAttribute('role','tabpanel')});
+  function show(id, scroll){
+    if(!document.getElementById(id)) id=links[0].dataset.tab;
+    panels.forEach(function(p){p.classList.toggle('active', p.id===id)});
+    links.forEach(function(a){var on=a.dataset.tab===id; a.setAttribute('aria-selected', on); a.tabIndex=on?0:-1;
+      if(on && a.scrollIntoView) a.scrollIntoView({block:'nearest',inline:'nearest'});});
+    if(scroll){var nav=document.querySelector('nav.toc'), main=document.querySelector('main');
+      var top=main.getBoundingClientRect().top+window.pageYOffset-nav.offsetHeight;
+      if(window.pageYOffset>top) window.scrollTo(0, top);}
+    try{history.replaceState(null,'','#'+id)}catch(e){}
+  }
+  links.forEach(function(a,i){
+    a.addEventListener('click',function(e){e.preventDefault(); show(a.dataset.tab, true)});
+    a.addEventListener('keydown',function(e){
+      var j = e.key==='ArrowRight'?i+1 : e.key==='ArrowLeft'?i-1 : null;
+      if(j===null) return; e.preventDefault(); j=(j+links.length)%links.length; links[j].focus(); show(links[j].dataset.tab, false);
+    });
+  });
+  window.addEventListener('hashchange',function(){show(location.hash.slice(1), true)});
+  show((location.hash||'').slice(1), false);
+})();
+"""
+
+
 def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize, data_through,
            news=None, checked=None, auto_props=None, lines_checked=None, injuries=None, clv_log=None,
            prop_bt=None, market_info=None) -> str:
@@ -818,8 +854,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     key = lambda it: f"{it['g'].away_team} @ {it['g'].home_team}"
     cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi, injuries, market_info)
                     for gi, it in enumerate(games))
-    toc = ['<a href="#bets">Best bets</a>', '<a href="#games">Games</a>']
-    toc += ['<a href="#ratings">Ratings</a>', '<a href="#backtest">Track record</a>', '<a href="#how">Glossary</a>']
+    tabs = [("bets", "Best bets"), ("games", "Games"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
+    toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
     generated = now.strftime("%b %-d, %Y at %-I:%M %p CT")
@@ -842,7 +878,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     <div><b>{updated}</b><span>updated (CT)</span></div>
   </div>
 </div></div>
-<nav class="toc" aria-label="Sections"><div class="wrap">{''.join(toc)}</div></nav>
+<nav class="toc" aria-label="Sections"><div class="wrap" role="tablist">{''.join(toc)}</div></nav>
 <main class="wrap">
   <section id="bets"><h2>Best bets</h2>
     {checked_line}
@@ -883,4 +919,5 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 </main>
 <footer><div class="wrap">Generated {generated} from nflverse data through {dt}. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
+<script>{TABS_JS}</script>
 </body></html>"""
