@@ -94,6 +94,14 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
+def _short_inj(text: str) -> str:
+    """Compact injury note for tight lists: 'Limited in practice (Not injury related - resting player)' -> 'Limited (rest day)'."""
+    t = str(text)
+    t = t.replace("Not injury related - resting player", "rest day").replace("Not injury related", "not injury")
+    t = t.replace("Limited in practice", "Limited").replace("Missed practice", "Missed practice")
+    return t
+
+
 def _is_final(g) -> bool:
     """Game finished and scored in the nflverse feed."""
     return all(pd.notna(g.get(c)) for c in ("home_score", "away_score", "result"))
@@ -334,7 +342,7 @@ def _card_tds(tds) -> str:
             dk_cell = f'<span class="n tdk{" good" if value else ""}">{_odds(dk)}</span>'
         else:
             dk_cell = '<span class="n tdk muted">—</span>'
-        inj = f'<span class="inj">{escape(r.injury)}</span>' if r.injury else ""
+        inj = f'<span class="inj">{escape(_short_inj(r.injury))}</span>' if r.injury else ""
         rows.append(f"""<li><span class="tdn">{escape(r.player)} <span class="muted">{r.position} · {r.team}</span>{inj}</span>
         <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair)}</span>{dk_cell}</li>""")
     return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
@@ -809,6 +817,10 @@ table.props td{vertical-align:middle}
 .tdtable li{grid-template-columns:18px minmax(0,1fr) 46px 50px 50px}
 .tdtable li.hd{counter-increment:none;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-bottom:2px;border-bottom:1px solid var(--line)}
 .tdtable li.hd::before{content:""}
+.tdtable:not(.edges) li{align-items:start}
+.tdtable:not(.edges) .tdn{white-space:normal;overflow:visible}
+.tdtable:not(.edges) .tdn>.muted{white-space:nowrap}
+.tdtable:not(.edges) .tdn .inj{display:block;margin:1px 0 0;font-size:11px;line-height:1.3}
 .tdtable .tdp,.tdtable .tdo,.tdtable .tdk,.tdtable li.hd .n{text-align:right}
 .tdtable.edges li{grid-template-columns:18px minmax(0,1fr) 50px 54px 52px;align-items:center}
 .tdtable.edges .tdn{white-space:normal}

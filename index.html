@@ -133,6 +133,10 @@ table.props td{vertical-align:middle}
 .tdtable li{grid-template-columns:18px minmax(0,1fr) 46px 50px 50px}
 .tdtable li.hd{counter-increment:none;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-bottom:2px;border-bottom:1px solid var(--line)}
 .tdtable li.hd::before{content:""}
+.tdtable:not(.edges) li{align-items:start}
+.tdtable:not(.edges) .tdn{white-space:normal;overflow:visible}
+.tdtable:not(.edges) .tdn>.muted{white-space:nowrap}
+.tdtable:not(.edges) .tdn .inj{display:block;margin:1px 0 0;font-size:11px;line-height:1.3}
 .tdtable .tdp,.tdtable .tdo,.tdtable .tdk,.tdtable li.hd .n{text-align:right}
 .tdtable.edges li{grid-template-columns:18px minmax(0,1fr) 50px 54px 52px;align-items:center}
 .tdtable.edges .tdn{white-space:normal}
@@ -177,7 +181,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   <div class="mast-stats">
     <div><b>1</b><span>game bets</span></div>
     <div><b>6</b><span>prop bets</span></div>
-    <div><b>12:26 PM</b><span>updated (CT)</span></div>
+    <div><b>12:31 PM</b><span>updated (CT)</span></div>
   </div>
 </div></div>
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist"><a href="#games" role="tab" data-tab="games" aria-controls="games">Games</a><a href="#bets" role="tab" data-tab="bets" aria-controls="bets">Best bets</a><a href="#ratings" role="tab" data-tab="ratings" aria-controls="ratings">Ratings</a><a href="#backtest" role="tab" data-tab="backtest" aria-controls="backtest">Track record</a><a href="#how" role="tab" data-tab="how" aria-controls="how">Glossary</a></div></nav>
@@ -627,10 +631,10 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
           <div class="lean">Lean CLE ML -130 <span class="n">+0.6%</span><span class="cell-sub">Best: FanDuel -122</span></div></div>
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
-      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Tony Pollard <span class="muted">RB · TEN</span><span class="inj">Missed practice (Not injury related - resting player)</span></span>
-        <span class="n tdp">40%</span><span class="n tdo">+149</span><span class="n tdk">+115</span></li><li><span class="tdn">Quinshon Judkins <span class="muted">RB · CLE</span><span class="inj">Limited in practice (Ankle)</span></span>
+      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Tony Pollard <span class="muted">RB · TEN</span><span class="inj">Missed practice (rest day)</span></span>
+        <span class="n tdp">40%</span><span class="n tdo">+149</span><span class="n tdk">+115</span></li><li><span class="tdn">Quinshon Judkins <span class="muted">RB · CLE</span><span class="inj">Limited (Ankle)</span></span>
         <span class="n tdp">34%</span><span class="n tdo">+192</span><span class="n tdk muted">—</span></li><li><span class="tdn">Audric Estimé <span class="muted">RB · CLE</span></span>
-        <span class="n tdp">32%</span><span class="n tdo">+214</span><span class="n tdk muted">—</span></li><li><span class="tdn">Denzel Boston <span class="muted">WR · CLE</span><span class="inj">Limited in practice (Foot)</span></span>
+        <span class="n tdp">32%</span><span class="n tdo">+214</span><span class="n tdk muted">—</span></li><li><span class="tdn">Denzel Boston <span class="muted">WR · CLE</span><span class="inj">Limited (Foot)</span></span>
         <span class="n tdp">29%</span><span class="n tdo">+247</span><span class="n tdk">+210</span></li><li><span class="tdn">Harold Fannin Jr. <span class="muted">TE · CLE</span></span>
         <span class="n tdp">26%</span><span class="n tdo">+277</span><span class="n tdk">+235</span></li></ol>
       <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li><li><span class="tdn"><b>Cam Ward</b><span class="cell-sub">Over 182.5 passing yards</span></span>
@@ -998,7 +1002,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Braelon Allen <span class="muted">RB · NYJ</span></span>
-        <span class="n tdp">48%</span><span class="n tdo">+107</span><span class="n tdk">-125</span></li><li><span class="tdn">Breece Hall <span class="muted">RB · NYJ</span><span class="inj">Limited in practice (Quadricep)</span></span>
+        <span class="n tdp">48%</span><span class="n tdo">+107</span><span class="n tdk">-125</span></li><li><span class="tdn">Breece Hall <span class="muted">RB · NYJ</span><span class="inj">Limited (Quadricep)</span></span>
         <span class="n tdp">43%</span><span class="n tdo">+133</span><span class="n tdk">+100</span></li><li><span class="tdn">Garrett Wilson <span class="muted">WR · NYJ</span></span>
         <span class="n tdp">35%</span><span class="n tdo">+186</span><span class="n tdk">+145</span></li><li><span class="tdn">Ollie Gordon II <span class="muted">RB · MIA</span></span>
         <span class="n tdp">34%</span><span class="n tdo">+199</span><span class="n tdk">+195</span></li><li><span class="tdn">Omar Cooper Jr. <span class="muted">WR · NYJ</span></span>
@@ -1183,9 +1187,9 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Woody Marks <span class="muted">RB · HOU</span></span>
-        <span class="n tdp">48%</span><span class="n tdo">+109</span><span class="n tdk">-125</span></li><li><span class="tdn">Nico Collins <span class="muted">WR · HOU</span><span class="inj">Limited in practice (Not injury related - resting player)</span></span>
+        <span class="n tdp">48%</span><span class="n tdo">+109</span><span class="n tdk">-125</span></li><li><span class="tdn">Nico Collins <span class="muted">WR · HOU</span><span class="inj">Limited (rest day)</span></span>
         <span class="n tdp">39%</span><span class="n tdo">+159</span><span class="n tdk">+125</span></li><li><span class="tdn">David Montgomery <span class="muted">RB · HOU</span><span class="inj">Missed practice (Groin)</span></span>
-        <span class="n tdp">30%</span><span class="n tdo">+233</span><span class="n tdk muted">—</span></li><li><span class="tdn">Dalton Schultz <span class="muted">TE · HOU</span><span class="inj">Limited in practice (Quadricep)</span></span>
+        <span class="n tdp">30%</span><span class="n tdo">+233</span><span class="n tdk muted">—</span></li><li><span class="tdn">Dalton Schultz <span class="muted">TE · HOU</span><span class="inj">Limited (Quadricep)</span></span>
         <span class="n tdp">28%</span><span class="n tdo">+257</span><span class="n tdk">+210</span></li><li><span class="tdn">Isaiah Likely <span class="muted">TE · NYG</span></span>
         <span class="n tdp">27%</span><span class="n tdo">+275</span><span class="n tdk">+255</span></li></ol>
       <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li><li><span class="tdn"><b>J.J. McCarthy</b><span class="cell-sub">Under 201.5 passing yards</span></span>
@@ -1544,7 +1548,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Chuba Hubbard <span class="muted">RB · CAR</span></span>
-        <span class="n tdp">50%</span><span class="n tdo">-101</span><span class="n tdk">-125</span></li><li><span class="tdn">Bucky Irving <span class="muted">RB · TB</span><span class="inj">Limited in practice (Illness)</span></span>
+        <span class="n tdp">50%</span><span class="n tdo">-101</span><span class="n tdk">-125</span></li><li><span class="tdn">Bucky Irving <span class="muted">RB · TB</span><span class="inj">Limited (Illness)</span></span>
         <span class="n tdp">42%</span><span class="n tdo">+138</span><span class="n tdk">+115</span></li><li><span class="tdn">Tetairoa McMillan <span class="muted">WR · CAR</span></span>
         <span class="n tdp">36%</span><span class="n tdo">+175</span><span class="n tdk">+140</span></li><li><span class="tdn">Jalen Coker <span class="muted">WR · CAR</span></span>
         <span class="n tdp">33%</span><span class="n tdo">+207</span><span class="n tdk">+165</span></li><li><span class="tdn">Emeka Egbuka <span class="muted">WR · TB</span><span class="inj">Missed practice (Concussion)</span></span>
@@ -1745,7 +1749,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">J.K. Dobbins <span class="muted">RB · DEN</span></span>
         <span class="n tdp">43%</span><span class="n tdo">+133</span><span class="n tdk">+120</span></li><li><span class="tdn">Trey McBride <span class="muted">TE · ARI</span></span>
-        <span class="n tdp">37%</span><span class="n tdo">+168</span><span class="n tdk">+130</span></li><li><span class="tdn">Jaylen Waddle <span class="muted">WR · DEN</span><span class="inj">Limited in practice (Chest)</span></span>
+        <span class="n tdp">37%</span><span class="n tdo">+168</span><span class="n tdk">+130</span></li><li><span class="tdn">Jaylen Waddle <span class="muted">WR · DEN</span><span class="inj">Limited (Chest)</span></span>
         <span class="n tdp">30%</span><span class="n tdo">+232</span><span class="n tdk">+185</span></li><li><span class="tdn">RJ Harvey <span class="muted">RB · DEN</span></span>
         <span class="n tdp">27%</span><span class="n tdo">+268</span><span class="n tdk good">+270</span></li><li><span class="tdn">Courtland Sutton <span class="muted">WR · DEN</span></span>
         <span class="n tdp">26%</span><span class="n tdo">+280</span><span class="n tdk">+230</span></li></ol>
@@ -1942,8 +1946,8 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Jahmyr Gibbs <span class="muted">RB · DET</span></span>
         <span class="n tdp">70%</span><span class="n tdo">-231</span><span class="n tdk">-330</span></li><li><span class="tdn">Amon-Ra St. Brown <span class="muted">WR · DET</span></span>
-        <span class="n tdp">51%</span><span class="n tdo">-105</span><span class="n tdk">-145</span></li><li><span class="tdn">Christian Watson <span class="muted">WR · GB</span><span class="inj">Limited in practice (Ankle)</span></span>
-        <span class="n tdp">40%</span><span class="n tdo">+147</span><span class="n tdk">+125</span></li><li><span class="tdn">Matthew Golden <span class="muted">WR · GB</span><span class="inj">Limited in practice (Shoulder)</span></span>
+        <span class="n tdp">51%</span><span class="n tdo">-105</span><span class="n tdk">-145</span></li><li><span class="tdn">Christian Watson <span class="muted">WR · GB</span><span class="inj">Limited (Ankle)</span></span>
+        <span class="n tdp">40%</span><span class="n tdo">+147</span><span class="n tdk">+125</span></li><li><span class="tdn">Matthew Golden <span class="muted">WR · GB</span><span class="inj">Limited (Shoulder)</span></span>
         <span class="n tdp">36%</span><span class="n tdo">+180</span><span class="n tdk">+150</span></li><li><span class="tdn">Sam LaPorta <span class="muted">TE · DET</span></span>
         <span class="n tdp">34%</span><span class="n tdo">+198</span><span class="n tdk">+170</span></li></ol>
       <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li><li><span class="tdn"><b>Jordan Love</b><span class="cell-sub">Over 282.5 passing yards</span></span>
@@ -2123,7 +2127,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Kyren Williams <span class="muted">RB · LA</span></span>
-        <span class="n tdp">55%</span><span class="n tdo">-122</span><span class="n tdk">-150</span></li><li><span class="tdn">Puka Nacua <span class="muted">WR · LA</span><span class="inj">Limited in practice (Calf)</span></span>
+        <span class="n tdp">55%</span><span class="n tdo">-122</span><span class="n tdk">-150</span></li><li><span class="tdn">Puka Nacua <span class="muted">WR · LA</span><span class="inj">Limited (Calf)</span></span>
         <span class="n tdp">49%</span><span class="n tdo">+103</span><span class="n tdk">-125</span></li><li><span class="tdn">Ashton Jeanty <span class="muted">RB · LV</span></span>
         <span class="n tdp">49%</span><span class="n tdo">+104</span><span class="n tdk">-125</span></li><li><span class="tdn">Brock Bowers <span class="muted">TE · LV</span></span>
         <span class="n tdp">42%</span><span class="n tdo">+140</span><span class="n tdk">+110</span></li><li><span class="tdn">Blake Corum <span class="muted">RB · LA</span></span>
@@ -2466,9 +2470,9 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </div>
       <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">Javonte Williams <span class="muted">RB · DAL</span></span>
-        <span class="n tdp">57%</span><span class="n tdo">-134</span><span class="n tdk">-175</span></li><li><span class="tdn">Saquon Barkley <span class="muted">RB · PHI</span><span class="inj">Limited in practice (Hamstring)</span></span>
+        <span class="n tdp">57%</span><span class="n tdo">-134</span><span class="n tdk">-175</span></li><li><span class="tdn">Saquon Barkley <span class="muted">RB · PHI</span><span class="inj">Limited (Hamstring)</span></span>
         <span class="n tdp">42%</span><span class="n tdo">+138</span><span class="n tdk">+105</span></li><li><span class="tdn">CeeDee Lamb <span class="muted">WR · DAL</span></span>
-        <span class="n tdp">40%</span><span class="n tdo">+152</span><span class="n tdk">+120</span></li><li><span class="tdn">George Pickens <span class="muted">WR · DAL</span><span class="inj">Limited in practice (Shoulder)</span></span>
+        <span class="n tdp">40%</span><span class="n tdo">+152</span><span class="n tdk">+120</span></li><li><span class="tdn">George Pickens <span class="muted">WR · DAL</span><span class="inj">Limited (Shoulder)</span></span>
         <span class="n tdp">34%</span><span class="n tdo">+197</span><span class="n tdk">+155</span></li><li><span class="tdn">DeVonta Smith <span class="muted">WR · PHI</span><span class="inj">Missed practice (Hamstring)</span></span>
         <span class="n tdp">31%</span><span class="n tdo">+227</span><span class="n tdk">+195</span></li></ol>
       <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li><li><span class="tdn"><b>Tanner McKee</b><span class="cell-sub">Under 211.5 passing yards</span></span>
@@ -3057,7 +3061,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>
-<footer><div class="wrap">Generated Oct 23, 2026 at 12:26 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
+<footer><div class="wrap">Generated Oct 23, 2026 at 12:31 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
 <script>
 (function(){
