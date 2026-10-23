@@ -81,6 +81,8 @@ def cmd_picks(a):
     wk, _ = injuries.attach(wk, season, week, a.refresh)
     from nflmodel import qb
     wk, _ = qb.attach(wk, games, season, week)
+    from nflmodel import aggression
+    wk = aggression.attach(wk, aggression.load_cached(games))
     proj = sm.predict(wk)
 
     print(f"\n{season} Week {week}  |  model weight vs market: spread {sm.w_margin:.0%}, total {sm.w_total:.0%}"
@@ -196,6 +198,8 @@ def cmd_report(a):
     wk, inj = injuries.attach(wf[(wf.season == season) & (wf.week == week)], season, week, a.refresh)
     from nflmodel import qb
     wk, qb_info = qb.attach(wk, games, season, week)
+    from nflmodel import aggression
+    wk = aggression.attach(wk, aggression.load_cached(games))
     proj = sm.predict(wk)
     if proj.empty:
         raise SystemExit(f"No games found for {season} week {week}")
@@ -283,6 +287,13 @@ def cmd_props_backtest(a):
     print(sc.round(3).to_string(index=False))
 
 
+def cmd_build_extras(a):
+    from nflmodel import pbp_extra, aggression
+    last = int(load_games(False).season.max())
+    pbp_extra.build([last - 2, last - 1, last])
+    aggression.refresh(last)   # this season's 4th-down decisions (earlier seasons are already saved)
+
+
 # ------------------------------------------------------------------ news timestamp
 def cmd_stamp_news(a):
     """Write the current Central time into news.csv's "# checked:" line (never type it by hand)."""
@@ -348,7 +359,8 @@ def main():
     fp.add_argument("--hours", type=float, default=None, help="only games kicking off within this many hours (saves API credits)")
     sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
     sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
-    sub.add_parser("build-extras", help="red-zone usage and team tendencies from play-by-play")
+    sub.add_parser("build-extras", help="red-zone usage, team tendencies and this season's 4th-down decisions from play-by-play")
+    sub.add_parser("build-aggression", help="every 4th-down decision and PAT since 2006 -> data/fourth_downs.csv (one-time)")
     pb = sub.add_parser("props-backtest", help="replay past weeks of player projections against results")
     pb.add_argument("--out", default="prop_backtest.csv")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
@@ -361,8 +373,8 @@ def main():
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
-     "build-extras": lambda a: __import__("nflmodel.pbp_extra", fromlist=["build"]).build(
-         [load_games(False).season.max() - 2, load_games(False).season.max() - 1, load_games(False).season.max()]),
+     "build-extras": cmd_build_extras,
+     "build-aggression": lambda a: __import__("nflmodel.aggression", fromlist=["build"]).build(),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 
 

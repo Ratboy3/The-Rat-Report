@@ -186,6 +186,15 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             print(f"  coverage data skipped ({e})")
     press = _pressure(tm, season, week) if USE["pressure"] else {}
 
+    coach_agg = {}
+    if USE["agg"]:
+        if "home_agg" not in proj and games is not None and "home_coach" in proj:
+            from . import aggression
+            proj = aggression.attach(proj, aggression.load_cached(games))
+        if "home_agg" in proj:
+            for g in proj.itertuples():
+                coach_agg[g.home_team], coach_agg[g.away_team] = g.home_agg, g.away_agg
+
     team_game = {}
     for g in proj.itertuples():
         team_game[g.home_team] = (g, "home")
@@ -220,6 +229,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         redis = _redistribution(stats, season, week, team, on_team, set(eligible))
         vol = _volume_factors(tend, team, opp)
         team_tds = team_pts.get(team, 22.0) * tpp
+        if USE["agg"]:
+            team_tds = max(0.3, team_tds + AGG_TD_PER_10 * coach_agg.get(team, 0.0) / 10)
         team_weeks = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
         for pid in on_team:
             rows = stats[stats.player_id == pid]
@@ -309,8 +320,14 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # Man/zone coverage matchups (last season's charting) were neutral, pass rush vs. protection made passing yards
 # worse (57.9 -> 59.1; the opponent factor already covers it), and a first-game-back discount held in 2025
 # (-18%) but reversed in 2026 (+5%), so those three are off.
+# Third round (Oct 22): head-coach 4th-down aggressiveness. Teams with aggressive coaches score more TDs than
+# their market-implied points suggest: +0.185 TDs per team-game per 10 pct pts of go rate over expected
+# (2010-24 fit, t~3; 2018+ t~3.6). Two-point tendencies added nothing. But adding it to the TD props made
+# them slightly worse in the 2025-26 replay (Brier 0.1950 -> 0.1955, both seasons worse): players' own TD
+# history already carries their coach's style. Off; the rating is shown on game cards for information.
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
-       "airyards": True, "coverage": False, "pressure": False, "returning": False}
+       "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False}
+AGG_TD_PER_10 = 0.18    # extra team TDs per game per +10 pct pts of coach go-for-it rate over expected
 AIR_W = 0.5             # weight on the usage-based estimate (air yards + targets) for receiving props
 AIR_YDS_COEF, TGT_YDS_COEF = 0.204, 5.812   # receiving yards ~ 0.204 x air yards + 5.8 x targets (fit on 2025)
 LG_CATCH, CATCH_SHRINK = 0.675, 20

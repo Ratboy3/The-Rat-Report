@@ -135,8 +135,12 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
                 tags.append(f"{t} pass-heavy")
             elif r.proe < -0.04:
                 tags.append(f"{t} run-heavy")
-            if pd.notna(r.go_rate) and r.go_rate > r.go_rate_lg + 0.2:
-                tags.append(f"{t} aggressive on 4th")
+    for t, side in ((g.away_team, "away"), (g.home_team, "home")):
+        ag = g.get(f"{side}_agg", 0.0)
+        if pd.notna(ag) and ag >= 3:
+            tags.append(f"{t} aggressive on 4th")
+        elif pd.notna(ag) and ag <= -3:
+            tags.append(f"{t} conservative on 4th")
     game_key = f"{g.away_team} @ {g.home_team}"
     best_px = mkt.get("best_games", {})
     tag_html = "".join(f'<span class="tag">{escape(t)}</span>' for t in tags)
@@ -925,6 +929,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><b>Market</b><p>The betting line: DraftKings' number when we have a recent one, otherwise the consensus line across sportsbooks. It reflects everything bettors and bookmakers know, including injuries and news.</p></div>
       <div><b>Pure model</b><p>The model's own number, built only from team ratings, play-by-play efficiency, quarterback ratings, injuries, rest, travel and weather, without looking at the betting line.</p></div>
       <div><b>QB rating</b><p>Expected points added per dropback (passes, sacks and scrambles), recent games weighted most. QBs with little film are assumed to be typical backups until they show otherwise.</p></div>
+      <div><b>Aggressive / conservative on 4th</b><p>How often the head coach goes for it on 4th down compared with an average coach in the same spot (distance, field position, score, time left), from every decision he has made since 2006, recent seasons weighted most. Tagged at 3 or more percentage points above or below average. Shown for information: aggressive coaches' teams do score a few more touchdowns than their betting line implies, but the betting markets and each player's own scoring history already account for it, so it doesn't change the model's numbers.</p></div>
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>

@@ -15,14 +15,16 @@ BASE_TOTAL = ["r_total", "wind_excess", "cold", "dome", "qb_changes"]
 EPA_MARGIN = ["epa_margin", "sr_margin"]
 EPA_TOTAL = ["epa_sum", "sr_sum"]
 PRECIP_TOTAL = -2.0   # no rain/snow history in the data, so this one is fixed
+AGG_MARGIN = ["agg_diff"]          # coach 4th-down aggressiveness (aggression.py)
+AGG_TOTAL = ["agg_sum"]
 
 
 def margin_features() -> list[str]:
-    return BASE_MARGIN + (EPA_MARGIN if C.USE_EPA else [])
+    return BASE_MARGIN + (EPA_MARGIN if C.USE_EPA else []) + (AGG_MARGIN if C.USE_AGG else [])
 
 
 def total_features() -> list[str]:
-    return BASE_TOTAL + (EPA_TOTAL if C.USE_EPA else [])
+    return BASE_TOTAL + (EPA_TOTAL if C.USE_EPA else []) + (AGG_TOTAL if C.USE_AGG else [])
 
 
 def _design(df: pd.DataFrame) -> pd.DataFrame:
@@ -33,6 +35,10 @@ def _design(df: pd.DataFrame) -> pd.DataFrame:
     # regression's coefficients sit on the same scale as the points features
     for src, dst in (("e_margin", "epa_margin"), ("e_sum", "epa_sum"), ("s_margin", "sr_margin"), ("s_sum", "sr_sum")):
         d[dst] = d[src].fillna(0.0) * 100 if src in d else 0.0
+    # coach aggressiveness, per 10 pct pts of go rate over expected
+    ha, aa = (d[c].fillna(0.0) if c in d else 0.0 for c in ("home_agg", "away_agg"))
+    d["agg_diff"] = (ha - aa) / 10
+    d["agg_sum"] = (ha + aa) / 10
     return d
 
 

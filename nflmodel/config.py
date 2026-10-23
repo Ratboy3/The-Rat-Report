@@ -43,4 +43,5 @@ TEAM_TZ = {
 EPA_WP_MIN = 0.05              # plays outside this win-probability window are garbage time
 EPA_WP_MAX = 0.95
 EPA_RIDGE_LAMBDA = 4.0         # shrinkage of EPA ratings toward average
+USE_AGG = False                # coach 4th-down aggressiveness in spread/total: tested Oct 22, no gain vs the market (off)
 USE_EPA = True                 # include EPA/play and success rate in the model
