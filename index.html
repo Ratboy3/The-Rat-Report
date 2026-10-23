@@ -1,5 +1,3 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>The Rat Report</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -157,6 +155,13 @@ table.props td{vertical-align:middle}
 .card-news .cell-sub{margin-top:2px}
 .best{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
 .best h3{margin-top:4px}
+.leanstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:4px 0 18px}
+.leanstrip>div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.leanstrip span{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.leanstrip b{display:block;font:700 26px/1.1 var(--display);margin:2px 0}
+.leanstrip em{font-style:normal;font-size:12.5px;color:var(--muted)} .leanstrip i{font-style:normal;font-weight:600}
+#leans .final-head{margin-top:24px}
+@media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
 details.more{margin-top:4px}
@@ -174,17 +179,17 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:520px){.lines{grid-template-columns:1fr}.line{border-right:0;border-bottom:1px solid var(--line)}.line:last-child{border-bottom:0}
  .barcell{min-width:100px}}
 @media print{nav.toc{display:none}.card{break-inside:avoid}}
-</style></head>
-<body>
+</style>
+
 <div class="mast"><div class="wrap">
   <div><p class="kicker">Week 7 · 2026 NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div>
   <div class="mast-stats">
     <div><b>1</b><span>game bets</span></div>
     <div><b>6</b><span>prop bets</span></div>
-    <div><b>12:31 PM</b><span>updated (CT)</span></div>
+    <div><b>12:39 PM</b><span>updated (CT)</span></div>
   </div>
 </div></div>
-<nav class="toc" aria-label="Sections"><div class="wrap" role="tablist"><a href="#games" role="tab" data-tab="games" aria-controls="games">Games</a><a href="#bets" role="tab" data-tab="bets" aria-controls="bets">Best bets</a><a href="#ratings" role="tab" data-tab="ratings" aria-controls="ratings">Ratings</a><a href="#backtest" role="tab" data-tab="backtest" aria-controls="backtest">Track record</a><a href="#how" role="tab" data-tab="how" aria-controls="how">Glossary</a></div></nav>
+<nav class="toc" aria-label="Sections"><div class="wrap" role="tablist"><a href="#games" role="tab" data-tab="games" aria-controls="games">Games</a><a href="#bets" role="tab" data-tab="bets" aria-controls="bets">Best bets</a><a href="#leans" role="tab" data-tab="leans" aria-controls="leans">Leans</a><a href="#ratings" role="tab" data-tab="ratings" aria-controls="ratings">Ratings</a><a href="#backtest" role="tab" data-tab="backtest" aria-controls="backtest">Track record</a><a href="#how" role="tab" data-tab="how" aria-controls="how">Glossary</a></div></nav>
 <main class="wrap">
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
   <section id="bets"><h2>Best bets</h2>
@@ -225,6 +230,160 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a 3% edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
+  <section id="leans"><h2>Leans</h2>
+    <p class="lede">Positive edges below the 3% betting bar. <b>These are not bets.</b> They're tracked to test whether the bar is set right:
+    if leans keep beating the closing line, some of them should be bets; if they don't, the bar is doing its job.
+    Their record is kept separate from the bet record.</p>
+    <div class="leanstrip"><div><span>Game leans</span><b>0-0</b><em>+0.0 units · avg CLV <i class="">—</i> · 13 logged</em></div><div><span>Prop leans</span><b>0-3</b><em>-3.0 units · avg CLV <i class="">—</i> · 58 logged</em></div></div>
+    <div class="best">
+      <div><h3>Game leans</h3><div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
+      <tbody><tr><td><b>SEA ML -142</b><span class="cell-sub">KC @ SEA · Sun Oct 25 · 7:20 PM CT</span></td>
+        <td class="n">-142</td><td class="n" title="Break-even 58.7%">60.2%</td>
+        <td class="n">+2.9%</td></tr><tr><td><b>SF ML -148</b><span class="cell-sub">SF @ ATL · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-148</td><td class="n" title="Break-even 59.7%">61.0%</td>
+        <td class="n">+2.4%</td></tr><tr><td><b>Over 44.5</b><span class="cell-sub">PIT @ NO · Sun Oct 25 · 8:30 AM CT</span></td>
+        <td class="n">-110</td><td class="n" title="Break-even 52.4%">53.6%</td>
+        <td class="n">+2.4%</td></tr><tr><td><b>Over 37.5</b><span class="cell-sub">CLE @ TEN · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-102</td><td class="n" title="Break-even 50.5%">51.6%</td>
+        <td class="n">+2.3%</td></tr><tr><td><b>Over 41.5</b><span class="cell-sub">IND @ MIN · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-110</td><td class="n" title="Break-even 52.4%">53.6%</td>
+        <td class="n">+2.2%</td></tr><tr><td><b>MIA +4.5</b><span class="cell-sub">MIA @ NYJ · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-105</td><td class="n" title="Break-even 51.2%">52.2%</td>
+        <td class="n">+1.9%</td></tr><tr><td><b>PHI +4.5</b><span class="cell-sub">DAL @ PHI · Mon Oct 26 · 7:15 PM CT</span></td>
+        <td class="n">-108</td><td class="n" title="Break-even 51.9%">52.9%</td>
+        <td class="n">+1.8%</td></tr><tr><td><b>MIA ML +185</b><span class="cell-sub">MIA @ NYJ · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">+185</td><td class="n" title="Break-even 35.1%">35.5%</td>
+        <td class="n">+1.5%</td></tr><tr><td><b>SEA -3.0</b><span class="cell-sub">KC @ SEA · Sun Oct 25 · 7:20 PM CT</span></td>
+        <td class="n">+100</td><td class="n" title="Break-even 50.0%">46.9%</td>
+        <td class="n">+1.2%</td></tr><tr><td><b>CLE ML -130</b><span class="cell-sub">CLE @ TEN · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-130</td><td class="n" title="Break-even 56.5%">56.7%</td>
+        <td class="n">+0.6%</td></tr><tr><td><b>BAL ML -115</b><span class="cell-sub">CIN @ BAL · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-115</td><td class="n" title="Break-even 53.5%">53.6%</td>
+        <td class="n">+0.6%</td></tr><tr><td><b>NYG +10.5</b><span class="cell-sub">NYG @ HOU · Sun Oct 25 · 12:00 PM CT</span></td>
+        <td class="n">-112</td><td class="n" title="Break-even 52.8%">53.1%</td>
+        <td class="n">+0.4%</td></tr><tr><td><b>Under 53.5</b><span class="cell-sub">GB @ DET · Sun Oct 25 · 3:25 PM CT</span></td>
+        <td class="n">-105</td><td class="n" title="Break-even 51.2%">51.3%</td>
+        <td class="n">+0.1%</td></tr></tbody></table></div></div>
+      <div><h3>Prop leans</h3><div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead><tbody><tr><td><b>Malik Willis</b> Over 182.5 passing yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">54.3%</td><td class="n">+2.7%</td></tr><tr><td><b>Patrick Mahomes</b> Under 221.5 passing yards<span class="cell-sub">KC @ SEA · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">54.1%</td><td class="n">+2.5%</td></tr><tr><td><b>Wan&#x27;Dale Robinson</b> Over 4.5 receptions<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">+121</td>
+        <td class="n">46.1%</td><td class="n">+1.9%</td></tr><tr><td><b>Greg Dulcich</b> Over 2.5 receptions<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+115</td>
+        <td class="n">47.2%</td><td class="n">+1.6%</td></tr><tr><td><b>MarShawn Lloyd</b> Anytime TD<span class="cell-sub">GB @ DET · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+370</td>
+        <td class="n">21.6%</td><td class="n">+1.3%</td></tr><tr><td><b>Xavier Hutchinson</b> Over 1.5 receptions<span class="cell-sub">NYG @ HOU · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+172</td>
+        <td class="n">37.3%</td><td class="n">+1.3%</td></tr><tr><td><b>John Metchie III</b> Anytime TD<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+1000</td>
+        <td class="n">9.2%</td><td class="n">+1.3%</td></tr><tr><td><b>Reggie Virgil</b> Anytime TD<span class="cell-sub">DEN @ ARI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+1500</td>
+        <td class="n">6.3%</td><td class="n">+1.3%</td></tr><tr><td><b>Emari Demercado</b> Anytime TD<span class="cell-sub">DAL @ PHI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+1800</td>
+        <td class="n">5.3%</td><td class="n">+1.3%</td></tr><tr><td><b>Mitchell Tinsley</b> Anytime TD<span class="cell-sub">CIN @ BAL · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+850</td>
+        <td class="n">10.7%</td><td class="n">+1.3%</td></tr></tbody></table></div><details class="more"><summary>Show all 52 prop leans</summary><div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead><tbody><tr><td><b>Dameon Pierce</b> Anytime TD<span class="cell-sub">DAL @ PHI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+450</td>
+        <td class="n">18.4%</td><td class="n">+1.3%</td></tr><tr><td><b>Josh Cuevas</b> Anytime TD<span class="cell-sub">CIN @ BAL · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+1100</td>
+        <td class="n">8.4%</td><td class="n">+1.1%</td></tr><tr><td><b>Gavin Bartholomew</b> Anytime TD<span class="cell-sub">IND @ MIN · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+1000</td>
+        <td class="n">9.2%</td><td class="n">+1.1%</td></tr><tr><td><b>Sean Tucker</b> Anytime TD<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+650</td>
+        <td class="n">13.5%</td><td class="n">+1.1%</td></tr><tr><td><b>Cody White</b> Anytime TD<span class="cell-sub">LA @ LV · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+1100</td>
+        <td class="n">8.4%</td><td class="n">+1.0%</td></tr><tr><td><b>Devin Singletary</b> Anytime TD<span class="cell-sub">NYG @ HOU · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+700</td>
+        <td class="n">12.6%</td><td class="n">+1.0%</td></tr><tr><td><b>Brock Purdy</b> Over 241.5 passing yards<span class="cell-sub">SF @ ATL · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">53.3%</td><td class="n">+1.0%</td></tr><tr><td><b>Mike Gesicki</b> Anytime TD<span class="cell-sub">CIN @ BAL · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+350</td>
+        <td class="n">22.4%</td><td class="n">+0.9%</td></tr><tr><td><b>Aaron Jones</b> Anytime TD<span class="cell-sub">IND @ MIN · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+100</td>
+        <td class="n">50.4%</td><td class="n">+0.9%</td></tr><tr><td><b>DJ Giddens</b> Anytime TD<span class="cell-sub">IND @ MIN · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+3000</td>
+        <td class="n">3.3%</td><td class="n">+0.8%</td></tr><tr><td><b>RJ Harvey</b> Anytime TD<span class="cell-sub">DEN @ ARI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+270</td>
+        <td class="n">27.2%</td><td class="n">+0.7%</td></tr><tr><td><b>Michael Penix Jr.</b> Over 228.5 passing yards<span class="cell-sub">SF @ ATL · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-113</td>
+        <td class="n">53.4%</td><td class="n">+0.7%</td></tr><tr><td><b>Geno Smith</b> Over 220.5 passing yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-111</td>
+        <td class="n">53.0%</td><td class="n">+0.7%</td></tr><tr><td><b>Omar Cooper Jr.</b> Anytime TD<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+390</td>
+        <td class="n">20.5%</td><td class="n">+0.6%</td></tr><tr><td><b>Pierre Strong</b> Anytime TD<span class="cell-sub">GB @ DET · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+360</td>
+        <td class="n">21.9%</td><td class="n">+0.6%</td></tr><tr><td><b>MarShawn Lloyd</b> Over 11.5 rushing yards<span class="cell-sub">GB @ DET · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-107</td>
+        <td class="n">52.0%</td><td class="n">+0.6%</td></tr><tr><td><b>Justin Jefferson</b> Under 5.5 receptions<span class="cell-sub">IND @ MIN · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+105</td>
+        <td class="n">49.0%</td><td class="n">+0.5%</td></tr><tr><td><b>Sam LaPorta</b> Under 4.5 receptions<span class="cell-sub">GB @ DET · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">+127</td>
+        <td class="n">44.3%</td><td class="n">+0.5%</td></tr><tr><td><b>Chris Bell</b> Over 20.5 receiving yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-108</td>
+        <td class="n">52.2%</td><td class="n">+0.5%</td></tr><tr><td><b>Wan&#x27;Dale Robinson</b> Over 35.5 receiving yards<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">-110</td>
+        <td class="n">52.6%</td><td class="n">+0.4%</td></tr><tr><td><b>RJ Harvey</b> Over 18.5 rushing yards<span class="cell-sub">DEN @ ARI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">53.0%</td><td class="n">+0.4%</td></tr><tr><td><b>Carnell Tate</b> Over 4.5 receptions<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">-105</td>
+        <td class="n">51.4%</td><td class="n">+0.4%</td></tr><tr><td><b>Jerry Jeudy</b> Over 22.5 receiving yards<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">-111</td>
+        <td class="n">52.8%</td><td class="n">+0.4%</td></tr><tr><td><b>Elic Ayomanor</b> Over 13.5 receiving yards<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">-108</td>
+        <td class="n">52.1%</td><td class="n">+0.3%</td></tr><tr><td><b>Kenny Gainwell</b> Over 11.5 rushing yards<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-115</td>
+        <td class="n">53.6%</td><td class="n">+0.3%</td></tr><tr><td><b>Alvin Kamara</b> Over 16.5 rushing yards<span class="cell-sub">PIT @ NO · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">53.0%</td><td class="n">+0.2%</td></tr><tr><td><b>Malachi Fields</b> Over 20.5 receiving yards<span class="cell-sub">NYG @ HOU · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-113</td>
+        <td class="n">53.2%</td><td class="n">+0.2%</td></tr><tr><td><b>Jaylen Wright</b> Over 14.5 rushing yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-118</td>
+        <td class="n">54.2%</td><td class="n">+0.2%</td></tr><tr><td><b>Greg Dulcich</b> Over 20.5 receiving yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-115</td>
+        <td class="n">53.6%</td><td class="n">+0.2%</td></tr><tr><td><b>Kyren Williams</b> Over 24.5 receiving yards<span class="cell-sub">LA @ LV · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-111</td>
+        <td class="n">52.7%</td><td class="n">+0.2%</td></tr><tr><td><b>Mason Taylor</b> Over 20.5 receiving yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-116</td>
+        <td class="n">53.8%</td><td class="n">+0.2%</td></tr><tr><td><b>Caleb Douglas</b> Over 35.5 receiving yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-113</td>
+        <td class="n">53.1%</td><td class="n">+0.1%</td></tr><tr><td><b>Troy Franklin</b> Over 15.5 receiving yards<span class="cell-sub">DEN @ ARI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-114</td>
+        <td class="n">53.4%</td><td class="n">+0.1%</td></tr><tr><td><b>Carnell Tate</b> Over 53.5 receiving yards<span class="cell-sub">CLE @ TEN · DK Thu Oct 22, 3:38 PM CT</span></td>
+        <td class="n">-110</td>
+        <td class="n">52.4%</td><td class="n">+0.1%</td></tr><tr><td><b>Kenyon Sadiq</b> Over 21.5 receiving yards<span class="cell-sub">MIA @ NYJ · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-112</td>
+        <td class="n">52.9%</td><td class="n">+0.1%</td></tr><tr><td><b>Cade Otton</b> Under 3.5 receptions<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">+123</td>
+        <td class="n">44.9%</td><td class="n">+0.1%</td></tr><tr><td><b>Tucker Kraft</b> Over 4.5 receptions<span class="cell-sub">GB @ DET · DK Thu Oct 22, 3:40 PM CT</span></td>
+        <td class="n">-101</td>
+        <td class="n">50.3%</td><td class="n">+0.1%</td></tr><tr><td><b>Kenny Gainwell</b> Over 13.5 receiving yards<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-111</td>
+        <td class="n">52.6%</td><td class="n">+0.1%</td></tr><tr><td><b>Jahan Dotson</b> Over 26.5 receiving yards<span class="cell-sub">SF @ ATL · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-114</td>
+        <td class="n">53.3%</td><td class="n">+0.1%</td></tr><tr><td><b>Jacoby Brissett</b> Under 229.5 passing yards<span class="cell-sub">DEN @ ARI · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-113</td>
+        <td class="n">53.1%</td><td class="n">+0.1%</td></tr><tr><td><b>Baker Mayfield</b> Over 16.5 rushing yards<span class="cell-sub">TB @ CAR · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-114</td>
+        <td class="n">53.3%</td><td class="n">+0.1%</td></tr><tr><td><b>Alvin Kamara</b> Over 11.5 receiving yards<span class="cell-sub">PIT @ NO · DK Thu Oct 22, 3:39 PM CT</span></td>
+        <td class="n">-116</td>
+        <td class="n">53.7%</td><td class="n">+0.0%</td></tr></tbody></table></div></details></div>
+    </div>
+    <h3 class="final-head">Played</h3>
+    <div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Price</th><th class="n hide-sm">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead>
+    <tbody><tr><td>Caleb Williams Under 247.5 passing yards<span class="cell-sub">NE @ CHI · logged Thu Oct 22, 6:44 PM CT</span></td>
+        <td class="n">-111</td><td class="n hide-sm">+1.0%</td>
+        <td class="n ">—</td>
+        <td><span class="bad">Loss</span><span class="cell-sub">(-1.00u)</span></td></tr><tr><td>TreVeyon Henderson Over 24.5 rushing yards<span class="cell-sub">NE @ CHI · logged Thu Oct 22, 6:44 PM CT</span></td>
+        <td class="n">-110</td><td class="n hide-sm">+0.5%</td>
+        <td class="n ">—</td>
+        <td><span class="bad">Loss</span><span class="cell-sub">(-1.00u)</span></td></tr><tr><td>Roschon Johnson Over 6.5 receiving yards<span class="cell-sub">NE @ CHI · logged Thu Oct 22, 6:44 PM CT</span></td>
+        <td class="n">-115</td><td class="n hide-sm">+0.0%</td>
+        <td class="n ">—</td>
+        <td><span class="bad">Loss</span><span class="cell-sub">(-1.00u)</span></td></tr></tbody></table></div>
+    <p class="note">Leans are small edges, so a few dozen results say little. Judge them by average CLV (how the price compared with the closing line) before win-loss.
+    Each lean is logged at the first price it appeared; finished games move to Played with the result.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
     A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
@@ -3061,7 +3220,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>
-<footer><div class="wrap">Generated Oct 23, 2026 at 12:31 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
+<footer><div class="wrap">Generated Oct 23, 2026 at 12:39 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
 <script>
 (function(){
@@ -3093,4 +3252,3 @@ For entertainment and analysis. Bet only what you can afford to lose. Help is av
   if(location.hash){window.addEventListener('load',function(){[0,150,400].forEach(function(t){setTimeout(function(){window.scrollTo(0,0)},t)})})}
 })();
 </script>
-</body></html>

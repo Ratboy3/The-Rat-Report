@@ -94,6 +94,103 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
+def _leans_section(live, props, log) -> str:
+    """Positive edges below the betting bar: open ones for games not yet played, then how past leans did."""
+    from .clv import summary
+    live_keys = {f"{it['g'].away_team} @ {it['g'].home_team}" for it in live}
+    # record strip (kept apart from the bet record)
+    strip = ""
+    sm_ = summary(log) if log is not None and len(log) else None
+    if sm_:
+        cells = []
+        for k, lab in (("Leans: games", "Game leans"), ("Leans: props", "Prop leans")):
+            v = sm_.get(k)
+            if not v or not v["bets"]:
+                cells.append(f'<div><span>{lab}</span><b>—</b><em>none logged yet</em></div>')
+                continue
+            clv = _signed_pct(v["clv"]) if v["with_close"] else "—"
+            cls = "good" if v["with_close"] and v["clv"] > 0 else ("bad" if v["with_close"] and v["clv"] < 0 else "")
+            pushes = v["settled"] - v["wins"] - v["losses"]
+            cells.append(f'<div><span>{lab}</span><b>{v["wins"]}-{v["losses"]}{f"-{pushes}" if pushes else ""}</b>'
+                         f'<em>{v["units"]:+.1f} units · avg CLV <i class="{cls}">{clv}</i> · {v["bets"]} logged</em></div>')
+        strip = f'<div class="leanstrip">{"".join(cells)}</div>'
+
+    # open game leans
+    grows = []
+    for it in live:
+        g = it["g"]
+        for o in it["opts"]:
+            if 0 < o["ev"] < C.MIN_EV:
+                grows.append((o["ev"], g, o))
+    grows.sort(key=lambda r: -r[0])
+    games_html = ('<p class="empty">No game leans right now.</p>' if not grows else
+                  f"""<div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
+      <tbody>{''.join(f'''<tr><td><b>{escape(o['pick'])}</b><span class="cell-sub">{g.away_team} @ {g.home_team} · {_kickoff(g)}</span></td>
+        <td class="n">{_odds(o['odds'])}</td><td class="n" title="Break-even {_pct(implied(o['odds']), 1)}">{_pct(o['win_prob'], 1)}</td>
+        <td class="n">{_signed_pct(ev)}</td></tr>''' for ev, g, o in grows)}</tbody></table></div>""")
+
+    # open prop leans: biggest edges shown, the rest behind a toggle
+    props_html = '<p class="empty">No prop leans right now.</p>'
+    if props is not None and not props.empty and "line" in props:
+        pl = props[props.line.notna() & (props.ev > 0) & ~props.flag.astype(bool) & props.game.isin(live_keys)]
+        pl = pl.sort_values("ev", ascending=False)
+        if len(pl):
+            def prow(r):
+                what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
+                return (f"""<tr><td><b>{escape(r.player)}</b> {what}<span class="cell-sub">{escape(r.game)} · DK {escape(str(r.as_of))}</span></td>
+        <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
+        <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td><td class="n">{_signed_pct(r.ev)}</td></tr>""")
+            head = '<thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>'
+            top, rest = pl.head(10), pl.iloc[10:]
+            props_html = f'<div class="tablebox"><table>{head}<tbody>{"".join(prow(r) for r in top.itertuples())}</tbody></table></div>'
+            if len(rest):
+                props_html += (f'<details class="more"><summary>Show all {len(pl)} prop leans</summary><div class="tablebox"><table>{head}'
+                               f'<tbody>{"".join(prow(r) for r in rest.itertuples())}</tbody></table></div></details>')
+
+    # past leans (kickoff passed): newest first, with closing line value and result
+    past_html = ""
+    if log is not None and len(log) and "tier" in log:
+        lg = log[log.tier.fillna("bet") == "lean"].copy()
+        ko = pd.to_datetime(lg.kickoff, utc=True, errors="coerce")
+        lg = lg[ko <= pd.Timestamp.now(tz="UTC")].assign(_ko=ko).sort_values(["_ko", "ev"], ascending=[False, False])
+        if len(lg):
+            def res(r):
+                if isinstance(r.result, str) and r.result:
+                    c = "good" if r.result == "win" else ("bad" if r.result == "loss" else "")
+                    pnl = f" ({float(r.pnl):+.2f}u)" if pd.notna(r.pnl) else ""
+                    return f'<span class="{c}">{escape(r.result.capitalize())}</span><span class="cell-sub">{pnl.strip()}</span>'
+                return '<span class="muted">Awaiting stats</span>' if r.market == "prop" else '<span class="muted">Pending</span>'
+            rows = "".join(
+                f"""<tr><td>{escape(_pretty_pick(r.pick))}<span class="cell-sub">{escape(str(r.game))} · logged {escape(str(r.logged_at))}</span></td>
+        <td class="n">{_odds(r.odds)}</td><td class="n hide-sm">{_signed_pct(r.ev)}</td>
+        <td class="n {'good' if pd.notna(r.clv) and r.clv > 0 else 'bad' if pd.notna(r.clv) and r.clv < 0 else ''}">{_signed_pct(r.clv) if pd.notna(r.clv) else '—'}</td>
+        <td>{res(r)}</td></tr>""" for r in lg.head(40).itertuples())
+            past_html = f"""<h3 class="final-head">Played</h3>
+    <div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Price</th><th class="n hide-sm">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead>
+    <tbody>{rows}</tbody></table></div>"""
+
+    return f"""<section id="leans"><h2>Leans</h2>
+    <p class="lede">Positive edges below the {C.MIN_EV:.0%} betting bar. <b>These are not bets.</b> They're tracked to test whether the bar is set right:
+    if leans keep beating the closing line, some of them should be bets; if they don't, the bar is doing its job.
+    Their record is kept separate from the bet record.</p>
+    {strip}
+    <div class="best">
+      <div><h3>Game leans</h3>{games_html}</div>
+      <div><h3>Prop leans</h3>{props_html}</div>
+    </div>
+    {past_html}
+    <p class="note">Leans are small edges, so a few dozen results say little. Judge them by average CLV (how the price compared with the closing line) before win-loss.
+    Each lean is logged at the first price it appeared; finished games move to Played with the result.</p></section>"""
+
+
+def _pretty_pick(pick) -> str:
+    """'Caleb Williams Under 247.5 pass_yds' -> 'Caleb Williams Under 247.5 passing yards'."""
+    t = str(pick)
+    for k, v in STAT_LABEL.items():
+        t = t.replace(f" {k}", f" {v.lower()}")
+    return t
+
+
 def _short_inj(text: str) -> str:
     """Compact injury note for tight lists: 'Limited in practice (Not injury related - resting player)' -> 'Limited (rest day)'."""
     t = str(text)
@@ -841,6 +938,13 @@ table.props td{vertical-align:middle}
 .card-news .cell-sub{margin-top:2px}
 .best{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
 .best h3{margin-top:4px}
+.leanstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:4px 0 18px}
+.leanstrip>div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+.leanstrip span{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.leanstrip b{display:block;font:700 26px/1.1 var(--display);margin:2px 0}
+.leanstrip em{font-style:normal;font-size:12.5px;color:var(--muted)} .leanstrip i{font-style:normal;font-weight:600}
+#leans .final-head{margin-top:24px}
+@media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
 details.more{margin-top:4px}
@@ -917,7 +1021,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     cards = "".join(card(gi, it) for gi, it in enumerate(live))
     if done:
         cards += '<h3 class="final-head">Final</h3>' + "".join(card(len(live) + gi, it) for gi, it in enumerate(done))
-    tabs = [("games", "Games"), ("bets", "Best bets"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
+    tabs = [("games", "Games"), ("bets", "Best bets"), ("leans", "Leans"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
@@ -954,6 +1058,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
+  {_leans_section(live, auto_props, clv_log)}
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
     A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
