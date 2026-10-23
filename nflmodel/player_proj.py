@@ -327,6 +327,12 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # history already carries their coach's style. Off; the rating is shown on game cards for information.
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
        "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False}
+# The Tuesday props-backtest --agg-test writes agg_test.csv; its verdict sets the switch.
+try:
+    _t = pd.read_csv(Path(__file__).resolve().parent.parent / "agg_test.csv")
+    USE["agg"] = bool(str(_t.use_agg.iloc[-1]).strip().lower() == "true")
+except Exception:
+    pass
 AGG_TD_PER_10 = 0.18    # extra team TDs per game per +10 pct pts of coach go-for-it rate over expected
 AIR_W = 0.5             # weight on the usage-based estimate (air yards + targets) for receiving props
 AIR_YDS_COEF, TGT_YDS_COEF = 0.204, 5.812   # receiving yards ~ 0.204 x air yards + 5.8 x targets (fit on 2025)

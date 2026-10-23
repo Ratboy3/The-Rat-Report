@@ -279,12 +279,38 @@ def cmd_props_backtest(a):
     from nflmodel import props_backtest as B
     games = load_games(refresh=False)
     s, w = next_week(games)
-    rows = B.run(games, B.default_weeks(games, (s, w)))
+    weeks = B.default_weeks(games, (s, w))
+    from nflmodel import player_proj as PP
+    current = PP.USE["agg"]
+    rows = B.run(games, weeks)
     sc = B.score(rows)
     base = B.baseline(rows, games)
     sc = sc.merge(base, on="stat", how="left")
     sc.to_csv(a.out, index=False)
     print(sc.round(3).to_string(index=False))
+    if a.agg_test:
+        # weekly check: does the coach-aggressiveness TD boost now make TD props more accurate?
+        PP.USE["agg"] = not current
+        other = B.run(games, weeks)
+        PP.USE["agg"] = current
+        on, off = (other, rows) if not current else (rows, other)
+
+        def brier(r, season=None):
+            t = r[(r.stat == "anytime_td") & ((r.season == season) if season else True)]
+            p = t.projection.clip(0.01, 0.99)
+            return float(((p - t.actual) ** 2).mean()), len(t)
+        b_on, n = brier(on)
+        b_off, _ = brier(off)
+        c_on, cn = brier(on, s)
+        c_off, _ = brier(off, s)
+        use = bool(b_on < b_off and c_on < c_off)   # must be better overall AND this season
+        res = pd.DataFrame([dict(checked=pd.Timestamp.now(tz="America/Chicago").strftime("%a %b %-d, %-I:%M %p CT"),
+                                 brier_off=round(b_off, 5), brier_on=round(b_on, 5), td_props=n,
+                                 season=s, season_brier_off=round(c_off, 5), season_brier_on=round(c_on, 5),
+                                 season_td_props=cn, use_agg=use)])
+        res.to_csv(a.agg_out, index=False)
+        print(f"\nCoach aggressiveness TD test: Brier off {b_off:.5f} vs on {b_on:.5f} (this season {c_off:.5f} vs {c_on:.5f})"
+              f" -> {'ON' if use else 'OFF'} (saved {a.agg_out})")
 
 
 def cmd_build_extras(a):
@@ -363,6 +389,9 @@ def main():
     sub.add_parser("build-aggression", help="every 4th-down decision and PAT since 2006 -> data/fourth_downs.csv (one-time)")
     pb = sub.add_parser("props-backtest", help="replay past weeks of player projections against results")
     pb.add_argument("--out", default="prop_backtest.csv")
+    pb.add_argument("--agg-test", action="store_true", help="also replay with the coach-aggressiveness TD boost flipped; "
+                    "writes agg_test.csv, which switches it on only if better overall and this season")
+    pb.add_argument("--agg-out", default="agg_test.csv")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
