@@ -1,9 +1,9 @@
-# checked: Fri Oct 23, 9:44 AM CT
+# checked: Fri Oct 23, 1:38 PM CT
 game_id,game,kickoff,wind_mph,temp_f,precip_mm,fetched_at
-2026_07_CIN_BAL,CIN @ BAL,"Sun Oct 25, 12:00 PM CT",2.8,64.3,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_07_TB_CAR,TB @ CAR,"Sun Oct 25, 12:00 PM CT",8.5,67.4,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_07_MIA_NYJ,MIA @ NYJ,"Sun Oct 25, 12:00 PM CT",2.9,65.0,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_07_CLE_TEN,CLE @ TEN,"Sun Oct 25, 12:00 PM CT",1.7,74.7,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_07_KC_SEA,KC @ SEA,"Sun Oct 25, 7:20 PM CT",7.1,51.3,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_07_DAL_PHI,DAL @ PHI,"Mon Oct 26, 7:15 PM CT",4.3,60.2,0.0,"Fri Oct 23, 9:44 AM CT"
-2026_08_CAR_GB,CAR @ GB,"Thu Oct 29, 7:15 PM CT",7.5,42.3,0.0,"Fri Oct 23, 9:44 AM CT"
+2026_07_CIN_BAL,CIN @ BAL,"Sun Oct 25, 12:00 PM CT",3.9,64.3,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_07_TB_CAR,TB @ CAR,"Sun Oct 25, 12:00 PM CT",9.1,68.2,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_07_MIA_NYJ,MIA @ NYJ,"Sun Oct 25, 12:00 PM CT",3.4,65.7,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_07_CLE_TEN,CLE @ TEN,"Sun Oct 25, 12:00 PM CT",1.5,74.6,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_07_KC_SEA,KC @ SEA,"Sun Oct 25, 7:20 PM CT",7.2,50.9,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_07_DAL_PHI,DAL @ PHI,"Mon Oct 26, 7:15 PM CT",4.5,60.7,0.0,"Fri Oct 23, 1:38 PM CT"
+2026_08_CAR_GB,CAR @ GB,"Thu Oct 29, 7:15 PM CT",9.2,52.5,0.0,"Fri Oct 23, 1:38 PM CT"
