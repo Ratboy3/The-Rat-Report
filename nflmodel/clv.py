@@ -8,6 +8,9 @@ CLV = how much better our bet was than making the same bet at the closing line a
 measured with the no-vig closing market. value_at_close = our bet's expected profit judged by that closing market. Beating the close
 consistently is the earliest reliable sign a model has a real edge; win/loss records take years.
 
+Leans (positive edge below the betting bar) are logged and graded the same way with tier "lean", under their
+own id, so they never mix into the bet record; a lean that later becomes a bet gets a separate bet entry.
+
 Log file: bets_log.csv (kept with the other inputs so every hourly run adds to it).
 """
 from __future__ import annotations
@@ -26,7 +29,7 @@ ET = ZoneInfo("America/New_York")
 CT = ZoneInfo("America/Chicago")
 COLS = ["bet_id", "logged_at", "season", "week", "game_id", "game", "kickoff", "market", "side", "pick", "player",
         "stat", "line", "odds", "model_prob", "ev", "close_line", "close_odds", "close_odds2", "close_at", "clv", "value_at_close",
-        "result", "pnl"]
+        "result", "pnl", "tier"]
 
 
 def _kickoff(g) -> datetime:
@@ -84,7 +87,8 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
     for c in COLS:
         if c not in log:
             log[c] = np.nan
-    log = log[COLS].astype({c: "object" for c in ("player", "stat", "close_at", "result")})
+    log["tier"] = log["tier"].fillna("bet")
+    log = log[COLS].astype({c: "object" for c in ("player", "stat", "close_at", "result", "tier")})
     known = set(log.bet_id)
     gid = {f"{g.away_team} @ {g.home_team}": g for _, g in proj.iterrows()}
     started = {k: _kickoff(g) <= now for k, g in gid.items()}
@@ -97,30 +101,35 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
         if started.get(key):
             continue
         for o in item["opts"]:
-            if o["ev"] < C.MIN_EV:
+            if o["ev"] <= 0:
                 continue
+            tier = "bet" if o["ev"] >= C.MIN_EV else "lean"
             line = g.spread_line if o["market"] == "spread" else (g.total_line if o["market"] == "total" else np.nan)
-            bid = f"{g.game_id}|{o['market']}|{o['side']}||"
+            bid = f"{g.game_id}|{o['market']}|{o['side']}||" + ("" if tier == "bet" else "|lean")
             if bid in known:
                 continue
+            known.add(bid)
             new.append(dict(bet_id=bid, logged_at=_stamp(now), season=season, week=week, game_id=g.game_id, game=key,
                             kickoff=_kickoff(g).isoformat(), market=o["market"], side=o["side"], pick=o["pick"],
                             player="", stat="", line=line, odds=o["odds"], model_prob=round(o["win_prob"], 4),
-                            ev=round(o["ev"], 4)))
+                            ev=round(o["ev"], 4), tier=tier))
     if props is not None and len(props):
-        for r in props[props.flag.astype(bool)].itertuples():
+        for r in props[props.flag.astype(bool) | (props.ev > 0)].itertuples():
             g = gid.get(r.game)
-            if g is None or started.get(r.game):
+            if g is None or started.get(r.game) or pd.isna(r.line) or pd.isna(r.ev):
                 continue
-            bid = f"{g.game_id}|prop|{r.best_side}|{r.player}|{r.stat}"
+            tier = "bet" if bool(r.flag) else "lean"
+            bid = f"{g.game_id}|prop|{r.best_side}|{r.player}|{r.stat}" + ("" if tier == "bet" else "|lean")
             if bid in known:
                 continue
+            known.add(bid)
             odds = r.over_odds if r.best_side == "Over" else r.under_odds
             what = "anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {r.stat}"
             new.append(dict(bet_id=bid, logged_at=_stamp(now), season=season, week=week, game_id=g.game_id, game=r.game,
                             kickoff=_kickoff(g).isoformat(), market="prop", side=r.best_side, pick=f"{r.player} {what}",
                             player=r.player, stat=r.stat, line=r.line, odds=odds,
-                            model_prob=round(float(r.p_over if r.best_side == "Over" else 1 - r.p_over), 4), ev=round(r.ev, 4)))
+                            model_prob=round(float(r.p_over if r.best_side == "Over" else 1 - r.p_over), 4), ev=round(r.ev, 4),
+                            tier=tier))
     if new:
         log = pd.concat([log, pd.DataFrame(new)], ignore_index=True)
 
@@ -207,7 +216,10 @@ def summary(log: pd.DataFrame | None) -> dict | None:
     now = datetime.now(CT)
     closed = pd.to_datetime(log.kickoff, utc=True, errors="coerce") <= pd.Timestamp(now)
     log = log.assign(closed=closed.values)
-    for name, part in (("All bets", log), ("Game bets", log[log.market != "prop"]), ("Props", log[log.market == "prop"])):
+    tier = log["tier"].fillna("bet") if "tier" in log else pd.Series("bet", index=log.index)
+    bets, leans = log[tier == "bet"], log[tier == "lean"]
+    for name, part in (("All bets", bets), ("Game bets", bets[bets.market != "prop"]), ("Prop bets", bets[bets.market == "prop"]),
+                       ("Leans: games", leans[leans.market != "prop"]), ("Leans: props", leans[leans.market == "prop"])):
         c = part[part.clv.notna() & part.closed]
         s = part[part.result.isin(["win", "loss", "push"])]
         out[name] = dict(bets=len(part), with_close=len(c), clv=float(c.clv.mean()) if len(c) else np.nan,

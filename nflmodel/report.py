@@ -229,20 +229,32 @@ def _clv_section(log) -> str:
         <td class="n">{f"{v['beat']:.0%}" if v['with_close'] else '—'}</td>
         <td class="n">{v['wins']}-{v['losses']}</td><td class="n">{v['units']:+.1f}</td></tr>"""
         for k, v in sm_.items() if v["bets"])
-    recent = log.sort_values("logged_at").tail(12).iloc[::-1]
+    tier = log["tier"].fillna("bet") if "tier" in log else pd.Series("bet", index=log.index)
+    recent = log[tier == "bet"].sort_values("logged_at").tail(12).iloc[::-1]
     rec_rows = "".join(
         f"""<tr><td>{escape(str(r.pick))}<span class="cell-sub">{escape(str(r.game))} · logged {escape(str(r.logged_at))}</span></td>
         <td class="n">{_odds(r.odds)}</td><td class="n">{_signed_pct(r.ev)}</td>
         <td class="n {'good' if pd.notna(r.clv) and r.clv > 0 else 'bad' if pd.notna(r.clv) and r.clv < 0 else ''}">{_signed_pct(r.clv) if pd.notna(r.clv) else '—'}</td>
         <td>{escape(str(r.result)) if isinstance(r.result, str) and r.result else 'Open'}</td></tr>"""
         for r in recent.itertuples())
+    lean_log = log[tier == "lean"]
+    settled = lean_log[lean_log.result.isin(["win", "loss", "push"])].sort_values("logged_at").iloc[::-1].head(15)
+    lean_rows = "".join(
+        f"""<tr><td>{escape(str(r.pick))}<span class="cell-sub">{escape(str(r.game))}</span></td>
+        <td class="n">{_odds(r.odds)}</td><td class="n">{_signed_pct(r.ev)}</td>
+        <td>{escape(str(r.result)).capitalize()}</td></tr>""" for r in settled.itertuples())
+    lean_more = (f"""<details class="more"><summary>Latest settled leans</summary><div class="tablebox"><table><thead><tr><th>Lean</th>
+    <th class="n">Price</th><th class="n">Edge then</th><th>Result</th></tr></thead><tbody>{lean_rows}</tbody></table></div></details>"""
+                 if lean_rows else "")
     return f"""<h3>Closing line value (live)</h3>
     <p class="lede">Every flagged bet is logged at the price when it was first flagged, then re-priced at the closing
-    DraftKings line. Positive CLV means the bet was worth more than the closing market said: the earliest reliable sign of a real edge.</p>
-    <div class="tablebox"><table><thead><tr><th>Bets</th><th class="n">Logged</th><th class="n">Closed</th><th class="n">Avg CLV</th>
+    DraftKings line. Positive CLV means the bet was worth more than the closing market said: the earliest reliable sign of a real edge.
+    Leans (small positive edges below the 3% bar) are tracked the same way in their own rows, so they never mix into the bet record.</p>
+    <div class="tablebox"><table><thead><tr><th>Type</th><th class="n">Logged</th><th class="n">Closed</th><th class="n">Avg CLV</th>
     <th class="n">Beat close</th><th class="n">W-L</th><th class="n">Units</th></tr></thead><tbody>{rows}</tbody></table></div>
     <details class="more"><summary>Latest logged bets</summary><div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Price</th>
-    <th class="n">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead><tbody>{rec_rows}</tbody></table></div></details>"""
+    <th class="n">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead><tbody>{rec_rows}</tbody></table></div></details>
+    {lean_more}"""
 
 
 def _prop_bt_section(bt) -> str:
