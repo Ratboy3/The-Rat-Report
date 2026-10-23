@@ -323,7 +323,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
           <dt></dt><dd class="n">{g.away_team} {_odds(g.away_moneyline)}</dd></dl>
           {lean('moneyline')}</div>
       </div>
-      <div class="card-extra">{_card_tds(tds)}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
+      <div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
       {_card_injuries(g, inj, (mkt or {}).get('qb'))}
       {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
     </article>"""
@@ -450,25 +450,52 @@ def _card_injuries(g, inj, qbs=None) -> str:
             'Already in the pure model line.</p></div>')
 
 
-def _card_tds(tds) -> str:
-    """Five most likely anytime touchdown scorers in a game: chance, fair odds and the DraftKings price."""
+TD_PER_TEAM = 3   # most likely scorers shown per team, so both sides of every game are listed
+
+
+def _card_tds(tds, best=None) -> str:
+    """Most likely anytime touchdown scorers in a game (top 3 per team): chance, fair odds and the DraftKings price,
+    plus the best touchdown value in the game (the price that beats fair odds by the most)."""
     if tds is None or len(tds) == 0:
         return ""
-    rows = []
-    for r in tds.itertuples():
+    best = best or {}
+    top = (tds.sort_values("adj_projection", ascending=False).groupby("team", sort=False).head(TD_PER_TEAM)
+           .sort_values("adj_projection", ascending=False))
+    rows, model_only = [], False
+    for r in top.itertuples():
         dk = getattr(r, "over_odds", float("nan"))
         fair = fair_american(r.adj_projection)
+        priced = pd.notna(getattr(r, "market_prob", np.nan))
         if pd.notna(dk):
             value = (dk / 100 + 1 if dk > 0 else 100 / -dk + 1) * r.adj_projection > 1
             dk_cell = f'<span class="n tdk{" good" if value else ""}">{_odds(dk)}</span>'
         else:
             dk_cell = '<span class="n tdk muted">—</span>'
+        star = "" if priced else '<sup class="muted" title="No market price yet: model only">*</sup>'
+        model_only |= not priced
         inj = f'<span class="inj">{escape(_short_inj(r.injury))}</span>' if r.injury else ""
         rows.append(f"""<li><span class="tdn">{escape(r.player)} <span class="muted">{r.position} · {r.team}</span>{inj}</span>
-        <span class="n tdp">{r.adj_projection * 100:.0f}%</span><span class="n tdo">{_odds(fair)}</span>{dk_cell}</li>""")
+        <span class="n tdp">{r.adj_projection * 100:.0f}%{star}</span><span class="n tdo">{_odds(fair)}</span>{dk_cell}</li>""")
+    # best value: biggest edge at DraftKings' price among everyone with a price (not just the likeliest scorers)
+    priced = tds[tds.over_odds.notna() & tds.ev.notna()].sort_values("ev", ascending=False)
+    if len(priced) and priced.ev.iloc[0] > 0:
+        v = priced.iloc[0]
+        other = best.get((v.player, "anytime_td", "Over", 0.5))
+        alt = (f" · best anywhere {_odds(other[1])} {escape(str(other[0]))}"
+               if other and pd.notna(other[1]) and decimal(float(other[1])) > decimal(float(v.over_odds)) else "")
+        tag = "Bet" if v.flag else "Lean"
+        value_line = (f'<p class="tdval"><b>Best TD value:</b> {escape(v.player)} ({v.team}) DK {_odds(v.over_odds)}, '
+                      f'fair {_odds(fair_american(v.adj_projection))}, edge {_signed_pct(v.ev)} · {tag}{alt}</p>')
+    elif len(priced):
+        value_line = '<p class="tdval muted">No DraftKings touchdown price beats fair odds in this game right now.</p>'
+    else:
+        value_line = ""
+    note = "Green DK price = pays more than fair odds (a value bet)."
+    if model_only:
+        note += " * No market price yet, so the chance is the model's alone; it firms up when DraftKings posts the line."
     return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
       <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li>{"".join(rows)}</ol>
-      <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div>"""
+      {value_line}<p class="cell-sub">{note}</p></div>"""
 
 
 def _prop_rows(grp, gi) -> str:
@@ -968,6 +995,7 @@ table.props td{vertical-align:middle}
 .leanstrip b{display:block;font:700 26px/1.1 var(--display);margin:2px 0}
 .leanstrip em{font-style:normal;font-size:12.5px;color:var(--muted)} .leanstrip i{font-style:normal;font-weight:600}
 #leans .final-head{margin-top:24px}
+.tdval{font-size:12.5px;margin:8px 0 2px;line-height:1.4} .tdval b{font-weight:600}
 .books{white-space:nowrap} .books.good{color:var(--good)} .books.bad{color:var(--bad)}
 @media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
@@ -1037,7 +1065,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     td_by_game = {}
     if auto_props is not None and not auto_props.empty:
         td = auto_props[auto_props.stat == "anytime_td"].sort_values("adj_projection", ascending=False)
-        td_by_game = {g: grp.head(5) for g, grp in td.groupby("game", sort=False)}
+        td_by_game = {g: grp for g, grp in td.groupby("game", sort=False)}
     props_by_game = {}
     if auto_props is not None and not auto_props.empty:
         props_by_game = {g: grp for g, grp in auto_props.groupby("game", sort=False)}

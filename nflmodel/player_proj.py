@@ -88,15 +88,35 @@ RZ_TD = {"rz_carries": 0.10, "gl_carries": 0.25, "rz_targets": 0.14, "gl_targets
 RZ_WEIGHT = 0.3         # red-zone rate vs. overall usage: a wash in testing (Brier 0.1901 vs 0.1903), kept light
 
 
-def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list, rz: pd.DataFrame | None = None) -> dict:
+def _zero_games(rows: pd.DataFrame, pid: str, team: str, season: int, team_weeks: list, ros_act: set | None,
+                out_inj: set | None) -> pd.DataFrame:
+    """This season's team games where the player was on the active roster, not ruled out, and got no stats row:
+    real zero-usage games (a backup who didn't play), so one spot start doesn't make him look like a starter."""
+    if not team_weeks or ros_act is None:
+        return rows
+    played = set(rows[rows.season == season].week)
+    add = [w for w in team_weeks if w not in played and (w, pid) in ros_act and (w, pid) not in (out_inj or set())]
+    if not add:
+        return rows
+    z = pd.DataFrame({"season": season, "week": add, "team": team, "player_id": pid})
+    return pd.concat([rows, z], ignore_index=True)
+
+
+def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list, rz: pd.DataFrame | None = None,
+               zero=None) -> dict:
     """Each player's expected share of his team's rushing + receiving touchdowns, from red-zone and overall
     usage plus actual scoring."""
     rate = {}
     for pid in ids:
-        r = stats[stats.player_id == pid].sort_values(["season", "week"], ascending=False)
+        r = stats[stats.player_id == pid]
         if r.empty:
             continue
+        if zero is not None:
+            r = _zero_games(r, pid, team, season, *zero)
+        r = r.sort_values(["season", "week"], ascending=False)
         w = RECENCY ** np.arange(len(r)) * np.where(r.season < season, PRIOR_SEASON_W, 1.0)
+        if USE["newteam"]:   # usage logged for another team says less about his role here
+            w = w * np.where(r.team.fillna(team).to_numpy() != team, NEWTEAM_W, 1.0)
         car = r.carries.fillna(0).to_numpy(float)
         tgt = r.targets.fillna(0).to_numpy(float)
         tds = (r.rushing_tds.fillna(0) + r.receiving_tds.fillna(0)).to_numpy(float)
@@ -113,10 +133,13 @@ def _td_shares(stats: pd.DataFrame, season: int, team: str, ids: list, rz: pd.Da
     return {k: v / tot for k, v in rate.items()} if tot > 0 else {}
 
 
-def _td_per_point(stats: pd.DataFrame, games: pd.DataFrame | None, season: int) -> float:
-    """Rushing + receiving touchdowns per point scored, from recent seasons (about 0.10)."""
+def _td_per_point(stats: pd.DataFrame, games: pd.DataFrame | None, season: int, week: int = 99) -> float:
+    """Rushing + receiving touchdowns per point scored, from recent seasons (about 0.10). Points and TDs come from
+    the same games: only games before this week (the stats are already cut there)."""
     try:
-        g = games[(games.season >= season - 1) & games.result.notna()]
+        g = games[(games.season >= season - 1) & games.result.notna()
+                  & ((games.season < season) | ((games.season == season) & (games.week < week)))
+                  & (games.game_type == "REG")]
         pts = float(g.home_score.sum() + g.away_score.sum())
         s = stats[stats.season >= season - 1]
         tds = float(s.rushing_tds.fillna(0).sum() + s.receiving_tds.fillna(0).sum())
@@ -166,7 +189,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                 per = per[per > 0]
                 typical[(pos, st)] = float(per.quantile(0.6)) if len(per) else 0.0
 
-    tpp = _td_per_point(stats, games, season)
+    tpp = _td_per_point(stats, games, season, week)
     team_pts = {}
     for g in proj.itertuples():
         team_pts[g.home_team] = g.proj_home_pts
@@ -234,7 +257,17 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             if last.position == "QB" and last.player_display_name != qb_name:
                 continue
             eligible.append(pid)
-        shares = _td_shares(stats, season, team, eligible, rz)
+        zero = None
+        if USE["zerofill"] and roster is not None:
+            ra = roster[(roster.team == team) & (roster.status == "ACT")]
+            ros_act = set(zip(ra.week, ra.gsis_id))
+            outs = set()
+            if inj is not None and len(inj):
+                io = inj[(inj.season == season) & (inj.team == team) & inj.report_status.isin(["Out", "Doubtful"])]
+                outs = set(zip(io.week, io.gsis_id))
+            tw = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
+            zero = (tw, ros_act, outs)
+        shares = _td_shares(stats, season, team, eligible, rz, zero)
         redis = _redistribution(stats, season, week, team, on_team, set(eligible))
         vol = _volume_factors(tend, team, opp)
         team_tds = team_pts.get(team, 22.0) * tpp
@@ -340,9 +373,15 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # 22.62 at half weight, 22.82 at full; worse for WRs and in 2026), receptions about even (1.646 -> 1.639, under 2
 # standard errors, worse in 2026). Exact routes from last season's participation data did no better than the
 # snap-share proxy, so the missing 2026 participation file isn't what's holding it back.
+# Fifth round (Oct 23), touchdowns: fixed a bug where TDs per point counted points from games after the replayed
+# week (and postseason points live), which pushed every TD chance down (replay avg 19.7% vs 27.5% actual). Fixed:
+# Brier 0.1956 -> 0.1882 (both seasons better), avg 26.7% vs 27.5% actual. Live TDs per point 0.102 -> 0.106.
+# Tested and off: counting active-but-unused games as zeros (neutral: better 2025, worse 2026) and discounting
+# games for a previous team (slightly worse at 35% and 15% weight).
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
        "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False,
-       "routes": False}
+       "routes": False, "zerofill": False, "newteam": False}
+NEWTEAM_W = 0.35         # weight on a player's games for a previous team, in touchdown shares
 # The Tuesday props-backtest --agg-test writes agg_test.csv; its verdict sets the switch.
 try:
     _t = pd.read_csv(Path(__file__).resolve().parent.parent / "agg_test.csv")
