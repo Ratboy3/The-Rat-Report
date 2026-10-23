@@ -55,6 +55,10 @@ tr.total td{border-top:2px solid var(--line)}
 .cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0}
 .card.has-bet{border-color:var(--flag);box-shadow:inset 0 3px 0 var(--flag)}
+.card.final{border-color:var(--line);box-shadow:none}
+.card.final .pts b{color:var(--ink)}
+.final-lbl{color:var(--ink);text-transform:uppercase;letter-spacing:.06em;font-size:12px}
+.final-head{margin:18px 0 0;color:var(--muted)}
 .card-head{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
 .teams{display:flex;flex-direction:column;gap:4px}
 .team{display:grid;grid-template-columns:52px minmax(0,1fr) auto;column-gap:10px;align-items:baseline}
@@ -171,9 +175,9 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <div class="mast"><div class="wrap">
   <div><p class="kicker">Week 7 · 2026 NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div>
   <div class="mast-stats">
-    <div><b>2</b><span>game bets</span></div>
+    <div><b>1</b><span>game bets</span></div>
     <div><b>6</b><span>prop bets</span></div>
-    <div><b>10:38 PM</b><span>updated (CT)</span></div>
+    <div><b>11:27 PM</b><span>updated (CT)</span></div>
   </div>
 </div></div>
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist"><a href="#games" role="tab" data-tab="games" aria-controls="games">Games</a><a href="#bets" role="tab" data-tab="bets" aria-controls="bets">Best bets</a><a href="#ratings" role="tab" data-tab="ratings" aria-controls="ratings">Ratings</a><a href="#backtest" role="tab" data-tab="backtest" aria-controls="backtest">Track record</a><a href="#how" role="tab" data-tab="how" aria-controls="how">Glossary</a></div></nav>
@@ -184,10 +188,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     <div class="best">
       <div><h3>Games</h3><div class="tablebox"><table>
       <thead><tr><th>Bet</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
-      <tbody><tr><td><b>Under 50.5</b><span class="cell-sub">NE @ CHI · Thu Oct 22 · 7:15 PM CT</span></td>
-        <td class="n">+100</td>
-        <td class="n" title="Break-even 50.0%">53.6%</td>
-        <td class="n good">+7.2%</td></tr><tr><td><b>Over 39.5</b><span class="cell-sub">MIA @ NYJ · Sun Oct 25 · 12:00 PM CT</span></td>
+      <tbody><tr><td><b>Over 39.5</b><span class="cell-sub">MIA @ NYJ · Sun Oct 25 · 12:00 PM CT</span></td>
         <td class="n">-108</td>
         <td class="n" title="Break-even 51.9%">54.5%</td>
         <td class="n good">+5.0%</td></tr></tbody></table></div>
@@ -222,199 +223,8 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
-    A gold bar marks a game with a bet. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
-    <div class="cards"><article class="card has-bet">
-      <header class="card-head">
-        <div class="teams">
-          <div class="team"><span class="abbr">NE</span><span class="nm">Patriots</span>
-            <span class="qb">Drake Maye</span><span class="pts n">23.4</span></div>
-          <div class="team"><span class="abbr">CHI</span><span class="nm">Bears</span>
-            <span class="qb">Caleb Williams</span><span class="pts n">25.9</span></div>
-        </div>
-        <div class="when">Thu Oct 22 · 7:15 PM CT</div>
-        <div class="tags"><span class="tag">NE aggressive on 4th</span></div>
-        
-      </header>
-      <div class="lines">
-        <div class="line"><h4>Spread</h4>
-          <dl><dt>Market</dt><dd class="n">CHI -3.0</dd>
-          <dt>Pure model</dt><dd class="n">CHI PK</dd>
-          <dt>Projection</dt><dd class="n"><b>CHI -2.5</b></dd></dl><div class="lean pass">No edge · NE +3.0 <span class="n">-3.3%</span><span class="cell-sub">Best: MyBookie +3 -110</span></div></div>
-        <div class="line"><h4>Total</h4>
-          <dl><dt>Market</dt><dd class="n">50.5</dd>
-          <dt>Pure model</dt><dd class="n">46.7</dd>
-          <dt>Projection</dt><dd class="n"><b>49.3</b></dd></dl><div class="lean bet">Bet Under 50.5 <span class="n">+7.2%</span><span class="cell-sub">Best: BetUS 51 -110</span></div></div>
-        <div class="line"><h4>Win chance</h4>
-          <div class="wp"><div class="wp-bar"><i style="width:41.5%"></i></div>
-            <div class="wp-lbl n"><span>NE 41%</span><span>CHI 59%</span></div></div>
-          <dl><dt>Fair price</dt><dd class="n">CHI -141</dd>
-          <dt>Book</dt><dd class="n">CHI -155</dd>
-          <dt></dt><dd class="n">NE +130</dd></dl>
-          <div class="lean pass">No edge · CHI ML -155 <span class="n">-3.7%</span><span class="cell-sub">Best: BetRivers -148</span></div></div>
-      </div>
-      <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
-      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">D&#x27;Andre Swift <span class="muted">RB · CHI</span></span>
-        <span class="n tdp">56%</span><span class="n tdo">-129</span><span class="n tdk muted">—</span></li><li><span class="tdn">Rhamondre Stevenson <span class="muted">RB · NE</span></span>
-        <span class="n tdp">37%</span><span class="n tdo">+170</span><span class="n tdk muted">—</span></li><li><span class="tdn">TreVeyon Henderson <span class="muted">RB · NE</span></span>
-        <span class="n tdp">27%</span><span class="n tdo">+265</span><span class="n tdk muted">—</span></li><li><span class="tdn">Colston Loveland <span class="muted">TE · CHI</span></span>
-        <span class="n tdp">26%</span><span class="n tdo">+277</span><span class="n tdk muted">—</span></li><li><span class="tdn">A.J. Brown <span class="muted">WR · NE</span></span>
-        <span class="n tdp">26%</span><span class="n tdo">+282</span><span class="n tdk muted">—</span></li></ol>
-      <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><p class="cell-sub" style="margin:0">No edge · no DraftKings prop lines found yet for this game.</p></div>
-      <details class="allprops"><summary>All 48 props</summary>
-        <div class="tablebox"><table class="props">
-        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">DK line</th>
-        <th class="n">Over</th><th class="n">Under</th><th class="n">Edge</th></tr></thead>
-        <tbody><tr>
-          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Passing yards</span></td>
-          <td class="n">215</td><td class="n">215.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Passing TDs</span></td>
-          <td class="n">1.1</td><td class="n">0.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Rushing yards</span></td>
-          <td class="n">19</td><td class="n">19.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Anytime TD</span></td>
-          <td class="n">21%</td><td class="n">+369</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Rushing yards</span></td>
-          <td class="n">50</td><td class="n">49.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Receiving yards</span></td>
-          <td class="n">21</td><td class="n">21.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Receptions</span></td>
-          <td class="n">2.4</td><td class="n">2.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Anytime TD</span></td>
-          <td class="n">56%</td><td class="n">-129</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Rushing yards</span></td>
-          <td class="n">17</td><td class="n">16.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Receiving yards</span></td>
-          <td class="n">15</td><td class="n">14.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Receptions</span></td>
-          <td class="n">1.4</td><td class="n">1.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Anytime TD</span></td>
-          <td class="n">24%</td><td class="n">+317</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Receiving yards</span></td>
-          <td class="n">33</td><td class="n">33.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Receptions</span></td>
-          <td class="n">3.3</td><td class="n">3.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Anytime TD</span></td>
-          <td class="n">26%</td><td class="n">+277</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
-          <td class="n">27</td><td class="n">26.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Receptions</span></td>
-          <td class="n">3.0</td><td class="n">2.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
-          <td class="n">15%</td><td class="n">+558</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
-          <td class="n">45</td><td class="n">44.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Receptions</span></td>
-          <td class="n">3.1</td><td class="n">2.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
-          <td class="n">19%</td><td class="n">+438</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
-          <td class="n">49</td><td class="n">48.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Receptions</span></td>
-          <td class="n">4.7</td><td class="n">4.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
-          <td class="n">25%</td><td class="n">+298</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Passing yards</span></td>
-          <td class="n">250</td><td class="n">250.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Passing TDs</span></td>
-          <td class="n">2.0</td><td class="n">1.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Rushing yards</span></td>
-          <td class="n">21</td><td class="n">21.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Anytime TD</span></td>
-          <td class="n">17%</td><td class="n">+502</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Rushing yards</span></td>
-          <td class="n">40</td><td class="n">40.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Receiving yards</span></td>
-          <td class="n">16</td><td class="n">16.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Receptions</span></td>
-          <td class="n">1.9</td><td class="n">1.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Anytime TD</span></td>
-          <td class="n">37%</td><td class="n">+170</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>TreVeyon Henderson</b><span class="cell-sub">RB · NE · Rushing yards</span></td>
-          <td class="n">38</td><td class="n">38.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>TreVeyon Henderson</b><span class="cell-sub">RB · NE · Anytime TD</span></td>
-          <td class="n">27%</td><td class="n">+265</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Receiving yards</span></td>
-          <td class="n">29</td><td class="n">29.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Receptions</span></td>
-          <td class="n">2.6</td><td class="n">2.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Anytime TD</span></td>
-          <td class="n">24%</td><td class="n">+312</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Receiving yards</span></td>
-          <td class="n">18</td><td class="n">18.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Receptions</span></td>
-          <td class="n">1.6</td><td class="n">1.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Anytime TD</span></td>
-          <td class="n">13%</td><td class="n">+658</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
-          <td class="n">60</td><td class="n">59.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Receptions</span></td>
-          <td class="n">4.3</td><td class="n">3.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
-          <td class="n">26%</td><td class="n">+282</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
-          <td class="n">41</td><td class="n">41.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Receptions</span></td>
-          <td class="n">3.0</td><td class="n">2.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
-          <td class="n">26%</td><td class="n">+283</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Kyle Williams</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
-          <td class="n">24</td><td class="n">23.5</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
-          <td><b>Kyle Williams</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
-          <td class="n">11%</td><td class="n">+801</td>
-          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr></tbody></table></div>
-        <p class="cell-sub" style="margin:6px 0 0">Fair is the line where over and under are equally likely (fair odds to score for touchdowns). Compare it with the line in your app.</p>
-      </details></div>
-      <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>NE</b> <span class="n bad">-0.6 pts</span> <span class="muted">Romeo Doubs WR -0.3 (Inactive / IR), Carlton Davis III CB -0.2 (Out), Mack Hollins WR -0.1 (Inactive / IR), Christian Gonzalez CB +0.1 (Returning)</span></div><div><b>CHI</b> <span class="n bad">-0.5 pts</span> <span class="muted">Montez Sweat DT -0.2 (Inactive / IR), T.J. Edwards LB -0.1 (Doubtful), Dayo Odeyingbo DT -0.1 (Inactive / IR), Kyle Monangai RB -0.1 (Out)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
-      <footer class="card-news"><span class="st muted">Started</span>
-      <p>Final: Bears 30, Patriots 24 (54 points). Maye and Williams started. Patriots inactives: CBs Carlton Davis, Karon Prunty and Channing Canada, G Ben Brown, DT Joshua Farmer. Bears: RB Kyle Monangai and LB Jack Sanborn out.<span class="cell-sub">Game lines: DraftKings (The Odds API, Thu Oct 22, 6:41 PM CT)</span></p></footer>
-    </article><article class="card">
+    A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
+    <div class="cards"><article class="card">
       <header class="card-head">
         <div class="teams">
           <div class="team"><span class="abbr">PIT</span><span class="nm">Steelers</span>
@@ -2801,6 +2611,197 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>PHI</b> <span class="n bad">-2.5 pts</span> <span class="muted">QB Tanner McKee (-0.10 EPA/dropback) in for J.Hurts (-0.03), spread only</span></div><div><b>DAL</b> <span class="n ">-0.0 pts</span> <span class="muted">Reddy Steward CB -0.2 (Inactive / IR), Cobie Durant CB +0.1 (Returning), Jalen Thompson S -0.1 (Inactive / IR), Joey Porter Jr. CB +0.1 (Returning)</span></div><div><b>PHI</b> <span class="n good">+0.2 pts</span> <span class="muted">DeVonta Smith WR +0.1 (Returning), Marcus Epps S +0.1 (Returning), Will Shipley RB -0.1 (Inactive / IR), Dameon Pierce RB +0.1 (Returning)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
       <footer class="card-news"><span class="st upd">Updated</span>
       <p>Rerun with Tanner McKee; Jalen Hurts is out for the season. The model&#x27;s own line moved from PHI -1.8 to DAL -1.1, and the PHI +4.5 bet no longer has an edge. RB Saquon Barkley questionable (hamstring).<span class="cell-sub">Game lines: DraftKings (Thu Oct 22, 6:41 PM CT)</span></p></footer>
+    </article><h3 class="final-head">Final</h3><article class="card has-bet final">
+      <header class="card-head">
+        <div class="teams">
+          <div class="team"><span class="abbr">NE</span><span class="nm">Patriots</span>
+            <span class="qb">Drake Maye</span><span class="pts n">24</span></div>
+          <div class="team"><span class="abbr">CHI</span><span class="nm">Bears</span>
+            <span class="qb">Caleb Williams</span><span class="pts n"><b>30</b></span></div>
+        </div>
+        <div class="when"><b class="final-lbl">Final</b> · Thu Oct 22 · 7:15 PM CT<span class="cell-sub">Projected NE 23.4, CHI 25.9</span></div>
+        <div class="tags"><span class="tag">NE aggressive on 4th</span></div>
+        
+      </header>
+      <div class="lines">
+        <div class="line"><h4>Spread</h4>
+          <dl><dt>Market</dt><dd class="n">CHI -3.0</dd>
+          <dt>Pure model</dt><dd class="n">CHI PK</dd>
+          <dt>Projection</dt><dd class="n"><b>CHI -2.5</b></dd></dl><div class="lean pass">No edge · NE +3.0 <span class="n">-3.3%</span><span class="cell-sub">Best: MyBookie +3 -110</span></div></div>
+        <div class="line"><h4>Total</h4>
+          <dl><dt>Market</dt><dd class="n">50.5</dd>
+          <dt>Pure model</dt><dd class="n">46.7</dd>
+          <dt>Projection</dt><dd class="n"><b>49.3</b></dd></dl><div class="lean bet">Bet Under 50.5 <span class="n">+7.2%</span><span class="cell-sub">Best: BetUS 51 -110</span></div></div>
+        <div class="line"><h4>Win chance</h4>
+          <div class="wp"><div class="wp-bar"><i style="width:41.5%"></i></div>
+            <div class="wp-lbl n"><span>NE 41%</span><span>CHI 59%</span></div></div>
+          <dl><dt>Fair price</dt><dd class="n">CHI -141</dd>
+          <dt>Book</dt><dd class="n">CHI -155</dd>
+          <dt></dt><dd class="n">NE +130</dd></dl>
+          <div class="lean pass">No edge · CHI ML -155 <span class="n">-3.7%</span><span class="cell-sub">Best: BetRivers -148</span></div></div>
+      </div>
+      <div class="card-extra"><div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
+      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li><li><span class="tdn">D&#x27;Andre Swift <span class="muted">RB · CHI</span></span>
+        <span class="n tdp">56%</span><span class="n tdo">-129</span><span class="n tdk muted">—</span></li><li><span class="tdn">Rhamondre Stevenson <span class="muted">RB · NE</span></span>
+        <span class="n tdp">37%</span><span class="n tdo">+170</span><span class="n tdk muted">—</span></li><li><span class="tdn">TreVeyon Henderson <span class="muted">RB · NE</span></span>
+        <span class="n tdp">27%</span><span class="n tdo">+265</span><span class="n tdk muted">—</span></li><li><span class="tdn">Colston Loveland <span class="muted">TE · CHI</span></span>
+        <span class="n tdp">26%</span><span class="n tdo">+277</span><span class="n tdk muted">—</span></li><li><span class="tdn">A.J. Brown <span class="muted">WR · NE</span></span>
+        <span class="n tdp">26%</span><span class="n tdo">+282</span><span class="n tdk muted">—</span></li></ol>
+      <p class="cell-sub">Green DK price = pays more than fair odds (a value bet).</p></div><div class="tds"><h4>Top prop edges</h4><p class="cell-sub" style="margin:0">No edge · no DraftKings prop lines found yet for this game.</p></div>
+      <details class="allprops"><summary>All 48 props</summary>
+        <div class="tablebox"><table class="props">
+        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">DK line</th>
+        <th class="n">Over</th><th class="n">Under</th><th class="n">Edge</th></tr></thead>
+        <tbody><tr>
+          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Passing yards</span></td>
+          <td class="n">215</td><td class="n">215.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Passing TDs</span></td>
+          <td class="n">1.1</td><td class="n">0.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Rushing yards</span></td>
+          <td class="n">19</td><td class="n">19.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Caleb Williams</b><span class="cell-sub">QB · CHI · Anytime TD</span></td>
+          <td class="n">21%</td><td class="n">+369</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Rushing yards</span></td>
+          <td class="n">50</td><td class="n">49.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Receiving yards</span></td>
+          <td class="n">21</td><td class="n">21.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Receptions</span></td>
+          <td class="n">2.4</td><td class="n">2.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>D&#x27;Andre Swift</b><span class="cell-sub">RB · CHI · Anytime TD</span></td>
+          <td class="n">56%</td><td class="n">-129</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Rushing yards</span></td>
+          <td class="n">17</td><td class="n">16.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Receiving yards</span></td>
+          <td class="n">15</td><td class="n">14.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Receptions</span></td>
+          <td class="n">1.4</td><td class="n">1.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Roschon Johnson</b><span class="cell-sub">RB · CHI · Anytime TD</span></td>
+          <td class="n">24%</td><td class="n">+317</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Receiving yards</span></td>
+          <td class="n">33</td><td class="n">33.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Receptions</span></td>
+          <td class="n">3.3</td><td class="n">3.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Colston Loveland</b><span class="cell-sub">TE · CHI · Anytime TD</span></td>
+          <td class="n">26%</td><td class="n">+277</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
+          <td class="n">27</td><td class="n">26.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Receptions</span></td>
+          <td class="n">3.0</td><td class="n">2.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Kalif Raymond</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
+          <td class="n">15%</td><td class="n">+558</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
+          <td class="n">45</td><td class="n">44.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Receptions</span></td>
+          <td class="n">3.1</td><td class="n">2.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rome Odunze</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
+          <td class="n">19%</td><td class="n">+438</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Receiving yards</span></td>
+          <td class="n">49</td><td class="n">48.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Receptions</span></td>
+          <td class="n">4.7</td><td class="n">4.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Luther Burden III</b><span class="cell-sub">WR · CHI · Anytime TD</span></td>
+          <td class="n">25%</td><td class="n">+298</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Passing yards</span></td>
+          <td class="n">250</td><td class="n">250.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Passing TDs</span></td>
+          <td class="n">2.0</td><td class="n">1.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Rushing yards</span></td>
+          <td class="n">21</td><td class="n">21.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Drake Maye</b><span class="cell-sub">QB · NE · Anytime TD</span></td>
+          <td class="n">17%</td><td class="n">+502</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Rushing yards</span></td>
+          <td class="n">40</td><td class="n">40.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Receiving yards</span></td>
+          <td class="n">16</td><td class="n">16.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Receptions</span></td>
+          <td class="n">1.9</td><td class="n">1.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Rhamondre Stevenson</b><span class="cell-sub">RB · NE · Anytime TD</span></td>
+          <td class="n">37%</td><td class="n">+170</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>TreVeyon Henderson</b><span class="cell-sub">RB · NE · Rushing yards</span></td>
+          <td class="n">38</td><td class="n">38.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>TreVeyon Henderson</b><span class="cell-sub">RB · NE · Anytime TD</span></td>
+          <td class="n">27%</td><td class="n">+265</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Receiving yards</span></td>
+          <td class="n">29</td><td class="n">29.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Receptions</span></td>
+          <td class="n">2.6</td><td class="n">2.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Hunter Henry</b><span class="cell-sub">TE · NE · Anytime TD</span></td>
+          <td class="n">24%</td><td class="n">+312</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Receiving yards</span></td>
+          <td class="n">18</td><td class="n">18.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Receptions</span></td>
+          <td class="n">1.6</td><td class="n">1.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Eli Raridon</b><span class="cell-sub">TE · NE · Anytime TD</span></td>
+          <td class="n">13%</td><td class="n">+658</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
+          <td class="n">60</td><td class="n">59.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Receptions</span></td>
+          <td class="n">4.3</td><td class="n">3.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>A.J. Brown</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
+          <td class="n">26%</td><td class="n">+282</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
+          <td class="n">41</td><td class="n">41.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Receptions</span></td>
+          <td class="n">3.0</td><td class="n">2.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>DeMario Douglas</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
+          <td class="n">26%</td><td class="n">+283</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Kyle Williams</b><span class="cell-sub">WR · NE · Receiving yards</span></td>
+          <td class="n">24</td><td class="n">23.5</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr><tr>
+          <td><b>Kyle Williams</b><span class="cell-sub">WR · NE · Anytime TD</span></td>
+          <td class="n">11%</td><td class="n">+801</td>
+          <td class="n"><span class="muted">—</span></td><td class="n"></td><td class="n"></td><td class="n"><span class="muted">No line yet</span></td></tr></tbody></table></div>
+        <p class="cell-sub" style="margin:6px 0 0">Fair is the line where over and under are equally likely (fair odds to score for touchdowns). Compare it with the line in your app.</p>
+      </details></div>
+      <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>NE</b> <span class="n bad">-0.6 pts</span> <span class="muted">Romeo Doubs WR -0.3 (Inactive / IR), Carlton Davis III CB -0.2 (Out), Mack Hollins WR -0.1 (Inactive / IR), Christian Gonzalez CB +0.1 (Returning)</span></div><div><b>CHI</b> <span class="n bad">-0.5 pts</span> <span class="muted">Montez Sweat DT -0.2 (Inactive / IR), T.J. Edwards LB -0.1 (Doubtful), Dayo Odeyingbo DT -0.1 (Inactive / IR), Kyle Monangai RB -0.1 (Out)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
+      <footer class="card-news"><span class="st muted">Started</span>
+      <p>Final: Bears 30, Patriots 24 (54 points). Maye and Williams started. Patriots inactives: CBs Carlton Davis, Karon Prunty and Channing Canada, G Ben Brown, DT Joshua Farmer. Bears: RB Kyle Monangai and LB Jack Sanborn out.<span class="cell-sub">Game lines: DraftKings (The Odds API, Thu Oct 22, 6:41 PM CT)</span></p></footer>
     </article></div></section>
   
   <section id="ratings"><h2>Power ratings</h2>
@@ -3055,7 +3056,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>
-<footer><div class="wrap">Generated Oct 22, 2026 at 10:38 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
+<footer><div class="wrap">Generated Oct 22, 2026 at 11:27 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
 <script>
 (function(){

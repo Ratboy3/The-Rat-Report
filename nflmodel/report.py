@@ -94,6 +94,11 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
       <tbody>{rows}</tbody></table></div>"""
 
 
+def _is_final(g) -> bool:
+    """Game finished and scored in the nflverse feed."""
+    return all(pd.notna(g.get(c)) for c in ("home_score", "away_score", "result"))
+
+
 def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) -> str:
     g, opts, hw = item["g"], item["opts"], item["home_win"]
     flagged = [o for o in opts if o["ev"] >= C.MIN_EV]
@@ -164,15 +169,24 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         return f'<div class="{cls}">{word} {escape(o["pick"])} <span class="n">{_signed_pct(o["ev"])}</span>{alt}</div>'
 
     fav_home = g.proj_margin >= 0
-    return f"""<article class="card{' has-bet' if flagged else ''}">
+    done = _is_final(g)
+    if done:
+        hs, as_ = int(g.home_score), int(g.away_score)
+        a_pts = f'<b>{as_}</b>' if as_ > hs else f'{as_}'
+        h_pts = f'<b>{hs}</b>' if hs > as_ else f'{hs}'
+        when = (f'<b class="final-lbl">Final</b> · {_kickoff(g)}'
+                f'<span class="cell-sub">Projected {g.away_team} {g.proj_away_pts:.1f}, {g.home_team} {g.proj_home_pts:.1f}</span>')
+    else:
+        a_pts, h_pts, when = f"{g.proj_away_pts:.1f}", f"{g.proj_home_pts:.1f}", _kickoff(g)
+    return f"""<article class="card{' has-bet' if flagged else ''}{' final' if done else ''}">
       <header class="card-head">
         <div class="teams">
           <div class="team"><span class="abbr">{g.away_team}</span><span class="nm">{NAMES.get(g.away_team, '')}</span>
-            <span class="qb">{escape(str(g.away_qb_name or ''))}</span><span class="pts n">{g.proj_away_pts:.1f}</span></div>
+            <span class="qb">{escape(str(g.away_qb_name or ''))}</span><span class="pts n">{a_pts}</span></div>
           <div class="team"><span class="abbr">{g.home_team}</span><span class="nm">{NAMES.get(g.home_team, '')}</span>
-            <span class="qb">{escape(str(g.home_qb_name or ''))}</span><span class="pts n">{g.proj_home_pts:.1f}</span></div>
+            <span class="qb">{escape(str(g.home_qb_name or ''))}</span><span class="pts n">{h_pts}</span></div>
         </div>
-        <div class="when">{_kickoff(g)}</div>
+        <div class="when">{when}</div>
         <div class="tags">{tag_html}</div>
         {_movement_html(g, mkt)}
       </header>
@@ -717,6 +731,10 @@ tr.total td{border-top:2px solid var(--line)}
 .cards{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0}
 .card.has-bet{border-color:var(--flag);box-shadow:inset 0 3px 0 var(--flag)}
+.card.final{border-color:var(--line);box-shadow:none}
+.card.final .pts b{color:var(--ink)}
+.final-lbl{color:var(--ink);text-transform:uppercase;letter-spacing:.06em;font-size:12px}
+.final-head{margin:18px 0 0;color:var(--muted)}
 .card-head{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
 .teams{display:flex;flex-direction:column;gap:4px}
 .team{display:grid;grid-template-columns:52px minmax(0,1fr) auto;column-gap:10px;align-items:baseline}
@@ -866,7 +884,10 @@ TABS_JS = """
 def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize, data_through,
            news=None, checked=None, auto_props=None, lines_checked=None, injuries=None, clv_log=None,
            prop_bt=None, market_info=None) -> str:
-    n_bets = sum(1 for it in games for o in it["opts"] if o["ev"] >= C.MIN_EV)
+    # finished games drop out of the bet counts and best bets, and their cards move to the bottom with the final score
+    live = [it for it in games if not _is_final(it["g"])]
+    done = [it for it in games if _is_final(it["g"])]
+    n_bets = sum(1 for it in live for o in it["opts"] if o["ev"] >= C.MIN_EV)
     n_props = int(auto_props.flag.sum()) if auto_props is not None and not auto_props.empty else 0
     news_by_game = {}
     if news is not None and not news.empty:
@@ -880,8 +901,10 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     if auto_props is not None and not auto_props.empty:
         props_by_game = {g: grp for g, grp in auto_props.groupby("game", sort=False)}
     key = lambda it: f"{it['g'].away_team} @ {it['g'].home_team}"
-    cards = "".join(_game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi, injuries, market_info)
-                    for gi, it in enumerate(games))
+    card = lambda gi, it: _game_card(it, news_by_game.get(key(it)), td_by_game.get(key(it)), props_by_game.get(key(it)), gi, injuries, market_info)
+    cards = "".join(card(gi, it) for gi, it in enumerate(live))
+    if done:
+        cards += '<h3 class="final-head">Final</h3>' + "".join(card(len(live) + gi, it) for gi, it in enumerate(done))
     tabs = [("games", "Games"), ("bets", "Best bets"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
@@ -912,7 +935,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
   <section id="bets"><h2>Best bets</h2>
     {checked_line}
     <div class="best">
-      <div><h3>Games</h3>{_bets_section(games)}</div>
+      <div><h3>Games</h3>{_bets_section(live)}</div>
       <div><h3>Top 5 prop edges</h3>{_top_props(auto_props)}</div>
     </div>
     <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
@@ -921,7 +944,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     Hover or long-press a win % to see the break-even rate.</p></section>
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
-    A gold bar marks a game with a bet. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
+    A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
     <div class="cards">{cards}</div></section>
   {'' if auto_props is not None and not auto_props.empty else _props_section(props)}
   <section id="ratings"><h2>Power ratings</h2>
