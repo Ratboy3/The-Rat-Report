@@ -1,0 +1,393 @@
+game,player,stat,book,line,over_odds,under_odds,as_of,kickoff,fetched_at
+NE @ CHI,A.J. Brown,anytime_td,betmgm,0.5,145,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,anytime_td,betonlineag,0.5,130,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,anytime_td,betrivers,0.5,128,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,anytime_td,bovada,0.5,140,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,anytime_td,draftkings,0.5,140,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,anytime_td,fanduel,0.5,145,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,betmgm,68.5,-140,105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,betonlineag,72.5,-125,-103.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,betrivers,68.5,-117,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,bovada,79.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,draftkings,69.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,rec_yds,fanduel,69.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,betmgm,5.5,115,-155.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,betonlineag,5.5,105,-135.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,betrivers,4.5,-165,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,bovada,4.5,-170,130.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,draftkings,5.5,107,-137.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,A.J. Brown,receptions,fanduel,4.5,-158,118.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,betmgm,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,betonlineag,0.5,325,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,betrivers,0.5,370,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,bovada,0.5,370,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,draftkings,0.5,370,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,anytime_td,fanduel,0.5,340,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,betmgm,1.5,-155,115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,betonlineag,1.5,-159,122.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,betrivers,1.5,-150,112.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,bovada,1.5,-160,120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,draftkings,1.5,-167,130.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_tds,fanduel,1.5,-152,116.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,betmgm,248.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,betonlineag,245.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,betrivers,244.5,-114,-117.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,bovada,275.5,170,-230.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,draftkings,247.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,pass_yds,fanduel,243.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,rush_yds,betonlineag,17.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,rush_yds,betrivers,17.5,-112,-118.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,rush_yds,bovada,19.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,rush_yds,draftkings,17.5,-116,-108.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Caleb Williams,rush_yds,fanduel,17.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,betmgm,0.5,3300,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,betonlineag,0.5,1900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,betrivers,0.5,1700,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,bovada,0.5,3300,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,draftkings,0.5,3500,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cameron Latu,anytime_td,fanduel,0.5,2200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Chicago Bears D/ST,anytime_td,betmgm,0.5,450,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Chicago Bears D/ST,anytime_td,bovada,0.5,525,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Chicago Bears D/ST,anytime_td,draftkings,0.5,550,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Chicago Bears Defense,anytime_td,fanduel,0.5,850,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,betmgm,0.5,600,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,betonlineag,0.5,450,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,betrivers,0.5,480,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,bovada,0.5,500,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,draftkings,0.5,500,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,anytime_td,fanduel,0.5,500,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,betmgm,9.5,-111,-118.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,betonlineag,8.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,betrivers,9.5,-113,-118.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,bovada,8.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,draftkings,8.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,rec_yds,fanduel,8.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,betmgm,1.5,175,-235.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,betonlineag,1.5,167,-222.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,betrivers,1.5,175,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,bovada,1.5,170,-230.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,draftkings,1.5,165,-213.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Cole Kmet,receptions,fanduel,1.5,178,-245.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,betmgm,0.5,185,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,betonlineag,0.5,170,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,betrivers,0.5,170,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,bovada,0.5,175,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,draftkings,0.5,175,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,anytime_td,fanduel,0.5,170,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,betmgm,44.5,-120,-111.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,betonlineag,44.5,-125,-103.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,betrivers,43.5,-113,-118.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,bovada,54.5,150,-200.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,draftkings,43.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,rec_yds,fanduel,43.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,betmgm,4.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,betonlineag,3.5,-185,141.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,betrivers,4.5,130,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,bovada,3.5,-185,140.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,draftkings,4.5,129,-165.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Colston Loveland,receptions,fanduel,3.5,-180,134.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,betmgm,0.5,700,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,betonlineag,0.5,750,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,betrivers,0.5,700,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,bovada,0.5,825,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,draftkings,0.5,850,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,anytime_td,fanduel,0.5,900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,betmgm,14.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,betonlineag,14.5,-115,-112.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,betrivers,15.5,-121,-109.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,bovada,14.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,draftkings,14.5,-111,-113.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Corey Kiner,rush_yds,fanduel,14.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,betmgm,0.5,-155,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,betonlineag,0.5,-167,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,betrivers,0.5,-177,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,bovada,0.5,-168,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,draftkings,0.5,-165,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,anytime_td,fanduel,0.5,-160,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,betmgm,20.5,-125,-105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,betonlineag,21.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,betrivers,19.5,-120,-112.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,bovada,20.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,draftkings,21.5,-109,-115.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rec_yds,fanduel,20.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,betmgm,2.5,-150,110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,betonlineag,2.5,-143,110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,betrivers,2.5,-132,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,bovada,2.5,-150,115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,draftkings,2.5,-152,119.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,receptions,fanduel,2.5,-138,104.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,betmgm,61.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,betonlineag,62.5,-125,-103.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,betrivers,59.5,-118,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,bovada,71.5,145,-190.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,draftkings,63.5,-110,-114.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,D'Andre Swift,rush_yds,fanduel,60.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,betmgm,0.5,325,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,betonlineag,0.5,300,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,betrivers,0.5,295,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,bovada,0.5,300,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,draftkings,0.5,300,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,anytime_td,fanduel,0.5,310,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,betmgm,37.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,betonlineag,41.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,betrivers,38.5,-117,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,bovada,49.5,145,-190.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,draftkings,39.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,rec_yds,fanduel,38.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,betmgm,3.5,-105,-125.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,betonlineag,3.5,-108,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,betrivers,3.5,-103,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,bovada,3.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,draftkings,3.5,103,-132.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,DeMario Douglas,receptions,fanduel,3.5,102,-136.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,betmgm,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,betonlineag,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,betrivers,0.5,310,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,bovada,0.5,370,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,draftkings,0.5,370,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,anytime_td,fanduel,0.5,380,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,betmgm,1.5,-130,-105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,betonlineag,1.5,-149,115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,betrivers,1.5,-124,-107.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,bovada,1.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,draftkings,1.5,-128,100.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_tds,fanduel,1.5,-132,102.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,betmgm,247.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,betonlineag,247.5,-119,-109.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,betrivers,247.5,-117,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,bovada,276.5,170,-230.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,draftkings,249.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,pass_yds,fanduel,247.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,betmgm,29.5,100,-135.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,betonlineag,29.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,betrivers,28.5,-117,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,bovada,38.5,175,-240.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,draftkings,28.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Drake Maye,rush_yds,fanduel,27.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,betmgm,0.5,600,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,betonlineag,0.5,400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,betrivers,0.5,425,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,bovada,0.5,420,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,draftkings,0.5,425,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,anytime_td,fanduel,0.5,430,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,betmgm,16.5,-135,100.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,betonlineag,17.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,betrivers,17.5,-120,-112.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,bovada,17.5,-125,-105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,draftkings,18.5,-109,-115.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,rec_yds,fanduel,17.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,betmgm,1.5,-125,-105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,betonlineag,1.5,-108,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,betrivers,1.5,-134,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,bovada,1.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,draftkings,1.5,-117,-109.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Efton Chism III,receptions,fanduel,1.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,betmgm,0.5,425,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,betonlineag,0.5,400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,betrivers,0.5,475,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,bovada,0.5,440,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,draftkings,0.5,450,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,anytime_td,fanduel,0.5,440,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,betmgm,15.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,betonlineag,15.5,-116,-111.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,betrivers,15.5,-112,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,bovada,15.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,draftkings,15.5,-115,-109.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,rec_yds,fanduel,15.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,betmgm,1.5,-105,-125.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,betonlineag,1.5,104,-135.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,betrivers,1.5,-109,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,bovada,1.5,110,-145.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,draftkings,1.5,107,-137.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Eli Raridon,receptions,fanduel,1.5,102,-136.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,betmgm,0.5,200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,betonlineag,0.5,190,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,betrivers,0.5,220,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,bovada,0.5,205,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,draftkings,0.5,205,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,anytime_td,fanduel,0.5,195,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,betmgm,34.5,-111,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,betonlineag,35.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,betrivers,33.5,-112,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,bovada,45.5,155,-210.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,draftkings,35.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,rec_yds,fanduel,33.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,betmgm,3.5,115,-155.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,betonlineag,3.5,117,-152.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,betrivers,3.5,117,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,bovada,3.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,draftkings,3.5,119,-152.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Hunter Henry,receptions,fanduel,3.5,116,-154.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Jahdae Walker,anytime_td,betonlineag,0.5,1400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Jahdae Walker,anytime_td,betrivers,0.5,1400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Jahdae Walker,anytime_td,bovada,0.5,1500,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Jahdae Walker,anytime_td,draftkings,0.5,1500,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Jahdae Walker,anytime_td,fanduel,0.5,1700,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,betmgm,0.5,360,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,betonlineag,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,betrivers,0.5,390,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,bovada,0.5,420,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,draftkings,0.5,425,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,anytime_td,fanduel,0.5,400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,betmgm,25.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,betonlineag,25.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,betrivers,26.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,bovada,24.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,draftkings,24.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,rec_yds,fanduel,24.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,betmgm,2.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,betonlineag,2.5,-109,-119.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,betrivers,2.5,-110,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,bovada,2.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,draftkings,2.5,-112,-114.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kalif Raymond,receptions,fanduel,2.5,-108,-122.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,betmgm,0.5,500,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,betonlineag,0.5,600,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,betrivers,0.5,550,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,bovada,0.5,600,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,draftkings,0.5,600,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,anytime_td,fanduel,0.5,650,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,betmgm,19.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,betonlineag,20.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,betrivers,18.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,bovada,19.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,draftkings,19.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,rec_yds,fanduel,19.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,betmgm,1.5,125,-165.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,betonlineag,1.5,139,-182.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,betrivers,1.5,135,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,bovada,1.5,130,-170.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,draftkings,1.5,144,-185.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Kyle Williams,receptions,fanduel,1.5,148,-200.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,betmgm,0.5,160,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,betonlineag,0.5,180,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,betrivers,0.5,188,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,bovada,0.5,185,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,draftkings,0.5,185,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,anytime_td,fanduel,0.5,190,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,betmgm,56.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,betonlineag,57.5,-120,-108.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,betrivers,57.5,-114,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,bovada,66.5,135,-180.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,draftkings,57.5,-112,-112.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,rec_yds,fanduel,56.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,betmgm,4.5,-135,100.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,betonlineag,4.5,-149,115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,betrivers,4.5,-143,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,bovada,4.5,-130,100.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,draftkings,4.5,-143,112.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Luther Burden III,receptions,fanduel,4.5,-148,112.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,New England Patriots D/ST,anytime_td,betmgm,0.5,575,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,New England Patriots D/ST,anytime_td,bovada,0.5,600,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,New England Patriots D/ST,anytime_td,draftkings,0.5,600,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,New England Patriots Defense,anytime_td,fanduel,0.5,750,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,betmgm,0.5,-105,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,betonlineag,0.5,-111,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,betrivers,0.5,-121,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,bovada,0.5,-110,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,draftkings,0.5,-105,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,anytime_td,fanduel,0.5,-105,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,betmgm,17.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,betonlineag,18.5,-109,-119.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,betrivers,16.5,-118,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,bovada,18.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,draftkings,17.5,-113,-111.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rec_yds,fanduel,17.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,betmgm,2.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,betonlineag,2.5,-120,-108.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,betrivers,2.5,-110,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,bovada,2.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,draftkings,2.5,-113,-113.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,receptions,fanduel,2.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,betmgm,43.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,betonlineag,42.5,-114,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,betrivers,43.5,-114,-117.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,bovada,52.5,150,-200.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,draftkings,45.5,-110,-114.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rhamondre Stevenson,rush_yds,fanduel,43.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,betmgm,0.5,200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,betonlineag,0.5,160,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,betrivers,0.5,180,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,bovada,0.5,160,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,draftkings,0.5,160,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,anytime_td,fanduel,0.5,170,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,betmgm,46.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,betonlineag,44.5,-120,-108.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,betrivers,44.5,-117,-114.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,bovada,54.5,135,-180.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,draftkings,42.5,-114,-110.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,rec_yds,fanduel,44.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,betmgm,3.5,105,-140.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,betonlineag,3.5,118,-154.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,betrivers,3.5,110,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,bovada,3.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,draftkings,3.5,119,-151.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Rome Odunze,receptions,fanduel,3.5,124,-166.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,betmgm,0.5,210,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,betonlineag,0.5,220,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,betrivers,0.5,240,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,bovada,0.5,245,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,draftkings,0.5,245,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,anytime_td,fanduel,0.5,230,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,betmgm,6.5,-125,-105.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,betonlineag,6.5,-120,-108.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,betrivers,6.5,-122,-109.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,bovada,7.5,105,-135.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,draftkings,6.5,-115,-109.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rec_yds,fanduel,6.5,-120,-106.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,betmgm,1.5,120,-160.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,betonlineag,1.5,126,-164.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,betrivers,1.5,145,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,bovada,1.5,130,-170.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,draftkings,1.5,117,-149.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,receptions,fanduel,1.5,132,-178.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,betmgm,27.5,-115,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,betonlineag,27.5,-112,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,betrivers,26.5,-121,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,bovada,36.5,200,-275.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,draftkings,26.5,-116,-108.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Roschon Johnson,rush_yds,fanduel,26.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,betmgm,0.5,1200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,betonlineag,0.5,900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,betrivers,0.5,900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,bovada,0.5,900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,draftkings,0.5,900,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Sam Roush,anytime_td,fanduel,0.5,950,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Tanner Arkin,anytime_td,betonlineag,0.5,2900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Tanner Arkin,anytime_td,betrivers,0.5,1900,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Tanner Arkin,anytime_td,bovada,0.5,3300,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Tanner Arkin,anytime_td,draftkings,0.5,3500,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Tanner Arkin,anytime_td,fanduel,0.5,3000,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,betmgm,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,betonlineag,0.5,350,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,betrivers,0.5,285,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,bovada,0.5,370,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,draftkings,0.5,370,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,anytime_td,fanduel,0.5,370,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rec_yds,betmgm,3.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rec_yds,betonlineag,3.5,-109,-119.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rec_yds,bovada,2.5,-120,-110.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rec_yds,draftkings,3.5,-117,-108.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rec_yds,fanduel,2.5,-125,-102.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,receptions,betmgm,0.5,-200,150.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,receptions,betonlineag,0.5,-200,152.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,receptions,bovada,0.5,-200,150.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,receptions,draftkings,0.5,-192,149.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,receptions,fanduel,0.5,-205,152.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,betmgm,24.5,-120,-111.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,betonlineag,24.5,-112,-115.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,betrivers,25.5,-114,-117.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,bovada,24.5,-110,-120.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,draftkings,24.5,-110,-114.0,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,TreVeyon Henderson,rush_yds,fanduel,24.5,-113,-113.0,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavier Scott,anytime_td,betmgm,0.5,2000,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavier Scott,anytime_td,betrivers,0.5,1200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavier Scott,anytime_td,bovada,0.5,2200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavier Scott,anytime_td,draftkings,0.5,2200,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavier Scott,anytime_td,fanduel,0.5,2200,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,betmgm,0.5,1400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,betonlineag,0.5,1400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,betrivers,0.5,1050,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,bovada,0.5,1400,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,draftkings,0.5,1400,,"Thu Oct 22, 6:40 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41
+NE @ CHI,Zavion Thomas,anytime_td,fanduel,0.5,1500,,"Thu Oct 22, 6:41 PM CT",2026-10-23T00:15:00Z,2026-10-22 18:41

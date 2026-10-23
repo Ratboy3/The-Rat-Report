@@ -186,6 +186,15 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             print(f"  coverage data skipped ({e})")
     press = _pressure(tm, season, week) if USE["pressure"] else {}
 
+    routes_t = None
+    if USE["routes"]:
+        from . import routes as R
+        routes_t = R.load()
+        if routes_t is not None:
+            col = "routes" if ROUTE_SRC == "exact" else "routes_proxy"
+            rt = routes_t.copy()
+            rt["r"] = rt[col].fillna(rt.routes_proxy) if col == "routes" else rt[col]
+            routes_t = rt.dropna(subset=["r"])[["season", "week", "player_id", "r"]]
     coach_agg = {}
     if USE["agg"]:
         if "home_agg" not in proj and games is not None and "home_coach" in proj:
@@ -274,6 +283,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                         est *= redis["rec" if st in ("rec_yds", "receptions") else "rush"]
                 if USE["airyards"] and pos in ("WR", "TE", "RB") and st in ("rec_yds", "receptions"):
                     est = AIR_W * _usage_est(rows, st, season) + (1 - AIR_W) * est
+                if USE["routes"] and pos in ("WR", "TE", "RB") and st in ("rec_yds", "receptions"):
+                    est *= _route_factor(rows, routes_t, pid, pos, season)
                 if USE["coverage"] and st == "rec_yds" and pos in ("WR", "TE"):
                     from .coverage import factor as cov_factor
                     est *= cov_factor(splits, man, lg_man, pid, opp, COVERAGE_W)
@@ -325,14 +336,24 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # (2010-24 fit, t~3; 2018+ t~3.6). Two-point tendencies added nothing. But adding it to the TD props made
 # them slightly worse in the 2025-26 replay (Brier 0.1950 -> 0.1955, both seasons worse): players' own TD
 # history already carries their coach's style. Off; the rating is shown on game cards for information.
+# Fourth round (Oct 23): targets per route run x expected routes. Off: receiving yards got worse (miss 22.57 ->
+# 22.62 at half weight, 22.82 at full; worse for WRs and in 2026), receptions about even (1.646 -> 1.639, under 2
+# standard errors, worse in 2026). Exact routes from last season's participation data did no better than the
+# snap-share proxy, so the missing 2026 participation file isn't what's holding it back.
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
-       "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False}
+       "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False,
+       "routes": False}
 # The Tuesday props-backtest --agg-test writes agg_test.csv; its verdict sets the switch.
 try:
     _t = pd.read_csv(Path(__file__).resolve().parent.parent / "agg_test.csv")
     USE["agg"] = bool(str(_t.use_agg.iloc[-1]).strip().lower() == "true")
 except Exception:
     pass
+ROUTE_SRC = "proxy"      # "exact" (participation, last season only) or "proxy" (snap share x team dropbacks)
+ROUTE_W = 0.5            # how much of the route-based target change carries into the projection
+ROUTE_RECENCY = 0.7      # routes reflect role, which changes faster than talent: steeper recency
+TPRR_PRIOR = {"WR": 0.20, "TE": 0.17, "RB": 0.16}   # targets per route run of a typical player
+TPRR_SHRINK = 80         # routes of prior
 AGG_TD_PER_10 = 0.18    # extra team TDs per game per +10 pct pts of coach go-for-it rate over expected
 AIR_W = 0.5             # weight on the usage-based estimate (air yards + targets) for receiving props
 AIR_YDS_COEF, TGT_YDS_COEF = 0.204, 5.812   # receiving yards ~ 0.204 x air yards + 5.8 x targets (fit on 2025)
@@ -434,3 +455,26 @@ def _pressure(tm, season: int, week: int) -> dict:
             exp = (off[a] + dfn[b]) / 2
             out[(a, b)] = float(np.clip(1 - PRESSURE_W * (exp / lg - 1), 0.9, 1.1))
     return out
+
+
+def _route_factor(rows: pd.DataFrame, routes_t, pid: str, pos: str, season: int) -> float:
+    """Targets projected as (targets per route run) x (expected routes), relative to the plain weighted
+    targets average the projection already uses. >1 when his routes recently went up (role grew)."""
+    if routes_t is None:
+        return 1.0
+    r = rows[["season", "week", "targets"]].merge(routes_t[routes_t.player_id == pid], on=["season", "week"], how="inner")
+    r = r.sort_values(["season", "week"], ascending=False)
+    if len(r) < 2:
+        return 1.0
+    tg = r.targets.fillna(0).to_numpy(float)
+    rr = r.r.to_numpy(float)
+    w = RECENCY ** np.arange(len(r)) * np.where(r.season < season, PRIOR_SEASON_W, 1.0)
+    w2 = ROUTE_RECENCY ** np.arange(len(r)) * np.where(r.season < season, PRIOR_SEASON_W, 1.0)
+    prior = TPRR_PRIOR.get(pos, 0.18)
+    tprr = ((w * tg).sum() + prior * TPRR_SHRINK) / ((w * rr).sum() + TPRR_SHRINK)
+    routes_hat = (w2 * rr).sum() / w2.sum()
+    tgt_plain = (w * tg).sum() / w.sum()
+    if tgt_plain <= 0.3:
+        return 1.0
+    ratio = float(np.clip(tprr * routes_hat / tgt_plain, 0.6, 1.5))
+    return 1 + ROUTE_W * (ratio - 1)

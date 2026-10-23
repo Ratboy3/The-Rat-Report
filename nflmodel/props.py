@@ -170,7 +170,8 @@ def _td_market(player: str, book_row, market: dict) -> float | None:
 
 
 def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
-               lines: pd.DataFrame | None, td_market: pd.DataFrame | None = None) -> pd.DataFrame:
+               lines: pd.DataFrame | None, td_market: pd.DataFrame | None = None,
+               books: pd.DataFrame | None = None) -> pd.DataFrame:
     """players: output of player_proj.project. lines: player, stat, line, over_odds, under_odds, source, as_of."""
     if players is None or players.empty:
         return pd.DataFrame()
@@ -185,14 +186,20 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     market = {}
     if td_market is not None and len(td_market):
         market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
+    from . import consensus as K
+    cons = K.table(books)
+    anchor_cons = K.use_consensus()   # other books' consensus as the market anchor, once it has tested better
     rows = []
     for p in players.itertuples():
         f = _script_factor(p.team, team_pts, team_ppg)
+        c = cons.get((_key(p.player), p.stat))
         model_p, market_p = None, None
         if p.stat == "anytime_td":
             f = 1.0                     # already built from the team's projected points
             model_p = min(0.95, max(0.01, p.projection))
             market_p = _td_market(p.player, book.get((_key(p.player), p.stat)), market)
+            if anchor_cons and c is not None and pd.notna(c["all_td"]):
+                market_p = c["all_td"] if market_p is None else (market_p + c["all_td"]) / 2
             if market_p is None:
                 adj = model_p
             else:
@@ -203,6 +210,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             b0 = book.get((_key(p.player), p.stat))
             if b0 is not None and pd.notna(b0.line):
                 market_p = round(_market_mean(p.stat, float(b0.line), _no_vig_over(b0.over_odds, b0.under_odds)), 3)
+                if anchor_cons and c is not None and pd.notna(c["all_mean"]):
+                    market_p = round(c["all_mean"], 3)
                 model_p = round(adj, 3)
                 w = _trust(PROP_MODEL_WEIGHT, adj, market_p)
                 adj = w * adj + (1 - w) * market_p
@@ -212,7 +221,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                    fair_line=_fair_line(d), dist=d["dist"], a=round(d["a"], 4), b=round(d["b"], 4),
                    model_prob=model_p, market_prob=market_p,
                    line=np.nan, over_odds=np.nan, under_odds=np.nan, source="", as_of="",
-                   p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False)
+                   p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False,
+                   n_books=int(c["n"]) if c else 0, cons_p_over=np.nan, cons_ev=np.nan)
         b = book.get((_key(p.player), p.stat))
         if b is not None and (pd.notna(b.over_odds) or pd.notna(b.under_odds)):
             line = 0.5 if p.stat == "anytime_td" else float(b.line)
@@ -227,5 +237,14 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                        source=str(b.source), as_of=str(b.as_of), p_over=round(over[0], 3), best_side=best,
                        ev=round(max(e_o, e_u), 4), stake=round(kelly_stake(probs, odds), 2),
                        flag=max(e_o, e_u) >= C.MIN_EV)
+            # the other books' view of DraftKings' line: their consensus chance and the edge it implies at DK's price
+            if c is not None:
+                cp = (c["others_td"] if p.stat == "anytime_td" else
+                      (K.p_over_at(p.stat, c["others_mean"], line) if pd.notna(c["others_mean"]) else np.nan))
+                if pd.notna(cp):
+                    cp = float(cp)
+                    side_p, side_odds = (cp, oo) if best == "Over" else (1 - cp, uo)
+                    row.update(cons_p_over=round(cp, 3),
+                               cons_ev=round(ev((side_p, 0.0, 1 - side_p), side_odds), 4) if side_odds is not None else np.nan)
         rows.append(row)
     return pd.DataFrame(rows)

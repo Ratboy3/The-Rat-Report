@@ -74,6 +74,17 @@ def _bets_section(games) -> str:
 """
 
 
+def _books_note(r) -> str:
+    """'Other books: 54%' for the side we like, from the consensus of the other sportsbooks at DraftKings' line."""
+    cp = getattr(r, "cons_p_over", np.nan)
+    if pd.isna(cp) or not getattr(r, "n_books", 0):
+        return ""
+    side = cp if r.best_side == "Over" else 1 - cp
+    ce = getattr(r, "cons_ev", np.nan)
+    tone = "" if pd.isna(ce) else (" good" if ce > 0 else " bad")
+    return f' · <span class="books{tone}" title="Consensus of {int(r.n_books)} other sportsbooks at this line">other books {side:.0%}</span>'
+
+
 def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
     if props is None or props.empty or "line" not in props:
         return '<p class="empty">No prop lines yet.</p>'
@@ -84,7 +95,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
                 'Lines fill in through the weekend.</p>')
     rows = "".join(
         f"""<tr><td><b>{escape(r.player)}</b> {'Anytime TD' if r.stat == 'anytime_td' else f'{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
-        <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
+        <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}{_books_note(r)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td>
         <td class="n {'good' if r.flag else ''}">{_signed_pct(r.ev)}{'' if r.flag else ' <span class="muted">lean</span>'}</td></tr>"""
@@ -137,7 +148,7 @@ def _leans_section(live, props, log) -> str:
         if len(pl):
             def prow(r):
                 what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
-                return (f"""<tr><td><b>{escape(r.player)}</b> {what}<span class="cell-sub">{escape(r.game)} · DK {escape(str(r.as_of))}</span></td>
+                return (f"""<tr><td><b>{escape(r.player)}</b> {what}<span class="cell-sub">{escape(r.game)} · DK {escape(str(r.as_of))}{_books_note(r)}</span></td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td><td class="n">{_signed_pct(r.ev)}</td></tr>""")
             head = '<thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>'
@@ -365,6 +376,18 @@ def _clv_section(log) -> str:
     lean_more = (f"""<details class="more"><summary>Latest settled leans</summary><div class="tablebox"><table><thead><tr><th>Lean</th>
     <th class="n">Price</th><th class="n">Edge then</th><th>Result</th></tr></thead><tbody>{lean_rows}</tbody></table></div></details>"""
                  if lean_rows else "")
+    from .clv import timing
+    tt = timing(log)
+    timing_html = ""
+    if tt is not None and len(tt):
+        trs = "".join(f"""<tr><td>{r.when}</td><td>{'Bets' if r.tier == 'bet' else 'Leans'}</td><td class="n">{r.n}</td>
+        <td class="n {'good' if r.clv > 0 else 'bad' if r.clv < 0 else ''}">{_signed_pct(r.clv)}</td><td class="n">{r.beat:.0%}</td></tr>"""
+                      for r in tt.itertuples())
+        timing_html = f"""<details class="more"><summary>Bet early or wait? CLV by time before kickoff</summary>
+    <p class="note">If bets logged early beat the close more often than ones logged late, the model's edges get priced in during the week
+    and it pays to bet as soon as they show up. Too few closed bets yet to say; this fills in each week.</p>
+    <div class="tablebox"><table><thead><tr><th>Logged</th><th>Type</th><th class="n">Closed</th><th class="n">Avg CLV</th><th class="n">Beat close</th></tr></thead>
+    <tbody>{trs}</tbody></table></div></details>"""
     return f"""<h3>Closing line value (live)</h3>
     <p class="lede">Every flagged bet is logged at the price when it was first flagged, then re-priced at the closing
     DraftKings line. Positive CLV means the bet was worth more than the closing market said: the earliest reliable sign of a real edge.
@@ -373,7 +396,8 @@ def _clv_section(log) -> str:
     <th class="n">Beat close</th><th class="n">W-L</th><th class="n">Units</th></tr></thead><tbody>{rows}</tbody></table></div>
     <details class="more"><summary>Latest logged bets</summary><div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Price</th>
     <th class="n">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead><tbody>{rec_rows}</tbody></table></div></details>
-    {lean_more}"""
+    {lean_more}
+    {timing_html}"""
 
 
 def _prop_bt_section(bt) -> str:
@@ -944,6 +968,7 @@ table.props td{vertical-align:middle}
 .leanstrip b{display:block;font:700 26px/1.1 var(--display);margin:2px 0}
 .leanstrip em{font-style:normal;font-size:12.5px;color:var(--muted)} .leanstrip i{font-style:normal;font-weight:600}
 #leans .final-head{margin-top:24px}
+.books{white-space:nowrap} .books.good{color:var(--good)} .books.bad{color:var(--bad)}
 @media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
@@ -1085,6 +1110,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>
+      <div><b>Other books</b><p>On a prop, the chance the other sportsbooks (FanDuel, BetMGM, Caesars and others) give our side at DraftKings' line, from the median of their no-vig prices. Green means they also see value at DraftKings' price, red means they don't. Shown for information while it's tested; it doesn't change the model's numbers yet.</p></div>
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>

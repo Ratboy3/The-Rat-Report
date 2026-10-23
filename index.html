@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>The Rat Report</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -161,6 +163,7 @@ table.props td{vertical-align:middle}
 .leanstrip b{display:block;font:700 26px/1.1 var(--display);margin:2px 0}
 .leanstrip em{font-style:normal;font-size:12.5px;color:var(--muted)} .leanstrip i{font-style:normal;font-weight:600}
 #leans .final-head{margin-top:24px}
+.books{white-space:nowrap} .books.good{color:var(--good)} .books.bad{color:var(--bad)}
 @media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
@@ -179,21 +182,21 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:520px){.lines{grid-template-columns:1fr}.line{border-right:0;border-bottom:1px solid var(--line)}.line:last-child{border-bottom:0}
  .barcell{min-width:100px}}
 @media print{nav.toc{display:none}.card{break-inside:avoid}}
-</style>
-
+</style></head>
+<body>
 <div class="mast"><div class="wrap">
   <div><p class="kicker">Week 7 · 2026 NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div>
   <div class="mast-stats">
     <div><b>1</b><span>game bets</span></div>
     <div><b>6</b><span>prop bets</span></div>
-    <div><b>12:39 PM</b><span>updated (CT)</span></div>
+    <div><b>12:59 PM</b><span>updated (CT)</span></div>
   </div>
 </div></div>
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist"><a href="#games" role="tab" data-tab="games" aria-controls="games">Games</a><a href="#bets" role="tab" data-tab="bets" aria-controls="bets">Best bets</a><a href="#leans" role="tab" data-tab="leans" aria-controls="leans">Leans</a><a href="#ratings" role="tab" data-tab="ratings" aria-controls="ratings">Ratings</a><a href="#backtest" role="tab" data-tab="backtest" aria-controls="backtest">Track record</a><a href="#how" role="tab" data-tab="how" aria-controls="how">Glossary</a></div></nav>
 <main class="wrap">
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
   <section id="bets"><h2>Best bets</h2>
-    <p class="updated">Injuries, starting QBs and lines checked Fri Oct 23, 12:26 PM CT. Lines move, so confirm the price in your app before betting.</p>
+    <p class="updated">Injuries, starting QBs and lines checked Fri Oct 23, 12:53 PM CT. Lines move, so confirm the price in your app before betting.</p>
     <div class="best">
       <div><h3>Games</h3><div class="tablebox"><table>
       <thead><tr><th>Bet</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>
@@ -226,7 +229,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <td class="n">54.5%</td>
         <td class="n good">+3.6%</td></tr></tbody></table></div></div>
     </div>
-    <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app. Last checked Fri Oct 23, 12:26 PM CT.
+    <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app. Last checked Fri Oct 23, 12:53 PM CT.
     Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a 3% edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
@@ -759,7 +762,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </details></div>
       <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>CIN</b> <span class="n bad">-0.3 pts</span> <span class="muted">Jalen Davis CB -0.1 (Inactive / IR), Andrei Iosivas WR -0.1 (Inactive / IR), Jonathan Allen DT -0.1 (Missed practice)</span></div><div><b>BAL</b> <span class="n bad">-0.2 pts</span> <span class="muted">Chris Moore WR -0.1 (Inactive / IR), Ja&#x27;Kobi Lane WR +0.1 (Returning), Durham Smythe TE -0.1 (Inactive / IR), Jaylinn Hawkins S -0.1 (Missed practice)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
       <footer class="card-news"><span class="st watch">Watch</span>
-      <p>Jackson (ankle) was limited Wednesday and Thursday and was practicing again Friday; no decision on Sunday yet. DraftKings has BAL -1.5. No bet with either QB: with Jackson the model has BAL -1.3; if Tyler Huntley starts it has BAL -0.9.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
+      <p>Coach Jesse Minter said Friday that Jackson (ankle) will be a game-time decision; he was limited Wednesday and Thursday and practiced again Friday. Ravens S Jaylinn Hawkins is out, and OLB Tavius Robinson is out for the season. DraftKings has BAL -1.5. No bet with either QB: with Jackson the model has BAL -1.3; if Tyler Huntley starts it has BAL -0.9.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
     </article><article class="card">
       <header class="card-head">
         <div class="teams">
@@ -1314,7 +1317,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </details></div>
       <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>MIA</b> <span class="n bad">-0.1 pts</span> <span class="muted">De&#x27;Von Achane RB -0.1 (Inactive / IR)</span></div><div><b>NYJ</b> <span class="n ">-0.0 pts</span> <span class="muted">Sterling Shepard WR -0.1 (Inactive / IR), Tim Patrick WR +0.1 (Returning), Omar Cooper Jr. WR +0.1 (Returning)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
       <footer class="card-news"><span class="st watch">Watch</span>
-      <p>Willis full practice Wednesday and Thursday (thumb). Jets RB Breece Hall (quad) and WR Adonai Mitchell (finger) were limited Thursday.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
+      <p>Willis full practice Wednesday and Thursday (thumb). Jets RB Breece Hall (quad) is questionable. WR Adonai Mitchell (finger) was limited Thursday.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
     </article><article class="card">
       <header class="card-head">
         <div class="teams">
@@ -1875,7 +1878,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </details></div>
       <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>TB</b> <span class="n good">+0.5 pts</span> <span class="muted">QB Baker Mayfield (-0.08 EPA/dropback) in for J.Daniels (-0.10), spread only</span></div><div><b>TB</b> <span class="n bad">-0.2 pts</span> <span class="muted">Emeka Egbuka WR -0.1 (Missed practice), Chris Godwin Jr. WR -0.1 (Missed practice), Benjamin Morrison CB +0.1 (Returning)</span></div><div><b>CAR</b> <span class="n bad">-0.5 pts</span> <span class="muted">Jaycee Horn CB -0.2 (Inactive / IR), Mike Jackson CB -0.2 (Inactive / IR), Xavier Legette WR -0.1 (Inactive / IR)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
       <footer class="card-news"><span class="st upd">Updated</span>
-      <p>Todd Bowles said Friday that Baker Mayfield will start, his first game since dislocating his right thumb in Week 3; he will wear a protective glove. Rerun with Mayfield: CAR -2.9, no bet. Buccaneers T Luke Goedeke is out and WR Emeka Egbuka is still in the concussion protocol.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
+      <p>Todd Bowles said Friday that Baker Mayfield will start, his first game since dislocating his right thumb in Week 3; he is listed questionable and will wear a protective glove. Rerun with Mayfield: CAR -2.9, no bet. Buccaneers ruled out WR Emeka Egbuka, T Luke Goedeke and S Antoine Winfield Jr. Panthers ruled out OLB Jaelan Phillips and OLB Thomas Incoom.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
     </article><article class="card">
       <header class="card-head">
         <div class="teams">
@@ -2433,7 +2436,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       </details></div>
       <div class="card-inj"><h4>QB changes and injuries (points)</h4><div><b>LA</b> <span class="n bad">-0.9 pts</span> <span class="muted">Davante Adams WR -0.4 (Inactive / IR), Kobie Turner DE -0.2 (Inactive / IR), Poona Ford DT -0.1 (Inactive / IR), Trent McDuffie CB -0.1 (Missed practice)</span></div><div><b>LV</b> <span class="n ">+0.0 pts</span> <span class="muted">Isaiah Pola-Mao S +0.1 (Returning)</span></div><p class="cell-sub">Starters out or limited, weighted by snap share and how new the absence is. Already in the pure model line.</p></div>
       <footer class="card-news"><span class="st good">OK</span>
-      <p>Rams WR Davante Adams on IR; K Blake Grupe tore his ACL, Brandon McManus signed.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
+      <p>Rams WR Davante Adams on IR; K Blake Grupe tore his ACL, Brandon McManus signed. WR Puka Nacua (calf) left Thursday&#x27;s practice early; his status for Sunday is not yet set.<span class="cell-sub">Game lines: DraftKings (Fri Oct 23, 9:43 AM CT)</span></p></footer>
     </article><article class="card">
       <header class="card-head">
         <div class="teams">
@@ -3162,6 +3165,12 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
         <td>Loss</td></tr><tr><td>Caleb Williams Under 247.5 pass_yds<span class="cell-sub">NE @ CHI</span></td>
         <td class="n">-111</td><td class="n">+1.0%</td>
         <td>Loss</td></tr></tbody></table></div></details>
+    <details class="more"><summary>Bet early or wait? CLV by time before kickoff</summary>
+    <p class="note">If bets logged early beat the close more often than ones logged late, the model's edges get priced in during the week
+    and it pays to bet as soon as they show up. Too few closed bets yet to say; this fills in each week.</p>
+    <div class="tablebox"><table><thead><tr><th>Logged</th><th>Type</th><th class="n">Closed</th><th class="n">Avg CLV</th><th class="n">Beat close</th></tr></thead>
+    <tbody><tr><td>Under 12 h</td><td>Bets</td><td class="n">2</td>
+        <td class="n bad">-1.5%</td><td class="n">0%</td></tr></tbody></table></div></details>
     <h3>Prop model, past weeks</h3>
     <p class="lede">Player projections replayed for 2025 (weeks 5-18) and 2026 so far, using only information available before each game,
     then compared with what players actually did. "Simple average" is a plain recent-games average for comparison.</p>
@@ -3217,10 +3226,11 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div><b>Projection</b><p>The model's number blended with the betting market. History shows the market is usually closer, so it gets most of the weight.</p></div>
       <div><b>Edge (EV)</b><p>Expected profit per dollar bet. +4% means $4 expected profit per $100 over many bets, not on this one.</p></div>
       <div><b>Fair price</b><p>The moneyline that would make a bet break even at the model's win chance. Compare it with your book.</p></div>
+      <div><b>Other books</b><p>On a prop, the chance the other sportsbooks (FanDuel, BetMGM, Caesars and others) give our side at DraftKings' line, from the median of their no-vig prices. Green means they also see value at DraftKings' price, red means they don't. Shown for information while it's tested; it doesn't change the model's numbers yet.</p></div>
       <div><b>Lean / No edge</b><p>A lean is a small positive edge below the betting bar. No edge means both sides are worse than the price.</p></div>
     </div></section>
 </main>
-<footer><div class="wrap">Generated Oct 23, 2026 at 12:39 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
+<footer><div class="wrap">Generated Oct 23, 2026 at 12:59 PM CT from nflverse data through Oct 22. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
 <script>
 (function(){
@@ -3252,3 +3262,4 @@ For entertainment and analysis. Bet only what you can afford to lose. Help is av
   if(location.hash){window.addEventListener('load',function(){[0,150,400].forEach(function(t){setTimeout(function(){window.scrollTo(0,0)},t)})})}
 })();
 </script>
+</body></html>

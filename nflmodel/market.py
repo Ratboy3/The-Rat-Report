@@ -131,3 +131,42 @@ def best_prop_prices(path) -> dict:
         for r in x.itertuples():
             out[(r.player, r.stat, side, float(r.line))] = (BOOK_NAMES.get(r.book, r.book), getattr(r, col))
     return out
+
+
+def timing_test(history_path, games: pd.DataFrame, out_path="timing_test.csv") -> dict:
+    """Do line moves keep going? For each finished game: the move from the first line we saw to 24 hours before
+    kickoff, then the move from there to the close. If early moves tend to continue, a lean or bet the line is
+    moving toward is worth taking early; if they reverse, waiting gets better prices."""
+    h = _read(history_path)
+    res = dict(games=0)
+    if h is not None and len(h):
+        h = h.copy()
+        g = games.set_index("game_id")
+        h = h[h.game_id.isin(g.index)]
+        h["t"] = [_parse(s) for s in h["at"]]
+        h = h.dropna(subset=["t"])
+        rows = []
+        for gid, grp in h.groupby("game_id"):
+            row = g.loc[gid]
+            if pd.isna(row.get("result")):
+                continue
+            ko = datetime.strptime(f"{row.gameday} {row.gametime}", "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("America/New_York"))
+            grp = grp[grp.t < ko].sort_values("t")
+            mid = grp[grp.t <= ko - timedelta(hours=24)]
+            if len(grp) < 2 or mid.empty or grp.t.iloc[0] == mid.t.iloc[-1]:
+                continue
+            for col in ("spread_line", "total_line"):
+                a, b, c = grp[col].iloc[0], mid[col].iloc[-1], grp[col].iloc[-1]
+                if pd.notna(a) and pd.notna(b) and pd.notna(c):
+                    rows.append(dict(game_id=gid, market=col, early=b - a, late=c - b))
+        d = pd.DataFrame(rows)
+        if len(d):
+            moved = d[d.early != 0]
+            cont = float(((moved.late * moved.early) > 0).mean()) if len(moved) else np.nan
+            rev = float(((moved.late * moved.early) < 0).mean()) if len(moved) else np.nan
+            res = dict(games=int(d.game_id.nunique()), early_moves=int(len(moved)),
+                       continued=round(cont, 3) if len(moved) else None, reversed=round(rev, 3) if len(moved) else None,
+                       corr=round(float(np.corrcoef(d.early, d.late)[0, 1]), 3) if len(d) > 2 and d.early.std() > 0 and d.late.std() > 0 else None)
+    res = {"tested_at": datetime.now(CT).strftime("%Y-%m-%d %H:%M"), **res}
+    pd.DataFrame([res]).to_csv(out_path, mode="a", header=not Path(out_path).exists(), index=False)
+    return res

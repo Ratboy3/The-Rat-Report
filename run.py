@@ -236,7 +236,8 @@ def cmd_report(a):
             if first.startswith("# checked:"):
                 lines_checked = first.split(":", 1)[1].strip()
         tdm = pd.read_csv(a.td_market, comment="#") if a.td_market and Path(a.td_market).exists() else None
-        auto_props = price_auto(players, proj, team_ppg, plines, tdm)
+        pbooks = pd.read_csv(a.prop_books, comment="#") if a.prop_books and Path(a.prop_books).exists() else None
+        auto_props = price_auto(players, proj, team_ppg, plines, tdm, pbooks)
         auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
     except Exception as e:  # props are an extra; never block the main report
         print(f"Props skipped: {e}")
@@ -270,6 +271,16 @@ def cmd_report(a):
     path = OUT / f"report_{season}_wk{week}.html"
     path.write_text(html, encoding="utf-8")
     print(f"Wrote {path}  (open it in any browser)")
+
+
+def cmd_consensus_test(a):
+    from nflmodel import consensus as K
+    d = K.run_test(load_games(refresh=False))
+    if d is not None:
+        for k, v in K.summarize(d).items():
+            print(k, {x: (round(y, 4) if isinstance(y, float) else y) for x, y in v.items()})
+    v = K.verdict(d)
+    print(f"Consensus anchor: {'ON' if v['use_consensus'] else 'OFF'} ({v.get('n', 0)} graded props; needs {K.MIN_TEST_N}+ and better accuracy)")
 
 
 def cmd_props_backtest(a):
@@ -386,12 +397,15 @@ def main():
     sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
     sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
     sub.add_parser("build-extras", help="red-zone usage, team tendencies and this season's 4th-down decisions from play-by-play")
+    sub.add_parser("build-routes", help="routes run per player-game (participation + snap-share proxy) -> data/routes.csv")
     sub.add_parser("build-aggression", help="every 4th-down decision and PAT since 2006 -> data/fourth_downs.csv (one-time)")
     pb = sub.add_parser("props-backtest", help="replay past weeks of player projections against results")
     pb.add_argument("--out", default="prop_backtest.csv")
     pb.add_argument("--agg-test", action="store_true", help="also replay with the coach-aggressiveness TD boost flipped; "
                     "writes agg_test.csv, which switches it on only if better overall and this season")
     pb.add_argument("--agg-out", default="agg_test.csv")
+    sub.add_parser("consensus-test", help="other books' consensus vs DraftKings on graded props -> consensus_test.csv")
+    sub.add_parser("timing-test", help="do line moves continue to the close? -> timing_test.csv")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
@@ -403,6 +417,9 @@ def main():
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
      "build-extras": cmd_build_extras,
+     "build-routes": lambda a: __import__("nflmodel.routes", fromlist=["build"]).build(sorted({next_week(load_games())[0] - 2, next_week(load_games())[0] - 1, next_week(load_games())[0]})),
+     "consensus-test": cmd_consensus_test,
+     "timing-test": lambda a: print(__import__("nflmodel.market", fromlist=["timing_test"]).timing_test("lines_history.csv", load_games())),
      "build-aggression": lambda a: __import__("nflmodel.aggression", fromlist=["build"]).build(),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
 

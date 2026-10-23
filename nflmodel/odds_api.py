@@ -119,6 +119,16 @@ def _write(path: Path, df: pd.DataFrame, now: datetime) -> None:
         df.to_csv(fh, index=False)
 
 
+def _archive(path: str, df: pd.DataFrame, now: datetime) -> None:
+    """Append every pull to a history file (prop_books.csv / game_lines.csv only keep the latest), so the
+    sharp-book and bet-timing tests have the full record."""
+    if df is None or df.empty:
+        return
+    out = Path(path)
+    df = df.assign(fetched_at=now.astimezone(CT).strftime("%Y-%m-%d %H:%M"))
+    df.to_csv(out, mode="a", header=not out.exists(), index=False)
+
+
 def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: str = "prop_books.csv") -> None:
     """hours: only fetch games kicking off within this many hours (saves credits); None = rest of the week."""
     key = api_key()
@@ -129,9 +139,12 @@ def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: 
     allrows, left = [], None
     for e in events:
         rows, left = event_lines(key, e)
+        for r in rows:
+            r["kickoff"] = e["commence_time"]
         allrows += rows
         print(f"  {_game(e)}: {sum(1 for r in rows if r['book'] == BOOK)} DraftKings lines, "
               f"{len({r['book'] for r in rows})} books")
+    _archive("prop_books_history.csv", pd.DataFrame(allrows, columns=BOOK_COLS + ["kickoff"]), now)
     books = pd.DataFrame(allrows, columns=BOOK_COLS)
     fresh = books[books.book == BOOK].assign(source=SOURCE)[COLS]
 
@@ -179,6 +192,7 @@ def fetch_games(path: str = "game_lines.csv") -> None:
                                      market={"h2h": "moneyline", "spreads": "spread", "totals": "total"}[m["key"]],
                                      side=side, line=o.get("point"), odds=o.get("price"), as_of=as_of))
     df = pd.DataFrame(rows, columns=GAME_COLS)
+    _archive("game_lines_history.csv", df, now)
     out = Path(path)
     if out.exists():   # keep the last pre-game lines for games that have started
         old = pd.read_csv(out, comment="#")

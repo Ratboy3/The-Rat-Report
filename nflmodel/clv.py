@@ -29,7 +29,7 @@ ET = ZoneInfo("America/New_York")
 CT = ZoneInfo("America/Chicago")
 COLS = ["bet_id", "logged_at", "season", "week", "game_id", "game", "kickoff", "market", "side", "pick", "player",
         "stat", "line", "odds", "model_prob", "ev", "close_line", "close_odds", "close_odds2", "close_at", "clv", "value_at_close",
-        "result", "pnl", "tier"]
+        "result", "pnl", "tier", "cons_prob", "hours_before"]
 
 
 def _kickoff(g) -> datetime:
@@ -89,6 +89,13 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
             log[c] = np.nan
     log["tier"] = log["tier"].fillna("bet")
     log = log[COLS].astype({c: "object" for c in ("player", "stat", "close_at", "result", "tier")})
+    hrs = lambda g: round((_kickoff(g) - now).total_seconds() / 3600, 1)
+    miss = log.hours_before.isna()
+    if miss.any():   # rows logged before this column existed: from the logged-at stamp
+        la = pd.to_datetime(log.loc[miss, "season"].astype(str) + " " + log.loc[miss, "logged_at"].astype(str).str.replace(" CT", ""),
+                            format="%Y %a %b %d, %I:%M %p", errors="coerce").dt.tz_localize(CT)
+        ko = pd.to_datetime(log.loc[miss, "kickoff"], utc=True, errors="coerce")
+        log.loc[miss, "hours_before"] = ((ko - la.dt.tz_convert("UTC")).dt.total_seconds() / 3600).round(1)
     known = set(log.bet_id)
     gid = {f"{g.away_team} @ {g.home_team}": g for _, g in proj.iterrows()}
     started = {k: _kickoff(g) <= now for k, g in gid.items()}
@@ -112,7 +119,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
             new.append(dict(bet_id=bid, logged_at=_stamp(now), season=season, week=week, game_id=g.game_id, game=key,
                             kickoff=_kickoff(g).isoformat(), market=o["market"], side=o["side"], pick=o["pick"],
                             player="", stat="", line=line, odds=o["odds"], model_prob=round(o["win_prob"], 4),
-                            ev=round(o["ev"], 4), tier=tier))
+                            ev=round(o["ev"], 4), tier=tier, hours_before=hrs(g)))
     if props is not None and len(props):
         for r in props[props.flag.astype(bool) | (props.ev > 0)].itertuples():
             g = gid.get(r.game)
@@ -129,7 +136,9 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                             kickoff=_kickoff(g).isoformat(), market="prop", side=r.best_side, pick=f"{r.player} {what}",
                             player=r.player, stat=r.stat, line=r.line, odds=odds,
                             model_prob=round(float(r.p_over if r.best_side == "Over" else 1 - r.p_over), 4), ev=round(r.ev, 4),
-                            tier=tier))
+                            tier=tier, hours_before=hrs(g),
+                            cons_prob=(round(float(r.cons_p_over if r.best_side == "Over" else 1 - r.cons_p_over), 4)
+                                       if pd.notna(getattr(r, "cons_p_over", np.nan)) else np.nan)))
     if new:
         log = pd.concat([log, pd.DataFrame(new)], ignore_index=True)
 
@@ -227,3 +236,19 @@ def summary(log: pd.DataFrame | None) -> dict | None:
                          wins=int((s.result == "win").sum()), losses=int((s.result == "loss").sum()),
                          units=float(s.pnl.astype(float).sum()) if len(s) else 0.0)
     return out
+
+
+def timing(log: pd.DataFrame | None) -> pd.DataFrame | None:
+    """Average CLV by how long before kickoff a bet was logged: tells us whether to bet early or wait."""
+    if log is None or log.empty or "hours_before" not in log:
+        return None
+    lg = log[log.clv.notna() & log.hours_before.notna()].copy()
+    if "tier" not in lg:
+        lg["tier"] = "bet"
+    lg["tier"] = lg.tier.fillna("bet")
+    lg = lg[pd.to_datetime(lg.kickoff, utc=True, errors="coerce") <= pd.Timestamp.now(tz="UTC")]
+    if lg.empty:
+        return None
+    lg["when"] = pd.cut(lg.hours_before.astype(float), [-1, 12, 48, 1e4], labels=["Under 12 h", "12-48 h", "Over 48 h"])
+    return lg.groupby(["when", "tier"], observed=True).agg(n=("clv", "size"), clv=("clv", "mean"),
+                                                           beat=("clv", lambda x: float((x > 0).mean()))).reset_index()
