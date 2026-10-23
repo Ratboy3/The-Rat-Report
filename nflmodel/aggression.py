@@ -65,7 +65,7 @@ def build(first: int = 2006, last: int | None = None, only: list[int] | None = N
     import datetime
     last = last or datetime.date.today().year
     seasons = only or list(range(first, last + 1))
-    old = pd.read_csv(FILE, dtype={"kind": str}) if FILE.exists() else pd.DataFrame()
+    old = pd.read_csv(FILE, dtype={"kind": str}) if _ensure_file() else pd.DataFrame()
     parts = []
     for s in seasons:
         local = RAW / f"pbp_{s}.csv.gz"
@@ -152,8 +152,26 @@ def _with_coach(df: pd.DataFrame, games: pd.DataFrame) -> pd.DataFrame:
     return df.drop(columns=["home_coach", "away_coach"])
 
 
+MIRROR = "https://raw.githubusercontent.com/Ratboy3/The-Rat-Report/main/data/fourth_downs.csv"
+
+
+def _ensure_file() -> bool:
+    """The decisions file is ~5 MB; if a run didn't download it, fetch the copy kept in the GitHub repo."""
+    if FILE.exists() and FILE.stat().st_size > 1_000_000:
+        return True
+    try:
+        import urllib.request
+        FILE.parent.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(MIRROR, FILE)
+        print(f"  downloaded {FILE.name} from the GitHub repo")
+        return True
+    except Exception as e:
+        print(f"  coach aggressiveness skipped: {FILE.name} missing ({e})")
+        return False
+
+
 def load(games: pd.DataFrame) -> pd.DataFrame | None:
-    if not FILE.exists():
+    if not _ensure_file():
         return None
     raw = pd.read_csv(FILE, dtype={"kind": str})
     raw["kind"] = raw.kind.map({"4": "4th", "p": "pat"}).fillna(raw.kind)
