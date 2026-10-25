@@ -1,5 +1,5 @@
 # Pre-kickoff pull from The Odds API, about an hour before each slate:
-#   Thursday and Monday 6:15 PM CT (prime-time games), Sunday 11:00 AM CT (noon, late and night games).
+#   Thursday and Monday 6:15 PM CT (prime-time games), Sunday 10:15 AM CT (noon, late and night games).
 # Sundays also get:
 #   6:45 AM CT  early pull for games abroad (London/Paris ~8:30 AM CT): props + game lines, only when such a game
 #               is on (listing games is free, so other Sundays cost nothing)
@@ -22,8 +22,8 @@ on:
   schedule:
     - cron: "15 23 * * 1,4"   # Mon/Thu 6:15 PM CDT
     - cron: "15 0 * * 2,5"    # Mon/Thu 6:15 PM CST (Tue/Fri in UTC)
-    - cron: "0 16 * * 0"      # Sun 11:00 AM CDT
-    - cron: "0 17 * * 0"      # Sun 11:00 AM CST
+    - cron: "15 15 * * 0"     # Sun 10:15 AM CDT (site fully updated by 11 AM)
+    - cron: "15 16 * * 0"     # Sun 10:15 AM CST
     - cron: "45 11 * * 0"     # Sun 6:45 AM CDT (early game abroad)
     - cron: "45 12 * * 0"     # Sun 6:45 AM CST
     - cron: "55 18 * * 0"     # Sun 1:55 PM CDT (game lines before the late games)
@@ -56,7 +56,7 @@ jobs:
           d=$(TZ=America/Chicago date +%u); t=$(TZ=America/Chicago date +%H%M)
           # Mon=1 Thu=4 Sun=7; scheduled runs can start up to ~40 minutes late
           if { [ "$d" = 1 ] || [ "$d" = 4 ]; } && [ "$t" -ge 1800 ] && [ "$t" -le 1900 ]; then echo "go=1" >> $GITHUB_OUTPUT
-          elif [ "$d" = 7 ] && [ "$t" -ge 1045 ] && [ "$t" -le 1145 ]; then echo "go=1" >> $GITHUB_OUTPUT
+          elif [ "$d" = 7 ] && [ "$t" -ge 1000 ] && [ "$t" -le 1145 ]; then echo "go=1" >> $GITHUB_OUTPUT
           elif [ "$d" = 7 ] && [ "$t" -ge 0630 ] && [ "$t" -le 0800 ]; then echo "go=1" >> $GITHUB_OUTPUT; echo "mode=early" >> $GITHUB_OUTPUT
           elif [ "$d" = 7 ] && [ "$t" -ge 1340 ] && [ "$t" -le 1450 ]; then echo "go=1" >> $GITHUB_OUTPUT; echo "mode=lines" >> $GITHUB_OUTPUT
           else echo "go=0" >> $GITHUB_OUTPUT; echo "Not the local pull time ($d $t CT), skipping"; fi
