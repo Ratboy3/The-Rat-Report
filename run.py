@@ -223,6 +223,22 @@ def _freeze_closing_props(auto_props, proj, path):
     return out
 
 
+def _scores_from_news(games, news_path):
+    """Fill final scores the nflverse feed hasn't posted yet from confirmed 'Final: ...' news notes, so bets on a
+    finished game are graded as soon as it ends (the feed is used as soon as it has the score)."""
+    if not news_path or not Path(news_path).exists():
+        return games
+    from nflmodel.report import _final_from_news
+    nb = pd.read_csv(news_path, comment="#").set_index("game")["note"].to_dict()
+    games = games.copy()
+    key = games.away_team + " @ " + games.home_team
+    for i in games.index[games.result.isna() & key.isin(nb.keys())]:
+        f = _final_from_news(games.loc[i], nb[key[i]])
+        if f is not None:
+            games.loc[i, ["home_score", "away_score", "result", "total"]] = f[["home_score", "away_score", "result", "total"]].values
+    return games
+
+
 def cmd_report(a):
     from nflmodel.report import render
     games = load_games(refresh=a.refresh)
@@ -300,7 +316,8 @@ def cmd_report(a):
     if a.bets_log:
         try:
             from nflmodel import clv
-            clv_log = clv.update(a.bets_log, season, week, proj, games_out, sm, auto_props, games)
+            games_g = _scores_from_news(games, a.news)
+            clv_log = clv.update(a.bets_log, season, week, proj, games_out, sm, auto_props, games_g)
         except Exception as e:
             print(f"Bet log skipped: {e}")
     news, checked = None, None
