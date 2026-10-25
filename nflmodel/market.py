@@ -170,3 +170,44 @@ def timing_test(history_path, games: pd.DataFrame, out_path="timing_test.csv") -
     res = {"tested_at": datetime.now(CT).strftime("%Y-%m-%d %H:%M"), **res}
     pd.DataFrame([res]).to_csv(out_path, mode="a", header=not Path(out_path).exists(), index=False)
     return res
+
+
+HISTORY_MIRROR = "https://raw.githubusercontent.com/Ratboy3/The-Rat-Report/main/prop_books_history.csv"
+
+
+def frozen_prop_lines(proj: pd.DataFrame, now: datetime | None = None, path="prop_books_history.csv") -> tuple[pd.DataFrame, set]:
+    """DraftKings prop lines as they stood at the last Odds API pull before each started game's kickoff, so a game's
+    card keeps its pre-game props (frozen) after kickoff instead of going blank. Returns (lines, started game keys)."""
+    now = now or datetime.now(CT)
+    et = ZoneInfo("America/New_York")
+    started, ko = set(), {}
+    for g in proj.itertuples():
+        k = datetime.strptime(f"{g.gameday} {g.gametime}", "%Y-%m-%d %H:%M").replace(tzinfo=et)
+        if k <= now:
+            started.add(f"{g.away_team} @ {g.home_team}")
+            ko[f"{g.away_team} @ {g.home_team}"] = k
+    empty = pd.DataFrame(columns=["player", "stat", "line", "over_odds", "under_odds", "source", "as_of"])
+    if not started:
+        return empty, started
+    p = Path(path)
+    try:
+        h = pd.read_csv(p if p.exists() else HISTORY_MIRROR)
+    except Exception as e:
+        print(f"  frozen props skipped ({e})")
+        return empty, started
+    h = h[(h.book == "draftkings") & h.game.isin(started)].copy()
+    if h.empty:
+        return empty, started
+    h["t"] = pd.to_datetime(h.fetched_at).dt.tz_localize(CT)
+    h["ko"] = pd.to_datetime(h.kickoff, utc=True, errors="coerce")
+    out = []
+    for game, grp in h.groupby("game"):
+        k = pd.Timestamp(ko[game])
+        grp = grp[(grp.t < k) & ((grp.ko - k).abs() < pd.Timedelta(hours=6))]
+        if grp.empty:
+            continue
+        out.append(grp[grp.t == grp.t.max()])
+    if not out:
+        return empty, started
+    f = pd.concat(out).assign(source="DraftKings (The Odds API, last pre-game price)")
+    return f[["player", "stat", "line", "over_odds", "under_odds", "source", "as_of"]].reset_index(drop=True), started

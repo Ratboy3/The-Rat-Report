@@ -210,6 +210,39 @@ def _short_inj(text: str) -> str:
     return t
 
 
+def _started(g) -> bool:
+    """Kicked off already (nflverse kickoff times are Eastern)."""
+    try:
+        from zoneinfo import ZoneInfo
+        k = datetime.strptime(f"{g.gameday} {g.gametime}", "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("America/New_York"))
+        return k <= datetime.now(ZoneInfo("America/Chicago"))
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
+def _final_from_news(g, note: str):
+    """'Final: Steelers 16, Saints 10.' in the game's news note -> the game with scores filled in, so a finished
+    game moves to the bottom right away (the nflverse feed posts Sunday scores hours later)."""
+    import re
+    m = re.match(r"\s*Final:\s*(.+?)\s+(\d+),\s*(.+?)\s+(\d+)\b", str(note or ""))
+    if not m:
+        return None
+    by_name = {v.lower(): k for k, v in NAMES.items()}
+    pts = {}
+    for name, sc in ((m.group(1), m.group(2)), (m.group(3), m.group(4))):
+        t = by_name.get(name.strip().lower()) or (name.strip().upper() if name.strip().upper() in NAMES else None)
+        if t is None:
+            return None
+        pts[t] = int(sc)
+    if set(pts) != {g.home_team, g.away_team}:
+        return None
+    g = g.copy()
+    g["home_score"], g["away_score"] = pts[g.home_team], pts[g.away_team]
+    g["result"] = pts[g.home_team] - pts[g.away_team]
+    g["total"] = pts[g.home_team] + pts[g.away_team]
+    return g
+
+
 def _is_final(g) -> bool:
     """Game finished and scored in the nflverse feed."""
     return all(pd.notna(g.get(c)) for c in ("home_score", "away_score", "result"))
@@ -1054,10 +1087,25 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
            news=None, checked=None, auto_props=None, lines_checked=None, injuries=None, clv_log=None,
            prop_bt=None, market_info=None) -> str:
     # finished games drop out of the bet counts and best bets, and their cards move to the bottom with the final score
+    # (from the nflverse feed, or from the "Final: ..." news note when the feed hasn't posted the score yet)
+    if auto_props is not None and not auto_props.empty and "injury" in auto_props:
+        auto_props = auto_props.assign(injury=auto_props.injury.fillna("").astype(str))
+    nb = {}
+    if news is not None and not news.empty:
+        for r in news.fillna("").to_dict("records"):
+            nb[str(r.get("game", "")).strip()] = r
+    games = [dict(it, g=_final_from_news(it["g"], nb.get(f"{it['g'].away_team} @ {it['g'].home_team}", {}).get("note"))
+                  if not _is_final(it["g"]) and _final_from_news(it["g"], nb.get(f"{it['g'].away_team} @ {it['g'].home_team}", {}).get("note")) is not None
+                  else it["g"]) for it in games]
     live = [it for it in games if not _is_final(it["g"])]
     done = [it for it in games if _is_final(it["g"])]
-    n_bets = sum(1 for it in live for o in it["opts"] if o["ev"] >= C.MIN_EV)
-    n_props = int(auto_props.flag.sum()) if auto_props is not None and not auto_props.empty else 0
+    # bets and leans only for games that haven't kicked off; started games keep their cards and frozen pre-game props
+    upcoming = [it for it in live if not _started(it["g"])]
+    started_keys = {f"{it['g'].away_team} @ {it['g'].home_team}" for it in games if _started(it["g"]) or _is_final(it["g"])}
+    open_props = (auto_props[~auto_props.game.isin(started_keys)] if auto_props is not None and not auto_props.empty
+                  else auto_props)
+    n_bets = sum(1 for it in upcoming for o in it["opts"] if o["ev"] >= C.MIN_EV)
+    n_props = int(open_props.flag.sum()) if open_props is not None and not open_props.empty else 0
     news_by_game = {}
     if news is not None and not news.empty:
         for r in news.fillna("").to_dict("records"):
@@ -1104,14 +1152,14 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
   <section id="bets"><h2>Best bets</h2>
     {checked_line}
     <div class="best">
-      <div><h3>Games</h3>{_bets_section(live)}</div>
-      <div><h3>Top 5 prop edges</h3>{_top_props(auto_props)}</div>
+      <div><h3>Games</h3>{_bets_section(upcoming)}</div>
+      <div><h3>Top 5 prop edges</h3>{_top_props(open_props)}</div>
     </div>
     <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
     Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
-  {_leans_section(live, auto_props, clv_log)}
+  {_leans_section(upcoming, open_props, clv_log)}
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
     A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>

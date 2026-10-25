@@ -187,6 +187,42 @@ def cmd_backtest(a):
 
 
 # ------------------------------------------------------------------ report
+def _kicked_off(proj) -> set:
+    """'AWAY @ HOME' for every game that has started (kickoff time in Eastern from nflverse)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("America/Chicago"))
+    out = set()
+    for g in proj.itertuples():
+        try:
+            ko = datetime.strptime(f"{g.gameday} {g.gametime}", "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("America/New_York"))
+        except (TypeError, ValueError):
+            continue
+        if ko <= now:
+            out.add(f"{g.away_team} @ {g.home_team}")
+    return out
+
+
+def _freeze_closing_props(auto_props, proj, path):
+    """Games that have kicked off keep the props exactly as the last pre-kickoff run priced them (closing prices),
+    so started and finished cards still show their props. Games not yet started refresh the saved copy."""
+    if auto_props is None or auto_props.empty or not path:
+        return auto_props
+    p = Path(path)
+    started = _kicked_off(proj)
+    saved = pd.read_csv(p) if p.exists() else pd.DataFrame(columns=auto_props.columns)
+    week_games = {f"{g.away_team} @ {g.home_team}" for g in proj.itertuples()}
+    saved = saved[saved.game.isin(week_games)] if len(saved) else saved      # drop last week's games
+    frozen = saved[saved.game.isin(started)]
+    have = set(frozen.game)
+    fresh = auto_props[~auto_props.game.isin(have)]
+    out = pd.concat([fresh, frozen[[c for c in auto_props.columns if c in frozen.columns]]], ignore_index=True)
+    # save: games not started yet get today's prices; started games keep what they had
+    keep = pd.concat([saved[saved.game.isin(started)], auto_props[~auto_props.game.isin(started)]], ignore_index=True)
+    keep.to_csv(p, index=False)
+    return out
+
+
 def cmd_report(a):
     from nflmodel.report import render
     games = load_games(refresh=a.refresh)
@@ -236,8 +272,20 @@ def cmd_report(a):
             if first.startswith("# checked:"):
                 lines_checked = first.split(":", 1)[1].strip()
         tdm = pd.read_csv(a.td_market, comment="#") if a.td_market and Path(a.td_market).exists() else None
+        # started games keep the DraftKings props they had at kickoff (frozen), instead of going blank
+        from nflmodel import market as _mk
+        frozen, started = _mk.frozen_prop_lines(proj)
+        if started and players is not None and len(players):
+            gone = set(players[players.game.isin(started)].player)
+            base = plines[~plines.player.isin(gone)] if plines is not None else None
+            if len(frozen):
+                plines = pd.concat([base, frozen], ignore_index=True) if base is not None else frozen
+                print(f"  kept {len(frozen)} pre-game DraftKings prop lines for {len(started)} started game(s)")
+            else:
+                plines = base
         pbooks = pd.read_csv(a.prop_books, comment="#") if a.prop_books and Path(a.prop_books).exists() else None
         auto_props = price_auto(players, proj, team_ppg, plines, tdm, pbooks)
+        auto_props = _freeze_closing_props(auto_props, proj, a.closing_props)
         auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
     except Exception as e:  # props are an extra; never block the main report
         print(f"Props skipped: {e}")
@@ -390,6 +438,7 @@ def main():
         x.add_argument("--weather", default="weather.csv", help="game-time forecasts (fetch-weather)")
         x.add_argument("--game-lines", default="game_lines.csv", help="all books' game lines (fetch-games)")
     rp.add_argument("--prop-books", default="prop_books.csv", help="all books' prop lines (fetch-props)")
+    rp.add_argument("--closing-props", default="closing_props.csv", help="last pre-kickoff prop prices, kept for started games")
     rp.add_argument("--lines-history", default="lines_history.csv", help="market line at every run, for line movement")
     fp = sub.add_parser("fetch-props", help="live player props from The Odds API: DraftKings -> prop_lines.csv, all books -> prop_books.csv")
     fp.add_argument("--prop-lines", default="prop_lines.csv")
