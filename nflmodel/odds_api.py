@@ -129,7 +129,7 @@ def _archive(path: str, df: pd.DataFrame, now: datetime) -> None:
     df.to_csv(out, mode="a", header=not out.exists(), index=False)
 
 
-def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: str = "prop_books.csv") -> None:
+def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: str = "prop_books.csv") -> int:
     """hours: only fetch games kicking off within this many hours (saves credits); None = rest of the week."""
     key = api_key()
     now = datetime.now(CT)
@@ -168,6 +168,20 @@ def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: 
     _write(bout, books.dropna(subset=["over_odds", "under_odds"], how="all").sort_values(["game", "player", "stat", "book"]), now)
     print(f"Wrote {len(fresh)} DraftKings lines and {len(books)} lines from all books ({len(events)} games)"
           + (f"  (Odds API credits left: {left})" if left is not None else ""))
+    return len(events)
+
+
+def fetch_early(hours: float = 3.5) -> None:
+    """Sunday-morning pull for games abroad (London, Paris, etc. kick off around 8:30 AM CT, before the 11 AM pull).
+    Listing events is free, so on weeks with no early game this spends nothing."""
+    key = api_key()
+    now = datetime.now(CT)
+    soon = [e for e in week_events(key, now) if _ct(e["commence_time"]) < now + timedelta(hours=hours)]
+    if not soon:
+        print(f"No games in the next {hours:g} hours; nothing fetched (0 credits)")
+        return
+    fetch(hours=hours)
+    fetch_games()
 
 
 def fetch_games(path: str = "game_lines.csv") -> None:

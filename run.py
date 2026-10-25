@@ -394,6 +394,8 @@ def main():
     fp = sub.add_parser("fetch-props", help="live player props from The Odds API: DraftKings -> prop_lines.csv, all books -> prop_books.csv")
     fp.add_argument("--prop-lines", default="prop_lines.csv")
     fp.add_argument("--hours", type=float, default=None, help="only games kicking off within this many hours (saves API credits)")
+    fe = sub.add_parser("fetch-early", help="Sunday-morning pull for early (international) games: props + game lines only if a game kicks off soon")
+    fe.add_argument("--hours", type=float, default=3.5)
     sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
     sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
     sub.add_parser("build-extras", help="red-zone usage, team tendencies and this season's 4th-down decisions from play-by-play")
@@ -414,6 +416,7 @@ def main():
     {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
      "stamp-news": cmd_stamp_news, "props-backtest": cmd_props_backtest,
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
+     "fetch-early": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_early"]).fetch_early(a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
      "build-extras": cmd_build_extras,
