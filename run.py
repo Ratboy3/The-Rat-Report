@@ -239,6 +239,21 @@ def _scores_from_news(games, news_path):
     return games
 
 
+def cmd_weekly_review(a):
+    """Review a finished week (default: the last completed one) against real DraftKings lines and results."""
+    from nflmodel import review
+    games = load_games(refresh=False)
+    s, w = (a.season, a.week) if a.season and a.week else next_week(games)
+    if not (a.season and a.week):
+        w -= 1
+    props_csv = OUT / f"props_{s}_wk{w}.csv"
+    if not props_csv.exists():
+        print(f"{props_csv} not found: run `python run.py report --season {s} --week {w}` first")
+        return
+    out = review.run(s, w, games, str(props_csv))
+    print(Path(f"review_{s}_wk{w}.md").read_text())
+
+
 def cmd_report(a):
     from nflmodel.report import render
     games = load_games(refresh=a.refresh)
@@ -474,6 +489,9 @@ def main():
     pb.add_argument("--agg-out", default="agg_test.csv")
     sub.add_parser("consensus-test", help="other books' consensus vs DraftKings on graded props -> consensus_test.csv")
     sub.add_parser("timing-test", help="do line moves continue to the close? -> timing_test.csv")
+    wr = sub.add_parser("weekly-review", help="last week vs real DraftKings lines and results -> review_S_wkW.md, reviews.csv")
+    wr.add_argument("--season", type=int)
+    wr.add_argument("--week", type=int)
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
@@ -488,6 +506,7 @@ def main():
      "build-extras": cmd_build_extras,
      "build-routes": lambda a: __import__("nflmodel.routes", fromlist=["build"]).build(sorted({next_week(load_games())[0] - 2, next_week(load_games())[0] - 1, next_week(load_games())[0]})),
      "consensus-test": cmd_consensus_test,
+     "weekly-review": cmd_weekly_review,
      "timing-test": lambda a: print(__import__("nflmodel.market", fromlist=["timing_test"]).timing_test("lines_history.csv", load_games())),
      "build-aggression": lambda a: __import__("nflmodel.aggression", fromlist=["build"]).build(),
      "build-epa": lambda a: epa_mod.build_from_web()}[a.cmd](a)
