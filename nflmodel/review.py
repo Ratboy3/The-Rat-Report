@@ -103,11 +103,19 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
             continue
         y = int(float(np.nan_to_num(s.get("rushing_tds", 0))) + float(np.nan_to_num(s.get("receiving_tds", 0))) > 0)
         mk = (1 / decimal(r.over_odds)) * P.TD_BOOK_MARGIN
-        tr.append(dict(y=y, model=r.model_prob, market=mk, blend=r.adj_projection))
+        tr.append(dict(y=y, model=r.model_prob, market=mk, blend=r.adj_projection, odds=r.over_odds,
+                       raw=1 / decimal(r.over_odds)))
     if tr:
         tt = pd.DataFrame(tr).dropna()
         out["td"] = dict(lines=len(tt), scored=round(tt.y.mean(), 3), ll_model=round(_ll(tt.model, tt.y), 4),
                          ll_market=round(_ll(tt.market, tt.y), 4), ll_blend=round(_ll(tt.blend, tt.y), 4))
+        # longshot check: sportsbooks usually take a bigger cut on long odds, so the flat 0.92 margin may make
+        # longshot TD "edges" look bigger than they are. Track scored vs implied by price band across weeks.
+        tt["band"] = pd.cut(tt.odds, [-10000, 100, 300, 600, 1000, 100000],
+                            labels=["fav to +100", "+101 to +300", "+301 to +600", "+601 to +1000", "+1001 and up"])
+        out["td_bands"] = [dict(band=str(b), lines=len(g), scored=int(g.y.sum()), dk_implied=round(g.raw.mean(), 3),
+                                market_x092=round(g.market.mean(), 3), model=round(g.model.mean(), 3),
+                                blend=round(g.blend.mean(), 3)) for b, g in tt.groupby("band", observed=True)]
 
     # 3. bets and leans
     if Path(bets_log).exists():
@@ -129,6 +137,8 @@ def _write(out: dict, out_dir: str) -> None:
         md.append(pd.DataFrame(out["props"]).to_markdown(index=False))
     if out["td"]:
         md += ["", "## Anytime TDs", pd.DataFrame([out["td"]]).to_markdown(index=False)]
+    if out.get("td_bands"):
+        md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     md += ["", "## Flags to investigate"] + ([f"- {f}" for f in out["flags"]] or ["- none"])
@@ -136,6 +146,8 @@ def _write(out: dict, out_dir: str) -> None:
     rows = [dict(season=out["season"], week=out["week"], check="prop", **r) for r in out["props"]]
     if out["td"]:
         rows.append(dict(season=out["season"], week=out["week"], check="td", **out["td"]))
+    for b in out.get("td_bands", []):
+        rows.append(dict(season=out["season"], week=out["week"], check="td_band", **b))
     f = Path(out_dir, "reviews.csv")
     old = pd.read_csv(f) if f.exists() else pd.DataFrame()
     if len(old):

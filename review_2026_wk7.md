@@ -1,4 +1,4 @@
-# Weekly review: 2026 week 7 (run Mon Oct 26, 12:08 PM CT)
+# Weekly review: 2026 week 7 (run Mon Oct 26, 12:11 PM CT)
 
 ## Props vs DraftKings lines
 | stat       |   lines |   over_hit |   picked_over |   ll_ours |   ll_market |   leans |   lean_roi |
@@ -13,6 +13,15 @@
 |   lines |   scored |   ll_model |   ll_market |   ll_blend |
 |--------:|---------:|-----------:|------------:|-----------:|
 |     166 |    0.289 |     0.5611 |      0.5716 |     0.5668 |
+
+## Anytime TDs by DraftKings price (longshot check)
+| band          |   lines |   scored |   dk_implied |   market_x092 |   model |   blend |
+|:--------------|--------:|---------:|-------------:|--------------:|--------:|--------:|
+| fav to +100   |      16 |        6 |        0.589 |         0.542 |   0.517 |   0.542 |
+| +101 to +300  |      65 |       24 |        0.356 |         0.328 |   0.299 |   0.321 |
+| +301 to +600  |      66 |       17 |        0.193 |         0.178 |   0.173 |   0.177 |
+| +601 to +1000 |      17 |        1 |        0.114 |         0.105 |   0.111 |   0.105 |
+| +1001 and up  |       2 |        0 |        0.071 |         0.066 |   0.157 |   0.072 |
 
 ## Bets and leans
 | tier   | kind             |   n |   wins |   losses |   units |   clv |
