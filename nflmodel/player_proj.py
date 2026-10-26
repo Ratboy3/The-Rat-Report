@@ -330,6 +330,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                         est *= opp_f.get((opp, pos, st), 1.0)
                     if USE["vol"]:
                         est *= vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
+                    est *= SCALE.get(st, 1.0)
                 if st == "anytime_td":
                     lam = shares.get(pid, 0.0) * team_tds  # this player's expected TDs this game
                     if lam < 0.06:
@@ -381,6 +382,10 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
        "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False,
        "routes": False, "zerofill": False, "newteam": False}
+# Calibration: QBs beat the passing-yards projection on average (2025 actual/projected = 1.031). Applied to 2026
+# (out of sample) it cut the bias from +10.2 to +3.3 yards and the average miss from 57.4 to 57.1. The same
+# fix for rushing, receiving and receptions did not help on 2026, so those stay at 1.0. (Oct 26, 2026)
+SCALE = {"pass_yds": 1.031}
 NEWTEAM_W = 0.35         # weight on a player's games for a previous team, in touchdown shares
 # The Tuesday props-backtest --agg-test writes agg_test.csv; its verdict sets the switch.
 try:

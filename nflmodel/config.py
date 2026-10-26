@@ -27,6 +27,11 @@ BANKROLL = 1000.0
 
 # --- props ---
 PROP_CV = {"pass_yds": 0.33, "rush_yds": 0.78, "rec_yds": 0.79}   # sd / mean of projection misses, measured by props-backtest 2025-26
+# Rushing and receiving yards are right-skewed (57% of games land below the player's average), so a normal curve
+# centred on the average overrates Overs against DraftKings lines, which sit near the median. Gamma shape k fit on
+# 2025 player-games: rushing k=2.5 also wins on 2026 (log loss 0.6556 vs 0.6667 normal); receiving k=2.0 wins on 2025
+# (0.661 vs 0.673), ties on 2026, and wins on Week 7's real DraftKings lines (0.689 vs 0.694). Passing yards stay normal.
+PROP_GAMMA_SHAPE = {"rush_yds": 2.5, "rec_yds": 2.0}
 PROP_NB_SIZE = {"receptions": 7.5}  # receptions vary more than a Poisson count: negative binomial with this size
 PROP_COUNT = {"receptions", "pass_tds", "anytime_td"}
 PROP_SCRIPT_WEIGHT = 0.5       # how much a team's projected points move its players' projections

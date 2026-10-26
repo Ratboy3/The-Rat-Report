@@ -5,7 +5,7 @@ import math
 
 import numpy as np
 import pandas as pd
-from scipy.stats import nbinom, norm, poisson
+from scipy.stats import gamma as gamma_d, nbinom, norm, poisson
 
 from . import config as C
 from .betting import ev, kelly_stake
@@ -66,6 +66,8 @@ def _dist(stat: str, adj: float) -> dict:
     """Distribution the page's line checker uses: normal (mean, sd), poisson (lam) or td (p)."""
     if stat == "anytime_td":
         return dict(dist="td", a=adj, b=0.0)
+    if stat in C.PROP_GAMMA_SHAPE:
+        return dict(dist="gamma", a=max(0.5, adj), b=C.PROP_GAMMA_SHAPE[stat])
     if stat in C.PROP_CV:
         return dict(dist="normal", a=adj, b=max(1.0, adj * C.PROP_CV[stat]))
     if stat in C.PROP_NB_SIZE:
@@ -89,6 +91,9 @@ def _probs(d: dict, line: float) -> tuple[float, float, float]:
     if d["dist"] == "normal":
         o = 1 - norm.cdf(line, d["a"], d["b"])
         return (o, 0.0, 1 - o)
+    if d["dist"] == "gamma":
+        o = float(gamma_d.sf(line, d["b"], scale=d["a"] / d["b"]))
+        return (o, 0.0, 1 - o)
     k = math.floor(line)
     if float(line).is_integer():
         return (1 - _cdf(d, k), _cdf(d, k) - _cdf(d, k - 1), _cdf(d, k - 1))
@@ -100,6 +105,8 @@ def _fair_line(d: dict) -> float | None:
         return None
     if d["dist"] == "normal":
         return round(d["a"] * 2) / 2 if round(d["a"] * 2) % 2 == 1 else math.floor(d["a"]) + 0.5
+    if d["dist"] == "gamma":            # skewed: the 50/50 line is the median, below the average
+        return math.floor(float(gamma_d.median(d["b"], scale=d["a"] / d["b"]))) + 0.5
     best = min((abs(_probs(d, k + 0.5)[0] - 0.5), k + 0.5) for k in range(0, 15))
     return best[1]
 
@@ -133,6 +140,9 @@ def _no_vig_over(oo, uo) -> float | None:
 def _market_mean(stat: str, line: float, p_over: float | None) -> float:
     """The mean the DraftKings line and prices imply."""
     p = 0.5 if p_over is None else min(0.9, max(0.1, p_over))
+    if stat in C.PROP_GAMMA_SHAPE:        # P(X > line) = p with X = mean * Gamma(k, 1/k)
+        k = C.PROP_GAMMA_SHAPE[stat]
+        return line / max(0.05, float(gamma_d.isf(p, k, scale=1 / k)))
     if stat in C.PROP_CV:
         cv = C.PROP_CV[stat]
         z = norm.ppf(p)                   # P(X > line) = p with X ~ N(m, cv*m)  ->  m = line / (1 - z*cv)
