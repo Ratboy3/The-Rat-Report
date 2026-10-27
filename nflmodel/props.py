@@ -235,6 +235,11 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     for g in week_proj.itertuples():
         team_pts[g.home_team] = g.proj_home_pts
         team_pts[g.away_team] = g.proj_away_pts
+    if books is not None and len(books) and "game" in books:
+        # only this week's games: prop_books.csv can still hold last week's pull (Oct 27 fix: Week 7 FanDuel
+        # lines were being matched by player name to Week 8 props)
+        wk_games = {f"{g.away_team} @ {g.home_team}" for g in week_proj.itertuples()}
+        books = books[books.game.isin(wk_games)]
     book = {}
     if lines is not None and len(lines):
         for r in lines.itertuples():
