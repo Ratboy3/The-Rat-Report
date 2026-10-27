@@ -1142,13 +1142,13 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>The Rat Report</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{FAVICON}">
+{FAVICON_TAG}
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>{CSS}{UI_CSS}</style></head>
 <body>
 <div class="mast"><div class="wrap">
-  <div class="brand"><span class="logo">{LOGO_SVG}</span><div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div></div>
+  <div class="brand"><span class="logo">{LOGO_HTML}</span><div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div></div>
   <div class="mast-stats">
     <div><b>{n_bets}</b><span>game bets</span></div>
     <div><b>{n_props}</b><span>prop bets</span></div>
@@ -1501,4 +1501,25 @@ UI_CSS += """
 .brand .logo{flex:none;width:68px;height:68px;display:block}
 .brand .logo svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
 @media (max-width:640px){.brand{gap:10px}.brand .logo{width:48px;height:48px}}
+"""
+
+# Header logo: Alex's rat-in-a-manhole art (assets/logo-rat.webp), embedded so the
+# page stays one file. Falls back to the vector badge if the image is missing.
+import base64 as _b64, pathlib as _pl
+_ASSETS = _pl.Path(__file__).resolve().parent.parent / "assets"
+def _data_uri(name, mime):
+    try:
+        return f"data:{mime};base64," + _b64.b64encode((_ASSETS / name).read_bytes()).decode()
+    except OSError:
+        return None
+_logo_uri = _data_uri("logo-rat.webp", "image/webp")
+_fav_uri = _data_uri("favicon-rat.png", "image/png")
+LOGO_HTML = (f'<img src="{_logo_uri}" width="300" height="253" alt="The Rat Report logo">'
+             if _logo_uri else LOGO_SVG)
+FAVICON_TAG = (f'<link rel="icon" type="image/png" href="{_fav_uri}">' if _fav_uri
+               else f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{FAVICON}">')
+UI_CSS += """
+.brand .logo{width:auto;height:auto}
+.brand .logo img{display:block;width:118px;height:auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+@media (max-width:640px){.brand .logo{width:auto;height:auto}.brand .logo img{width:78px}}
 """
