@@ -104,6 +104,7 @@ def best_game_prices(path) -> dict:
     out = {}
     if gl is None or gl.empty:
         return out
+    gl = gl[gl.book != "pinnacle"]                           # sharp reference only: not a US book you can bet at
     for (game, mk, side), g in gl.groupby(["game", "market", "side"]):
         g = g.dropna(subset=["odds"]).copy()
         if mk == "spread":

@@ -12,7 +12,9 @@ Checks
      log loss of our blended chance vs DraftKings' no-vig chance (lower = sharper), and leans' return.
   2. Anytime TDs: log loss of the model alone, the market alone, and the live 40/60 blend.
   3. Bets and leans: record, units and average CLV by market and stat.
-  4. Flags: a stat whose picks lean one way 70%+ of the time, or where our chance is worse than the
+  4. DraftKings vs Pinnacle on game lines (once Pinnacle is in game_lines_history.csv): moneyline log loss and the
+     record of the side Pinnacle preferred at DraftKings' spread. Tracked weekly; used only once it's proven.
+  5. Flags: a stat whose picks lean one way 70%+ of the time, or where our chance is worse than the
      market's by 0.01+ log loss on 40+ lines, is listed as something to investigate.
 """
 from __future__ import annotations
@@ -49,6 +51,53 @@ def _pregame_lines(history: str, games: pd.DataFrame, season: int, week: int) ->
     keys = set(wk.away_team + " @ " + wk.home_team)
     h = h[h.game.isin(keys)]
     return h.sort_values("t").groupby(["game", "player", "stat"]).tail(1)
+
+
+def _sharp(season: int, week: int, games: pd.DataFrame, path="game_lines_history.csv") -> dict | None:
+    """DraftKings vs Pinnacle (sharp reference, archived since Oct 28, 2026) at the last pre-kickoff pull with both:
+    moneyline log loss against results, and how the side Pinnacle preferred at DraftKings' spread did."""
+    if not Path(path).exists():
+        return None
+    h = pd.read_csv(path)
+    if "pinnacle" not in set(h.book):
+        return None
+    h["t"] = pd.to_datetime(h.fetched_at)
+    h["ko"] = pd.to_datetime(h.kickoff, format="%a %b %d, %I:%M %p CT", errors="coerce")
+    wk = games[(games.season == season) & (games.week == week) & games.result.notna()]
+    res = dict(zip(wk.away_team + " @ " + wk.home_team, wk.result))
+    rows = []
+    for game, g in h[h.game.isin(res) & h.book.isin(["draftkings", "pinnacle"])].groupby("game"):
+        both = g.groupby("t").book.nunique()
+        both = both[both == 2].index
+        if not len(both):
+            continue
+        last = g[g.t == max(both)]
+        def nv(book):
+            m = last[(last.book == book) & (last.market == "moneyline")].set_index("side").odds
+            if {"home", "away"} - set(m.index):
+                return np.nan
+            ih, ia = 1 / decimal(m["home"]), 1 / decimal(m["away"])
+            return ih / (ih + ia)
+        sp = {b: last[(last.book == b) & (last.market == "spread") & (last.side == "home")].line for b in ("draftkings", "pinnacle")}
+        r = res[game]
+        rows.append(dict(game=game, y=float(r > 0) if r != 0 else np.nan, dk=nv("draftkings"), pin=nv("pinnacle"),
+                         dk_sp=float(sp["draftkings"].iloc[0]) if len(sp["draftkings"]) else np.nan,
+                         pin_sp=float(sp["pinnacle"].iloc[0]) if len(sp["pinnacle"]) else np.nan, result=r))
+    if not rows:
+        return None
+    d = pd.DataFrame(rows)
+    m = d.dropna(subset=["y", "dk", "pin"])
+    out = dict(games=len(d), ll_dk=round(_ll(m.dk, m.y), 4) if len(m) else np.nan,
+               ll_pin=round(_ll(m.pin, m.y), 4) if len(m) else np.nan)
+    s = d.dropna(subset=["dk_sp", "pin_sp"])
+    s = s[s.dk_sp != s.pin_sp]   # spreads stored as the home team's line (negative = home favored)
+    if len(s):
+        # Pinnacle gives the home team fewer points than DraftKings -> Pinnacle likes home at DraftKings' number
+        home_side = s.pin_sp < s.dk_sp
+        cover = np.where(home_side, s.result + s.dk_sp > 0, s.result + s.dk_sp < 0)
+        push = (s.result + s.dk_sp) == 0
+        out.update(spread_disagree=int(len(s)), pin_side_wins=int((cover & ~push).sum()), pushes=int(push.sum()))
+    return out
 
 
 def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="prop_books_history.csv",
@@ -126,6 +175,10 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
             out["log"].append(dict(tier=tier, kind=kind, n=len(g), wins=int((g.result == "win").sum()),
                                    losses=int((g.result == "loss").sum()), units=round(float(g.pnl.astype(float).sum()), 2),
                                    clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
+    try:
+        out["sharp"] = _sharp(season, week, games)
+    except Exception as e:
+        print(f"  sharp-book check skipped ({e})")
     _write(out, out_dir)
     return out
 
@@ -141,6 +194,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
+    if out.get("sharp"):
+        md += ["", "## DraftKings vs Pinnacle (sharp-book check)", pd.DataFrame([out["sharp"]]).to_markdown(index=False)]
     md += ["", "## Flags to investigate"] + ([f"- {f}" for f in out["flags"]] or ["- none"])
     Path(out_dir, f"review_{out['season']}_wk{out['week']}.md").write_text("\n".join(md) + "\n")
     rows = [dict(season=out["season"], week=out["week"], check="prop", **r) for r in out["props"]]
@@ -148,6 +203,8 @@ def _write(out: dict, out_dir: str) -> None:
         rows.append(dict(season=out["season"], week=out["week"], check="td", **out["td"]))
     for b in out.get("td_bands", []):
         rows.append(dict(season=out["season"], week=out["week"], check="td_band", **b))
+    if out.get("sharp"):
+        rows.append(dict(season=out["season"], week=out["week"], check="sharp", **out["sharp"]))
     f = Path(out_dir, "reviews.csv")
     old = pd.read_csv(f) if f.exists() else pd.DataFrame()
     if len(old):

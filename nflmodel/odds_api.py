@@ -9,7 +9,10 @@ which is git-ignored). Never commit the key.
 Cost (free plan = 500 credits a month): credits = markets x regions. Asking for the whole "us" region
 returns every US book for the same price as DraftKings alone.
   props: 6 markets x 1 region = 6 credits per game fetched
-  games: 3 markets x 1 region = 3 credits per call, all games at once
+  games: 3 markets x 1 region = 3 credits per call, all games at once. The call names its books instead of a
+         region (the 9 US books seen so far + Pinnacle): up to 10 named books cost the same as one region, so
+         Pinnacle (the sharp offshore book whose lines move first) comes in for no extra credits. It is archived
+         for the sharp-book test and never shown as a place to bet.
 Listing the week's games is free. Each run prints the credits left.
 """
 from __future__ import annotations
@@ -26,6 +29,8 @@ BASE = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl"
 BOOK = "draftkings"
 SOURCE = "DraftKings (The Odds API)"
 REGION = "us"
+GAME_BOOKS = ["draftkings", "fanduel", "betmgm", "betrivers", "bovada", "betonlineag", "lowvig", "mybookieag",
+              "betus", "pinnacle"]   # 10 books = 1 region-equivalent: still 3 credits
 CT = ZoneInfo("America/Chicago")
 COLS = ["player", "stat", "line", "over_odds", "under_odds", "source", "as_of"]
 BOOK_COLS = ["game", "player", "stat", "book", "line", "over_odds", "under_odds", "as_of"]
@@ -189,7 +194,7 @@ def fetch_games(path: str = "game_lines.csv") -> None:
     key = api_key()
     now = datetime.now(CT)
     r = requests.get(f"{BASE}/odds", timeout=30, params={
-        "apiKey": key, "regions": REGION, "markets": "h2h,spreads,totals", "oddsFormat": "american"})
+        "apiKey": key, "bookmakers": ",".join(GAME_BOOKS), "markets": "h2h,spreads,totals", "oddsFormat": "american"})
     r.raise_for_status()
     rows = []
     for e in r.json():
