@@ -29,6 +29,10 @@ BASE = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl"
 BOOK = "draftkings"
 SOURCE = "DraftKings (The Odds API)"
 REGION = "us"
+# Props: named books instead of the "us" region (up to 10 named books cost the same as one region, 6 credits per game),
+# which adds Pinnacle as a sharp reference plus Caesars, ESPN Bet and Fanatics where the API carries them (Oct 27, 2026).
+PROP_BOOKS = ["draftkings", "fanduel", "betmgm", "betrivers", "bovada", "betonlineag", "williamhill_us", "espnbet",
+              "fanatics", "pinnacle"]
 GAME_BOOKS = ["draftkings", "fanduel", "betmgm", "betrivers", "bovada", "betonlineag", "lowvig", "mybookieag",
               "betus", "pinnacle"]   # 10 books = 1 region-equivalent: still 3 credits
 CT = ZoneInfo("America/Chicago")
@@ -91,7 +95,7 @@ def week_events(key: str, now: datetime) -> list[dict]:
 def event_lines(key: str, event: dict) -> tuple[list[dict], str | None]:
     """Every US book's prices for one game: rows with book, player, stat, line, over/under odds."""
     r = requests.get(f"{BASE}/events/{event['id']}/odds", timeout=30, params={
-        "apiKey": key, "regions": REGION, "markets": ",".join(MARKETS), "oddsFormat": "american"})
+        "apiKey": key, "bookmakers": ",".join(PROP_BOOKS), "markets": ",".join(MARKETS), "oddsFormat": "american"})
     r.raise_for_status()
     left = r.headers.get("x-requests-remaining")
     rows: dict[tuple[str, str, str], dict] = {}

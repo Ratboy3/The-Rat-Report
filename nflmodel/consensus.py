@@ -63,7 +63,7 @@ def table(books: pd.DataFrame | None) -> dict:
     m = book_means(books)
     out = {}
     for (pl, st), g in m.groupby(["player", "stat"]):
-        o = g[g.book != DK]
+        o = g[(g.book != DK) & (g.book != "pinnacle")]   # Pinnacle is tracked on its own (review.py), not in the US consensus
         if len(o) < MIN_BOOKS:
             continue
         out[(P._key(pl), st)] = dict(others_mean=float(o["mean"].median()) if o["mean"].notna().any() else np.nan,

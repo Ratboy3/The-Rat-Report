@@ -19,7 +19,7 @@ CT = ZoneInfo("America/Chicago")
 BOOK_NAMES = {"draftkings": "DraftKings", "fanduel": "FanDuel", "betmgm": "BetMGM", "williamhill_us": "Caesars",
               "espnbet": "ESPN BET", "fanatics": "Fanatics", "betrivers": "BetRivers", "ballybet": "Bally Bet",
               "hardrockbet": "Hard Rock", "betonlineag": "BetOnline", "bovada": "Bovada", "lowvig": "LowVig",
-              "mybookieag": "MyBookie", "betus": "BetUS", "fliff": "Fliff", "novig": "Novig", "prophetx": "ProphetX"}
+              "mybookieag": "MyBookie", "betus": "BetUS", "fliff": "Fliff", "novig": "Novig", "prophetx": "ProphetX", "williamhill_us": "Caesars", "espnbet": "ESPN Bet", "fanatics": "Fanatics", "pinnacle": "Pinnacle"}
 MAX_AGE_H = 48     # DraftKings game lines older than this aren't used
 
 
@@ -134,6 +134,7 @@ def best_prop_prices(path) -> dict:
     out = {}
     if pb is None or pb.empty:
         return out
+    pb = pb[pb.book != "pinnacle"]                           # sharp reference only: not a US book you can bet at
     for side, col in (("Over", "over_odds"), ("Under", "under_odds")):
         x = pb.dropna(subset=[col]).copy()
         x["dec"] = x[col].map(decimal)

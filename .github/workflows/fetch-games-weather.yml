@@ -2,12 +2,13 @@
 #
 # Game lines now come every hour from fetch-props.yml (paid plan, Oct 27, 2026); this workflow pulls them only on
 #   a manual run.
-# Weather: free, every 6 hours, outdoor stadiums only.
+# Weather: free, every 6 hours, and every hour on game days (Thu, Sun, Mon), outdoor stadiums only.
 name: Fetch game lines and weather
 
 on:
   schedule:
     - cron: "5 */6 * * *"          # weather only (free)
+    - cron: "35 * * * 0,1,4,5"     # weather hourly on game days (UTC Sun/Mon/Thu/Fri covers CT Sun, Mon and Thu nights; free)
   workflow_dispatch:
     inputs:
       game_lines:

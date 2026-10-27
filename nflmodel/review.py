@@ -41,16 +41,16 @@ def _ll(p, y) -> float:
     return float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean())
 
 
-def _pregame_lines(history: str, games: pd.DataFrame, season: int, week: int) -> pd.DataFrame:
+def _pregame_lines(history: str, games: pd.DataFrame, season: int, week: int, book: str | None = "draftkings") -> pd.DataFrame:
     h = pd.read_csv(history)
-    h = h[h.book == "draftkings"].copy()
+    h = (h[h.book == book] if book else h).copy()
     h["t"] = pd.to_datetime(h.fetched_at)
     h["ko"] = pd.to_datetime(h.kickoff, utc=True, errors="coerce").dt.tz_convert("America/Chicago").dt.tz_localize(None)
     h = h[h.t < h.ko]
     wk = games[(games.season == season) & (games.week == week)]
     keys = set(wk.away_team + " @ " + wk.home_team)
     h = h[h.game.isin(keys)]
-    return h.sort_values("t").groupby(["game", "player", "stat"]).tail(1)
+    return h.sort_values("t").groupby(["game", "player", "stat"] + ([] if book else ["book"])).tail(1)
 
 
 def _sharp(season: int, week: int, games: pd.DataFrame, path="game_lines_history.csv") -> dict | None:
@@ -98,6 +98,41 @@ def _sharp(season: int, week: int, games: pd.DataFrame, path="game_lines_history
         push = (s.result + s.dk_sp) == 0
         out.update(spread_disagree=int(len(s)), pin_side_wins=int((cover & ~push).sum()), pushes=int(push.sum()))
     return out
+
+
+def _sharp_props(lines_all: pd.DataFrame, stats_by_name: dict) -> dict | None:
+    """DraftKings vs Pinnacle on props at the same line (last pre-kickoff pull): no-vig log loss against results."""
+    if lines_all is None or lines_all.empty or "pinnacle" not in set(lines_all.book):
+        return None
+    dk = lines_all[lines_all.book == "draftkings"]
+    pn = lines_all[lines_all.book == "pinnacle"]
+    m = dk.merge(pn, on=["game", "player", "stat"], suffixes=("_dk", "_pn"))
+    rows = []
+    for r in m.itertuples():
+        s = stats_by_name.get(r.player)
+        if s is None:
+            continue
+        if r.stat == "anytime_td":
+            if pd.isna(r.over_odds_dk) or pd.isna(r.over_odds_pn):
+                continue
+            y = int(float(np.nan_to_num(s.get("rushing_tds", 0))) + float(np.nan_to_num(s.get("receiving_tds", 0))) > 0)
+            pdk = (1 / decimal(r.over_odds_dk)) * P.TD_BOOK_MARGIN
+            ppn = (1 / decimal(r.over_odds_pn)) * (P.TD_BOOK_MARGIN if pd.isna(r.under_odds_pn) else 1.0)
+            if pd.notna(r.under_odds_pn):
+                ppn = P._no_vig_over(r.over_odds_pn, r.under_odds_pn)
+        else:
+            if r.stat not in STAT_COL or r.line_dk != r.line_pn or pd.isna(r.under_odds_dk) or pd.isna(r.under_odds_pn):
+                continue
+            act = float(np.nan_to_num(s[STAT_COL[r.stat]]))
+            if act == r.line_dk:
+                continue
+            y = int(act > r.line_dk)
+            pdk, ppn = P._no_vig_over(r.over_odds_dk, r.under_odds_dk), P._no_vig_over(r.over_odds_pn, r.under_odds_pn)
+        rows.append(dict(y=y, dk=pdk, pn=ppn))
+    if not rows:
+        return None
+    d = pd.DataFrame(rows).dropna()
+    return dict(props=len(d), ll_dk=round(_ll(d.dk, d.y), 4), ll_pin=round(_ll(d.pn, d.y), 4))
 
 
 def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="prop_books_history.csv",
@@ -176,6 +211,12 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
                                    losses=int((g.result == "loss").sum()), units=round(float(g.pnl.astype(float).sum()), 2),
                                    clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
     try:
+        sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
+        if sp:
+            out["sharp_props"] = sp
+    except Exception as e:
+        print(f"  Pinnacle props check skipped ({e})")
+    try:
         out["sharp"] = _sharp(season, week, games)
     except Exception as e:
         print(f"  sharp-book check skipped ({e})")
@@ -196,6 +237,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("sharp"):
         md += ["", "## DraftKings vs Pinnacle (sharp-book check)", pd.DataFrame([out["sharp"]]).to_markdown(index=False)]
+    if out.get("sharp_props"):
+        md += ["", "## DraftKings vs Pinnacle on props (same line)", pd.DataFrame([out["sharp_props"]]).to_markdown(index=False)]
     md += ["", "## Flags to investigate"] + ([f"- {f}" for f in out["flags"]] or ["- none"])
     Path(out_dir, f"review_{out['season']}_wk{out['week']}.md").write_text("\n".join(md) + "\n")
     rows = [dict(season=out["season"], week=out["week"], check="prop", **r) for r in out["props"]]
@@ -205,6 +248,8 @@ def _write(out: dict, out_dir: str) -> None:
         rows.append(dict(season=out["season"], week=out["week"], check="td_band", **b))
     if out.get("sharp"):
         rows.append(dict(season=out["season"], week=out["week"], check="sharp", **out["sharp"]))
+    if out.get("sharp_props"):
+        rows.append(dict(season=out["season"], week=out["week"], check="sharp_props", **out["sharp_props"]))
     f = Path(out_dir, "reviews.csv")
     old = pd.read_csv(f) if f.exists() else pd.DataFrame()
     if len(old):
