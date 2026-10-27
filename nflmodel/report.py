@@ -181,9 +181,9 @@ def _leans_section(live, props, log) -> str:
         <td class="n">{_odds(r.odds)}</td><td class="n hide-sm">{_signed_pct(r.ev)}</td>
         <td class="n {'good' if pd.notna(r.clv) and r.clv > 0 else 'bad' if pd.notna(r.clv) and r.clv < 0 else ''}">{_signed_pct(r.clv) if pd.notna(r.clv) else '—'}</td>
         <td>{res(r)}</td></tr>""" for r in lg.head(40).itertuples())
-            past_html = f"""<h3 class="final-head">Played</h3>
+            past_html = f"""<details class="more past-leans"><summary>Played leans ({len(lg)}, newest first)</summary>
     <div class="tablebox"><table><thead><tr><th>Lean</th><th class="n">Price</th><th class="n hide-sm">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead>
-    <tbody>{rows}</tbody></table></div>"""
+    <tbody>{rows}</tbody></table></div></details>"""
 
     return f"""<section id="leans"><h2>Leans</h2>
     <p class="lede">Positive edges below the {C.MIN_EV:.0%} betting bar. <b>These are not bets.</b> They're tracked to test whether the bar is set right:
@@ -332,6 +332,16 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
                 f'<span class="cell-sub">Projected {g.away_team} {g.proj_away_pts:.1f}, {g.home_team} {g.proj_home_pts:.1f}</span>')
     else:
         a_pts, h_pts, when = f"{g.proj_away_pts:.1f}", f"{g.proj_home_pts:.1f}", _kickoff(g)
+    # phone summary (shown while the card is collapsed): market lines plus the best bet or lean
+    top_o = max(opts, key=lambda o: o["ev"]) if opts else None
+    pick_html = ""
+    if top_o is not None and top_o["ev"] > 0 and not done:
+        isbet = top_o["ev"] >= C.MIN_EV
+        pick_html = (f'<span class="sum-pick{" bet" if isbet else ""}">{"Bet" if isbet else "Lean"} {escape(top_o["pick"])} '
+                     f'<span class="n">{_signed_pct(top_o["ev"])}</span></span>')
+    sum_html = (f'<div class="card-sum n"><span>{_spread(g.home_team, -g.spread_line)}</span><span>O/U {g.total_line:.1f}</span>'
+                f'<span>{g.away_team} {_odds(g.away_moneyline)} · {g.home_team} {_odds(g.home_moneyline)}</span>{pick_html}</div>'
+                '<button type="button" class="card-more" aria-expanded="false">Lines, props and news</button>')
     return f"""<article class="card{' has-bet' if flagged else ''}{' final' if done else ''}">
       <header class="card-head">
         <div class="teams">
@@ -344,6 +354,8 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         <div class="tags">{tag_html}</div>
         {_movement_html(g, mkt)}
       </header>
+      {sum_html}
+      <div class="card-body">
       <div class="lines">
         <div class="line"><h4>Spread</h4>
           <dl><dt>Market</dt><dd class="n">{_spread(g.home_team, -g.spread_line)}</dd>
@@ -364,6 +376,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
       <details class="xtra" open><summary>Touchdown scorers and props</summary><div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div></details>
       {_card_injuries(g, inj, (mkt or {}).get('qb'))}
       {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
+      </div>
     </article>"""
 
 
@@ -555,8 +568,8 @@ def _prop_rows(grp, gi) -> str:
             line, over, under, edge = '<span class="muted">—</span>', "", "", '<span class="muted">No line yet</span>'
         rows.append(f"""<tr>
           <td><b>{escape(r.player)}</b><span class="cell-sub">{r.position} · {r.team} · {STAT_LABEL.get(r.stat, r.stat)}</span>{inj}</td>
-          <td class="n">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n">{fair}</td>
-          <td class="n">{line}</td><td class="n">{over}</td><td class="n">{under}</td><td class="n">{edge}</td></tr>""")
+          <td class="n" data-l="Proj">{_fmt_proj(r.stat, r.adj_projection)}</td><td class="n" data-l="Fair">{fair}</td>
+          <td class="n" data-l="Line">{line}</td><td class="n" data-l="Over">{over}</td><td class="n" data-l="Under">{under}</td><td class="n" data-l="Edge">{edge}</td></tr>""")
     return "".join(rows)
 
 
@@ -1455,10 +1468,36 @@ UI_JS = """
     b.addEventListener('click',function(){state[b.dataset.f]=b.dataset.v; try{localStorage.setItem('rr_filters',JSON.stringify(state))}catch(e){} apply();});
   });
   apply();
+  var phone=window.matchMedia&&window.matchMedia('(max-width:640px)').matches;
   // phones: touchdown and prop panels start collapsed on each game card
-  if(window.matchMedia&&window.matchMedia('(max-width:640px)').matches){
+  if(phone){
     [].forEach.call(document.querySelectorAll('details.xtra'),function(d){d.open=false});
   }
+  // phones: game cards start compact (teams, lines, best bet); tap to open the rest
+  if(phone){
+    document.documentElement.classList.add('cardsjs');
+    [].forEach.call(document.querySelectorAll('article.card'),function(c){
+      var b=c.querySelector('.card-more'); if(!b) return;
+      c.classList.add('collapsed');
+      function set(open){c.classList.toggle('collapsed',!open); b.setAttribute('aria-expanded',String(open));
+        b.textContent=open?'Hide details':'Lines, props and news';}
+      b.addEventListener('click',function(){var open=c.classList.contains('collapsed'); set(open);
+        if(!open){var r=c.getBoundingClientRect(); if(r.top<0) window.scrollBy(0,r.top-56);}});
+    });
+    // long news notes: 3 lines with a "more" link
+    [].forEach.call(document.querySelectorAll('.card-news p'),function(p){
+      if(p.textContent.length<190) return;
+      p.classList.add('clamp');
+      var m=document.createElement('button'); m.type='button'; m.className='news-more'; m.textContent='More';
+      m.addEventListener('click',function(){var c=p.classList.toggle('clamp'); m.textContent=c?'More':'Less';});
+      p.parentNode.appendChild(m);
+    });
+  }
+  // tab bar: fade the right edge while more tabs are hidden off-screen
+  var bar=document.querySelector('nav.toc .wrap');
+  if(bar){var edge=function(){bar.classList.toggle('fade-r', bar.scrollLeft+bar.clientWidth<bar.scrollWidth-4);
+      bar.classList.toggle('fade-l', bar.scrollLeft>4);};
+    bar.addEventListener('scroll',edge,{passive:true}); window.addEventListener('resize',edge); edge();}
 })();
 """.replace("STALE", str(STALE_MIN))
 
@@ -1538,5 +1577,44 @@ UI_CSS += """
  .brand{gap:14px}.brand .logo img{width:128px}
  .brand-meta{gap:8px}.brand-meta .kicker{font-size:11px;line-height:1.5}
  .mast-stats{gap:20px}.mast-stats b{font-size:26px}
+}
+"""
+
+# Phone layout (Oct 27): compact game cards, stacked prop rows (no sideways scrolling inside the page),
+# tab bar fade, clamped news, lazy rendering of off-screen cards, past leans collapsed.
+UI_CSS += """
+.card-body{display:flex;flex-direction:column;flex:1}
+.card-sum,.card-more{display:none}
+.card{content-visibility:auto;contain-intrinsic-size:auto 700px}
+nav.toc .wrap.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 82%,transparent);mask-image:linear-gradient(90deg,#000 82%,transparent)}
+nav.toc .wrap.fade-l.fade-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 82%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 82%,transparent)}
+nav.toc .wrap.fade-l:not(.fade-r){-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%);mask-image:linear-gradient(90deg,transparent,#000 12%)}
+details.past-leans{margin-top:18px}
+details.past-leans>summary{font-weight:600}
+@media (max-width:640px){
+ nav.toc a{font-size:12px;padding:12px 9px 10px;letter-spacing:.04em}
+ .cardsjs .card-sum{display:flex;flex-wrap:wrap;gap:4px 12px;padding:10px 16px 0;font-size:13px;color:var(--muted)}
+ .cardsjs .card.collapsed .card-sum{display:flex}
+ .cardsjs .card:not(.collapsed) .card-sum{display:none}
+ .card-sum .sum-pick{flex-basis:100%;color:var(--ink);font-weight:600}
+ .card-sum .sum-pick.bet::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--flag);margin-right:6px;vertical-align:1px}
+ .cardsjs .card-more{display:block;width:100%;text-align:left;font:inherit;font-size:14px;font-weight:600;color:var(--accent);background:none;border:0;
+   border-top:1px solid var(--line);margin-top:10px;padding:11px 16px;cursor:pointer}
+ .cardsjs .card-more::after{content:" ▾"}
+ .cardsjs .card:not(.collapsed) .card-more::after{content:" ▴"}
+ .cardsjs .card.collapsed .card-body{display:none}
+ .cardsjs .card:not(.collapsed) .card-more{margin-top:0;border-bottom:1px solid var(--line);border-top:1px solid var(--line)}
+ .card{contain-intrinsic-size:auto 260px}
+ .card-news p.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+ .card-news .news-more{font:inherit;font-size:13px;font-weight:600;color:var(--accent);background:none;border:0;padding:0 0 0 4px;cursor:pointer;align-self:flex-end}
+ .card-news{flex-wrap:wrap}
+ .card table.props thead{display:none}
+ .card table.props,.card table.props tbody{display:block}
+ .card table.props tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+ .card table.props td{display:block;border:0;padding:0;text-align:left}
+ .card table.props td:first-child{grid-column:1/-1;margin-bottom:4px}
+ .card table.props td[data-l]::before{content:attr(data-l);display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--body)}
+ .card .tablebox{overflow-x:visible}
+ .card table.props td[data-l]:empty{display:none}
 }
 """
