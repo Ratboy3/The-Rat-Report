@@ -489,6 +489,7 @@ def main():
     fh.add_argument("--weeks", default="2025:1-18,2026:1-7")
     fh.add_argument("--max-credits", type=int, default=4500)
     fh.add_argument("--test", action="store_true", help="fetch only the first snapshot (to check the cost)")
+    fh.add_argument("--props", action="store_true", help="player props instead of game lines (~60 credits per game)")
     sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
     sub.add_parser("build-extras", help="red-zone usage, team tendencies and this season's 4th-down decisions from play-by-play")
     sub.add_parser("build-routes", help="routes run per player-game (participation + snap-share proxy) -> data/routes.csv")
@@ -514,7 +515,8 @@ def main():
      "fetch-early": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_early"]).fetch_early(a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-plan": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_plan"]).fetch_plan(),
-     "fetch-history": lambda a: __import__("nflmodel.historical", fromlist=["run"]).run(load_games(refresh=True), a.weeks, a.max_credits, a.test),
+     "fetch-history": lambda a: (__import__("nflmodel.historical", fromlist=["run_props"]).run_props(load_games(refresh=True), a.weeks, a.max_credits)
+                                 if a.props else __import__("nflmodel.historical", fromlist=["run"]).run(load_games(refresh=True), a.weeks, a.max_credits, a.test)),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
      "build-extras": cmd_build_extras,
      "build-routes": lambda a: __import__("nflmodel.routes", fromlist=["build"]).build(sorted({next_week(load_games())[0] - 2, next_week(load_games())[0] - 1, next_week(load_games())[0]})),

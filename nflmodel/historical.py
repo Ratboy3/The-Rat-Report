@@ -92,3 +92,74 @@ def run(games: pd.DataFrame, spec: str, max_credits: int = 4500, test: bool = Fa
             print(f"Stopping: spent {spent} (cap {max_credits}), {left} left (floor {KEEP_FLOOR})")
             break
     print(f"Done: {spent} credits spent")
+
+
+# ------------------------------------------------------------------ historical player props
+PROPS_OUT = ROOT / "data" / "hist_prop_lines.csv"
+PROPS_LOG = ROOT / "data" / "hist_props_log.csv"
+EVENTS_URL = "https://api.the-odds-api.com/v4/historical/sports/americanfootball_nfl/events"
+EVENT_ODDS_URL = "https://api.the-odds-api.com/v4/historical/sports/americanfootball_nfl/events/{eid}/odds"
+
+
+def run_props(games: pd.DataFrame, spec: str, max_credits: int = 6000) -> None:
+    """Closing player props (the 6 markets the model prices, 10 named books incl. DraftKings, FanDuel, Pinnacle)
+    ~5 minutes before each kickoff. Costs ~1 credit per snapshot to list events plus ~60 per game (10 x 6 markets).
+    Stops at max_credits or before the month's balance drops under KEEP_FLOOR. Resumable: games already fetched
+    (hist_props_log.csv) are skipped."""
+    key = O.api_key()
+    snaps = snapshots(games, parse_weeks(spec))
+    done = set(pd.read_csv(PROPS_LOG).event_id) if PROPS_LOG.exists() else set()
+    PROPS_LOG.parent.mkdir(parents=True, exist_ok=True)
+    spent, left = 0, None
+    for s in snaps:
+        iso = s.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        r = requests.get(EVENTS_URL, timeout=60, params={"apiKey": key, "date": iso})
+        if r.status_code != 200:
+            print(f"  events {iso}: HTTP {r.status_code}")
+            break
+        spent += int(float(r.headers.get("x-requests-last", 0) or 0))
+        evs = [e for e in r.json().get("data", [])
+               if s < datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) <= s + timedelta(minutes=20)
+               and e["id"] not in done]
+        for e in evs:
+            if left is not None and (spent + 60 > max_credits or left - 60 < KEEP_FLOOR):
+                print(f"Stopping: spent {spent} (cap {max_credits}), {left} left (floor {KEEP_FLOOR})")
+                print(f"Done: {spent} credits spent")
+                return
+            q = requests.get(EVENT_ODDS_URL.format(eid=e["id"]), timeout=60, params={
+                "apiKey": key, "bookmakers": ",".join(O.PROP_BOOKS), "markets": ",".join(O.MARKETS),
+                "oddsFormat": "american", "date": iso})
+            if q.status_code != 200:
+                print(f"  {e['id']}: HTTP {q.status_code} {q.text[:150].replace(key, '***')}")
+                continue
+            cost = int(float(q.headers.get("x-requests-last", 0) or 0))
+            left = int(float(q.headers.get("x-requests-remaining", 0) or 0))
+            spent += cost
+            ev = q.json().get("data", {})
+            game = f"{O.TEAM_ABBR.get(e['away_team'], e['away_team'])} @ {O.TEAM_ABBR.get(e['home_team'], e['home_team'])}"
+            rows: dict = {}
+            for bm in ev.get("bookmakers", []):
+                for m in bm.get("markets", []):
+                    stat = O.MARKETS.get(m["key"])
+                    if not stat:
+                        continue
+                    for o in m.get("outcomes", []):
+                        player = (o.get("description") or "").strip()
+                        if not player:
+                            continue
+                        row = rows.setdefault((bm["key"], player, stat), dict(
+                            snapshot=iso, kickoff=e["commence_time"], game=game, player=player, stat=stat, book=bm["key"],
+                            line=0.5 if stat == "anytime_td" else o.get("point"), over_odds=None, under_odds=None))
+                        side = o.get("name", "").lower()
+                        if side in ("over", "yes"):
+                            row["over_odds"] = o.get("price")
+                            if stat != "anytime_td":
+                                row["line"] = o.get("point")
+                        elif side in ("under", "no"):
+                            row["under_odds"] = o.get("price")
+            if rows:
+                pd.DataFrame(list(rows.values())).to_csv(PROPS_OUT, mode="a", header=not PROPS_OUT.exists(), index=False)
+            pd.DataFrame([dict(event_id=e["id"], snapshot=iso, game=game, rows=len(rows), cost=cost, left=left)]).to_csv(
+                PROPS_LOG, mode="a", header=not PROPS_LOG.exists(), index=False)
+            print(f"  {game} {iso}: {len(rows)} lines, cost {cost}, {left} left", flush=True)
+    print(f"Done: {spent} credits spent")
