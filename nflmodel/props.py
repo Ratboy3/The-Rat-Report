@@ -51,7 +51,7 @@ def price_props(props: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict[str
                          script_factor=round(factor, 3), adj_projection=round(adj, 2), line=p.line,
                          p_over=round(over[0], 3), best_side=best, ev=round(max(e_o, e_u), 4),
                          stake=round(kelly_stake(probs, odds), 2),
-                         flag=max(e_o, e_u) >= C.MIN_EV))
+                         flag=max(e_o, e_u) >= C.MIN_EV and p.stat not in LEAN_ONLY_STATS))
     return pd.DataFrame(rows)
 
 
@@ -178,6 +178,13 @@ LONGSHOT_TD_ODDS = 600
 # Books Alex can bet at. DraftKings stays the market anchor (its own price tested more accurate than the other
 # books' consensus); each bet is priced at whichever of these books pays more for it (line shopping, Oct 27, 2026).
 BET_BOOKS = {"draftkings": "DraftKings", "fanduel": "FanDuel"}
+
+# Stats shown as leans only, never flagged as bets, until they beat the market on real lines. Passing yards
+# (Oct 27, 2026): worse than DraftKings' no-vig close on 2026 weeks 3-7 (log loss 0.6979 vs 0.6934, 137 lines),
+# on Week 7's lines (0.7061 vs 0.6935), and passing-yds bets went 9 at -15.7% at the close. Every other prop stat
+# beat DraftKings on those lines. Re-enable once out-of-sample real-line tests (e.g. fit on 2025 historical props,
+# checked on 2026) show passing yards beating the market. The weekly review checks it every Tuesday.
+LEAN_ONLY_STATS = {"pass_yds"}
 BET_BOOK_SOURCES = tuple(BET_BOOKS.values())
 
 
@@ -300,7 +307,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             row.update(line=line, over_odds=oo if oo is not None else np.nan, under_odds=uo if uo is not None else np.nan,
                        source=str(b.source), as_of=str(b.as_of), p_over=round(over[0], 3), best_side=best,
                        ev=round(e_best, 4), stake=round(kelly_stake(probs, odds), 2),
-                       flag=e_best >= C.MIN_EV, book=bname)
+                       flag=e_best >= C.MIN_EV and p.stat not in LEAN_ONLY_STATS, book=bname)
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
