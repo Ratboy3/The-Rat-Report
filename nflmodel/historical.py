@@ -49,13 +49,21 @@ def run(games: pd.DataFrame, spec: str, max_credits: int = 4500, test: bool = Fa
     done = set(pd.read_csv(LOG).snapshot) if LOG.exists() else set()
     todo = [s for s in snaps if s.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") not in done]
     print(f"{len(snaps)} kickoff snapshots, {len(todo)} still to fetch")
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    if not todo:
+        pd.DataFrame([dict(snapshot="ERROR none", data_time="", games=0, rows=0, cost=0, left=-1,
+                           error=f"no snapshots found for {spec} ({len(games)} games loaded)")]).to_csv(
+            LOG.with_name("hist_pull_errors.csv"), mode="a", header=not LOG.with_name("hist_pull_errors.csv").exists(), index=False)
     spent = 0
     for s in todo[:1] if test else todo:
         iso = s.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         r = requests.get(URL, timeout=60, params={"apiKey": key, "bookmakers": ",".join(O.GAME_BOOKS),
                                                    "markets": "h2h,spreads,totals", "oddsFormat": "american", "date": iso})
         if r.status_code != 200:
-            print(f"  {iso}: HTTP {r.status_code} {r.text[:200]}")
+            msg = r.text[:300].replace(key, "***")
+            print(f"  {iso}: HTTP {r.status_code} {msg}")
+            pd.DataFrame([dict(snapshot=f"ERROR {iso}", data_time="", games=0, rows=0, cost=0, left=-1, error=f"HTTP {r.status_code}: {msg}")]
+                         ).to_csv(LOG.with_name("hist_pull_errors.csv"), mode="a", header=not LOG.with_name("hist_pull_errors.csv").exists(), index=False)
             break
         cost = int(float(r.headers.get("x-requests-last", 0) or 0))
         left = int(float(r.headers.get("x-requests-remaining", 0) or 0))
