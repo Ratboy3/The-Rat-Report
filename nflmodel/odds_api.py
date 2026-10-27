@@ -141,6 +141,9 @@ def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: 
     events = week_events(key, now)
     if hours is not None:
         events = [e for e in events if _ct(e["commence_time"]) < now + timedelta(hours=hours)]
+    if not events:
+        print(f"No games {'in the next %g hours' % hours if hours is not None else 'left this week'}; no props fetched (0 credits)")
+        return 0
     allrows, left = [], None
     for e in events:
         rows, left = event_lines(key, e)
@@ -219,3 +222,39 @@ def fetch_games(path: str = "game_lines.csv") -> None:
     _write(out, df, now)
     print(f"Wrote {len(df)} game lines from {df.book.nunique()} books"
           + (f"  (Odds API credits left: {r.headers.get('x-requests-remaining')})" if r.headers.get("x-requests-remaining") else ""))
+
+
+# ------------------------------------------------------------------ paid-plan schedule (20K credits/month, Oct 27, 2026)
+PROP_FULL_HOURS = (9, 16, 21)   # Wed-Sat full-week prop pulls (CT): morning, after the ~3-4 PM injury reports, evening
+LINES_FROM, LINES_TO = 6, 23    # game lines every hour in this window (CT), 3 credits each
+NEAR_KICKOFF_H = 3              # every hour: props for games kicking off within this many hours
+CREDIT_FLOOR = 1500             # below this many credits left, keep only the near-kickoff pulls
+
+
+def credits_left() -> int | None:
+    """Credits remaining, from a free call (listing events costs nothing)."""
+    r = requests.get(f"{BASE}/events", params={"apiKey": api_key()}, timeout=30)
+    r.raise_for_status()
+    v = r.headers.get("x-requests-remaining")
+    return int(float(v)) if v is not None else None
+
+
+def fetch_plan(now: datetime | None = None) -> None:
+    """Runs every hour from GitHub Actions and decides what to pull (expected ~7,500 credits/month):
+      game lines (all books + Pinnacle) every hour 6 AM-11 PM CT                    ~340/week
+      props for every game this week, Wed-Sat at 9 AM, 4 PM and 9 PM CT             ~1,000/week
+      props for the whole day's games, Sunday 7 AM CT                               ~85/week
+      props for games kicking off within 3 hours, every hour (inactives, late moves) ~300/week"""
+    now = now or datetime.now(CT)
+    wd, hr = now.weekday(), now.hour          # Mon = 0 ... Sun = 6
+    left = credits_left()
+    print(f"{_stamp(now)}: {left} credits left")
+    low = left is not None and left < CREDIT_FLOOR
+    if LINES_FROM <= hr <= LINES_TO:
+        fetch_games()
+    if not low and wd in (2, 3, 4, 5) and hr in PROP_FULL_HOURS:
+        fetch()
+    elif not low and wd == 6 and hr == 7:
+        fetch(hours=14)
+    elif LINES_FROM <= hr <= LINES_TO:
+        fetch(hours=NEAR_KICKOFF_H)

@@ -1,37 +1,21 @@
-# Pre-kickoff pull from The Odds API, about an hour before each slate:
-#   Thursday and Monday 6:15 PM CT (prime-time games), Sunday 10:15 AM CT (noon, late and night games).
-# Sundays also get:
-#   6:45 AM CT  early pull for games abroad (London/Paris ~8:30 AM CT): props + game lines, only when such a game
-#               is on (listing games is free, so other Sundays cost nothing)
-#   1:55 PM CT  game lines refresh (3 credits) so the late games and Sunday night carry Sunday-afternoon lines
-# Each run pulls player props (DraftKings -> prop_lines.csv, every US book -> prop_books.csv) for games
-# kicking off within 12 hours, plus spreads/totals/moneylines for every game (game_lines.csv).
-# A Rat Report site update runs right after each pull.
-#
-# The API key lives in the repo secret ODDS_API_KEY (Settings > Secrets and variables > Actions).
-#
-# Free plan (500 credits/month): props cost 6 credits per game, game lines 3 credits per call.
-# A week is about 6 + 78 + 6 (props) + 12 (game lines) = ~102 credits, plus 9 on the few weeks with a game
-# abroad; with the Wed/Fri morning game-line pulls in fetch-games-weather.yml that is roughly 470-490 a month.
-#
-# GitHub schedules run in UTC, so each time is listed for both daylight time (CDT) and standard time (CST);
-# the gate step skips whichever one isn't the right local time, so no credits are spent twice.
+# The Odds API pulls on the paid 20K plan (20,000 credits/month; upgraded Oct 27, 2026).
+# Runs every hour; `python run.py fetch-plan` decides what to pull at that Central time (see odds_api.fetch_plan):
+#   game lines, all books + Pinnacle: every hour 6 AM-11 PM CT (3 credits each)
+#   props, every game this week: Wed-Sat at 9 AM, 4 PM, 9 PM CT (6 credits per game)
+#   props, all of Sunday's games: Sunday 7 AM CT
+#   props for games kicking off within 3 hours: every other hour 6 AM-11 PM CT (inactives, late moves)
+# Expected ~7,500 credits a month; below 1,500 credits left only the near-kickoff pulls run.
+# Runs at :20 so the hourly Rat Report update (~:50) starts from fresh prices. GitHub can start scheduled runs late.
+# The API key lives in the repo secret ODDS_API_KEY.
 name: Fetch DraftKings props
 
 on:
   schedule:
-    - cron: "15 23 * * 1,4"   # Mon/Thu 6:15 PM CDT
-    - cron: "15 0 * * 2,5"    # Mon/Thu 6:15 PM CST (Tue/Fri in UTC)
-    - cron: "15 15 * * 0"     # Sun 10:15 AM CDT (site fully updated by 11 AM)
-    - cron: "15 16 * * 0"     # Sun 10:15 AM CST
-    - cron: "45 11 * * 0"     # Sun 6:45 AM CDT (early game abroad)
-    - cron: "45 12 * * 0"     # Sun 6:45 AM CST
-    - cron: "55 18 * * 0"     # Sun 1:55 PM CDT (game lines before the late games)
-    - cron: "55 19 * * 0"     # Sun 1:55 PM CST
+    - cron: "20 * * * *"
   workflow_dispatch:
     inputs:
       hours:
-        description: "Only games kicking off within this many hours (each game costs 6 credits)"
+        description: "Manual props pull: only games kicking off within this many hours (6 credits per game)"
         default: "12"
       game_lines:
         description: "Also fetch game lines (3 credits)"
@@ -49,46 +33,31 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Right local time?
-        id: gate
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "go=1" >> $GITHUB_OUTPUT; exit 0; fi
-          d=$(TZ=America/Chicago date +%u); t=$(TZ=America/Chicago date +%H%M)
-          # Mon=1 Thu=4 Sun=7; scheduled runs can start up to ~40 minutes late
-          if { [ "$d" = 1 ] || [ "$d" = 4 ]; } && [ "$t" -ge 1800 ] && [ "$t" -le 1900 ]; then echo "go=1" >> $GITHUB_OUTPUT
-          elif [ "$d" = 7 ] && [ "$t" -ge 1000 ] && [ "$t" -le 1145 ]; then echo "go=1" >> $GITHUB_OUTPUT
-          elif [ "$d" = 7 ] && [ "$t" -ge 0630 ] && [ "$t" -le 0800 ]; then echo "go=1" >> $GITHUB_OUTPUT; echo "mode=early" >> $GITHUB_OUTPUT
-          elif [ "$d" = 7 ] && [ "$t" -ge 1340 ] && [ "$t" -le 1450 ]; then echo "go=1" >> $GITHUB_OUTPUT; echo "mode=lines" >> $GITHUB_OUTPUT
-          else echo "go=0" >> $GITHUB_OUTPUT; echo "Not the local pull time ($d $t CT), skipping"; fi
       - uses: actions/checkout@v4
-        if: steps.gate.outputs.go == '1'
       - uses: actions/setup-python@v5
-        if: steps.gate.outputs.go == '1'
         with:
           python-version: "3.12"
-      - if: steps.gate.outputs.go == '1'
-        run: pip install pandas numpy scipy requests
-      - name: Early game abroad (props + game lines, only if a game kicks off soon)
-        if: steps.gate.outputs.go == '1' && steps.gate.outputs.mode == 'early'
+      - run: pip install pandas numpy scipy requests
+      - name: Scheduled pulls
+        if: github.event_name == 'schedule'
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python run.py fetch-early --hours 3.5
-      - name: Fetch props
-        if: steps.gate.outputs.go == '1' && steps.gate.outputs.mode == ''
+        run: python run.py fetch-plan
+      - name: Manual props pull
+        if: github.event_name == 'workflow_dispatch'
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python run.py fetch-props --hours "${{ inputs.hours || '12' }}"
-      - name: Fetch game lines
-        if: steps.gate.outputs.go == '1' && steps.gate.outputs.mode != 'early' && (github.event_name == 'schedule' || inputs.game_lines)
+        run: python run.py fetch-props --hours "${{ inputs.hours }}"
+      - name: Manual game lines
+        if: github.event_name == 'workflow_dispatch' && inputs.game_lines
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-games
       - name: Commit
-        if: steps.gate.outputs.go == '1'
         run: |
           git config user.name "Rat Report props bot"
           git config user.email "actions@users.noreply.github.com"
-          git add prop_lines.csv prop_books.csv game_lines.csv prop_books_history.csv game_lines_history.csv 2>/dev/null || git add prop_lines.csv prop_books.csv game_lines.csv
+          git add prop_lines.csv prop_books.csv game_lines.csv prop_books_history.csv game_lines_history.csv 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Props and game lines from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
           for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
