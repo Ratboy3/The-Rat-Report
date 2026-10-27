@@ -168,6 +168,22 @@ TD_MODEL_WEIGHT = 0.4      # touchdown chance = 40% model + 60% betting market, 
 TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; scale their implied chance down
 
 
+# Longshot TD bets need a same-day DraftKings price from The Odds API. Week 7: all 3 TD bets at +600 or longer
+# (Cody White +1100, Marquise Brown +1000, Emari Demercado +1800) came from another source or an older pull;
+# Brown and Demercado never appeared in a DraftKings API pull, and at DraftKings' API price White's edge was +1%
+# (a lean, not a bet). With the rule: 0 bets instead of 0-2 and a void. 13 of 14 longshot TD bets/leans that
+# week were priced off-API. Below +600 the rule doesn't apply. (Oct 27, 2026)
+LONGSHOT_TD_ODDS = 600
+
+
+def _same_day_api(b) -> bool:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    src, asof = str(getattr(b, "source", "")), str(getattr(b, "as_of", ""))
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%a %b %-d")
+    return "Odds API" in src and src.startswith("DraftKings") and asof.split(",")[0].strip() == today
+
+
 def _td_market(player: str, book_row, market: dict) -> float | None:
     """Market chance to score: prediction-market price and/or sportsbook price, averaged."""
     vals = []
@@ -247,6 +263,9 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                        source=str(b.source), as_of=str(b.as_of), p_over=round(over[0], 3), best_side=best,
                        ev=round(max(e_o, e_u), 4), stake=round(kelly_stake(probs, odds), 2),
                        flag=max(e_o, e_u) >= C.MIN_EV)
+            if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
+                    and not _same_day_api(b)):
+                row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
             # the other books' view of DraftKings' line: their consensus chance and the edge it implies at DK's price
             if c is not None:
                 cp = (c["others_td"] if p.stat == "anytime_td" else

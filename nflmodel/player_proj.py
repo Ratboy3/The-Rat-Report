@@ -331,6 +331,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     if USE["vol"]:
                         est *= vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
                     est *= SCALE.get(st, 1.0)
+                    if st in SHRINK_TO:                  # pull extreme projections toward the league average
+                        m0, k0 = SHRINK_TO[st]
+                        est = m0 + k0 * (est - m0)
                 if st == "anytime_td":
                     lam = shares.get(pid, 0.0) * team_tds  # this player's expected TDs this game
                     if lam < 0.06:
@@ -386,6 +389,14 @@ USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True
 # (out of sample) it cut the bias from +10.2 to +3.3 yards and the average miss from 57.4 to 57.1. The same
 # fix for rushing, receiving and receptions did not help on 2026, so those stay at 1.0. (Oct 26, 2026)
 SCALE = {"pass_yds": 1.031}
+# Passing-yards projections were too spread out: QBs projected under 170 yards beat it by ~+30 on average (Week 7:
+# Huntley projected 149, threw 298; McCarthy 160, threw 252) and QBs projected over 260 fell ~13 short, in both
+# seasons. Pull each projection toward 228 yards, keeping 70% of its distance (est = 228 + 0.70 x (est - 228)).
+# Walk-forward: slope fit on 2025 (0.59) cut the 2026 average miss 56.70 -> 56.24; fit on 2026 (0.70) cut 2025's
+# 58.79 -> 57.68. Shipped 0.70/228: 2025 58.79 -> 57.73, 2026 56.70 -> 55.85; Week 7 real DraftKings lines
+# log loss 0.7103 -> 0.7061 (DraftKings 0.6935), and the 4 losing passing-yards bets would not have been flagged.
+# (Oct 27, 2026)
+SHRINK_TO = {"pass_yds": (228.0, 0.70)}
 NEWTEAM_W = 0.35         # weight on a player's games for a previous team, in touchdown shares
 # The Tuesday props-backtest --agg-test writes agg_test.csv; its verdict sets the switch.
 try:

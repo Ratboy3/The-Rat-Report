@@ -168,7 +168,9 @@ def timing_test(history_path, games: pd.DataFrame, out_path="timing_test.csv") -
                        continued=round(cont, 3) if len(moved) else None, reversed=round(rev, 3) if len(moved) else None,
                        corr=round(float(np.corrcoef(d.early, d.late)[0, 1]), 3) if len(d) > 2 and d.early.std() > 0 and d.late.std() > 0 else None)
     res = {"tested_at": datetime.now(CT).strftime("%Y-%m-%d %H:%M"), **res}
-    pd.DataFrame([res]).to_csv(out_path, mode="a", header=not Path(out_path).exists(), index=False)
+    # rewrite (not append) so a row with new columns never lands under an older, shorter header
+    old = pd.read_csv(out_path, on_bad_lines="skip") if Path(out_path).exists() else pd.DataFrame()
+    pd.concat([old, pd.DataFrame([res])], ignore_index=True).to_csv(out_path, index=False)
     return res
 
 
