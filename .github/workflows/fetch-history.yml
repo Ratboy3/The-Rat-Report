@@ -1,0 +1,47 @@
+# One-off historical pull (manual only): closing game lines for past weeks at DraftKings, FanDuel, the other US books
+# and Pinnacle, for the DraftKings-vs-Pinnacle backtest. Run with test=true first to see the real credit cost.
+name: Fetch historical game lines
+
+on:
+  workflow_dispatch:
+    inputs:
+      weeks:
+        description: "Season:weeks list, e.g. 2025:1-18,2026:1-7"
+        default: "2025:1-18,2026:1-7"
+      max_credits:
+        description: "Stop after spending this many credits"
+        default: "4500"
+      test:
+        description: "Fetch only the first snapshot"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-props
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy scipy requests
+      - name: Historical pull
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python run.py fetch-history --weeks "${{ inputs.weeks }}" --max-credits "${{ inputs.max_credits }}" ${{ inputs.test && '--test' || '' }}
+      - name: Commit
+        run: |
+          git config user.name "Rat Report data bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/hist_game_lines.csv data/hist_pull_log.csv 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Historical game lines $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
+          for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
+          exit 1

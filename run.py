@@ -485,6 +485,10 @@ def main():
     fe.add_argument("--hours", type=float, default=3.5)
     sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
     sub.add_parser("fetch-plan", help="hourly: decide which Odds API pulls to make now (paid-plan schedule)")
+    fh = sub.add_parser("fetch-history", help="one-off: closing game lines for past weeks (historical odds, paid plan)")
+    fh.add_argument("--weeks", default="2025:1-18,2026:1-7")
+    fh.add_argument("--max-credits", type=int, default=4500)
+    fh.add_argument("--test", action="store_true", help="fetch only the first snapshot (to check the cost)")
     sub.add_parser("fetch-weather", help="kickoff forecasts for outdoor games -> weather.csv (free)")
     sub.add_parser("build-extras", help="red-zone usage, team tendencies and this season's 4th-down decisions from play-by-play")
     sub.add_parser("build-routes", help="routes run per player-game (participation + snap-share proxy) -> data/routes.csv")
@@ -510,6 +514,7 @@ def main():
      "fetch-early": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_early"]).fetch_early(a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
      "fetch-plan": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_plan"]).fetch_plan(),
+     "fetch-history": lambda a: __import__("nflmodel.historical", fromlist=["run"]).run(load_games(refresh=True), a.weeks, a.max_credits, a.test),
      "fetch-weather": lambda a: __import__("nflmodel.weather", fromlist=["fetch"]).fetch(),
      "build-extras": cmd_build_extras,
      "build-routes": lambda a: __import__("nflmodel.routes", fromlist=["build"]).build(sorted({next_week(load_games())[0] - 2, next_week(load_games())[0] - 1, next_week(load_games())[0]})),
