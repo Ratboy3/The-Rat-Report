@@ -85,3 +85,37 @@ def grade(opt: dict, g: pd.Series) -> float | None:
     if diff == 0:
         return 0.0
     return decimal(opt["odds"]) - 1 if diff > 0 else -1.0
+
+
+def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -> list[dict]:
+    """Re-price each game bet at a second book (FanDuel) and keep whichever book's line and price is worth more.
+    DraftKings' line still drives the model; this only changes where a bet is placed."""
+    key = f"{g.away_team} @ {g.home_team}"
+    for o in opts:
+        o.setdefault("book", "DraftKings")
+        a = alt.get((key, o["market"], o["side"]))
+        if not a or pd.isna(a[1]):
+            continue
+        line, odds = a
+        m, s = o["market"], o["side"]
+        if m == "spread":
+            if pd.isna(line):
+                continue
+            sl = -float(line) if s == "home" else float(line)          # nflverse convention: + = home favored
+            probs = sm.spread_probs(g.proj_margin, sl)[s]
+            pick = f"{g.home_team} {fmt_line(float(line))}" if s == "home" else f"{g.away_team} {fmt_line(float(line))}"
+        elif m == "total":
+            if pd.isna(line):
+                continue
+            sl = float(line)
+            probs = sm.total_probs(g.proj_total, sl)[s]
+            pick = f"{'Over' if s == 'over' else 'Under'} {sl:g}"
+        else:
+            sl = None
+            probs = sm.ml_probs(g.proj_margin)[s]
+            pick = f"{g.home_team if s == 'home' else g.away_team} ML {int(odds):+d}"
+        e = ev(probs, float(odds))
+        if e > o["ev"] + 1e-9:
+            o.update(probs=probs, odds=float(odds), win_prob=probs[0], ev=e, stake=kelly_stake(probs, float(odds)),
+                     pick=f"{pick} ({name})", book=name, line=sl)
+    return opts

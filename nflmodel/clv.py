@@ -111,7 +111,8 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
             if o["ev"] <= 0:
                 continue
             tier = "bet" if o["ev"] >= C.MIN_EV else "lean"
-            line = g.spread_line if o["market"] == "spread" else (g.total_line if o["market"] == "total" else np.nan)
+            line = o.get("line") if o.get("line") is not None else (
+                g.spread_line if o["market"] == "spread" else (g.total_line if o["market"] == "total" else np.nan))
             bid = f"{g.game_id}|{o['market']}|{o['side']}||" + ("" if tier == "bet" else "|lean")
             if bid in known:
                 continue

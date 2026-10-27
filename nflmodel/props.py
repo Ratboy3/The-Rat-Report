@@ -175,13 +175,36 @@ TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; sc
 # week were priced off-API. Below +600 the rule doesn't apply. (Oct 27, 2026)
 LONGSHOT_TD_ODDS = 600
 
+# Books Alex can bet at. DraftKings stays the market anchor (its own price tested more accurate than the other
+# books' consensus); each bet is priced at whichever of these books pays more for it (line shopping, Oct 27, 2026).
+BET_BOOKS = {"draftkings": "DraftKings", "fanduel": "FanDuel"}
+BET_BOOK_SOURCES = tuple(BET_BOOKS.values())
+
+
+def _side_prices(d: dict, stat: str, r) -> tuple | None:
+    """(ev, side, probs, odds, line, over_odds, under_odds) for the better side of one book's line."""
+    oo = r.over_odds if pd.notna(r.over_odds) else None
+    uo = r.under_odds if pd.notna(r.under_odds) else None
+    if oo is None and uo is None:
+        return None
+    if stat != "anytime_td" and pd.isna(r.line):
+        return None
+    line = 0.5 if stat == "anytime_td" else float(r.line)
+    over = _probs(d, line)
+    under = (over[2], over[1], over[0])
+    e_o = ev(over, oo) if oo is not None else -1.0
+    e_u = ev(under, uo) if uo is not None else -1.0
+    if e_o >= e_u:
+        return e_o, "Over", over, oo, line, oo, uo
+    return e_u, "Under", under, uo, line, oo, uo
+
 
 def _same_day_api(b) -> bool:
     from datetime import datetime
     from zoneinfo import ZoneInfo
     src, asof = str(getattr(b, "source", "")), str(getattr(b, "as_of", ""))
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%a %b %-d")
-    return "Odds API" in src and src.startswith("DraftKings") and asof.split(",")[0].strip() == today
+    return "Odds API" in src and src.startswith(BET_BOOK_SOURCES) and asof.split(",")[0].strip() == today
 
 
 def _td_market(player: str, book_row, market: dict) -> float | None:
@@ -209,6 +232,14 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     if lines is not None and len(lines):
         for r in lines.itertuples():
             book[(_key(r.player), str(r.stat).strip())] = r
+    # FanDuel's prices from the all-books pull, as rows shaped like prop_lines (source names the book)
+    alt = {}
+    if books is not None and len(books):
+        fb = books[books.book == "fanduel"]
+        for r in fb.itertuples():
+            alt[(_key(r.player), str(r.stat).strip())] = pd.Series(dict(
+                player=r.player, stat=r.stat, line=r.line, over_odds=r.over_odds, under_odds=r.under_odds,
+                source="FanDuel (The Odds API)", as_of=r.as_of))
     market = {}
     if td_market is not None and len(td_market):
         market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
@@ -223,7 +254,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         if p.stat == "anytime_td":
             f = 1.0                     # already built from the team's projected points
             model_p = min(0.95, max(0.01, p.projection))
-            market_p = _td_market(p.player, book.get((_key(p.player), p.stat)), market)
+            b_td = book.get((_key(p.player), p.stat))
+            market_p = _td_market(p.player, b_td if b_td is not None else alt.get((_key(p.player), p.stat)), market)
             if anchor_cons and c is not None and pd.notna(c["all_td"]):
                 market_p = c["all_td"] if market_p is None else (market_p + c["all_td"]) / 2
             if market_p is None:
@@ -234,6 +266,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         else:
             adj = p.projection * f
             b0 = book.get((_key(p.player), p.stat))
+            if b0 is None:
+                b0 = alt.get((_key(p.player), p.stat))     # no DraftKings line: FanDuel's is the market
             if b0 is not None and pd.notna(b0.line):
                 market_p = round(_market_mean(p.stat, float(b0.line), _no_vig_over(b0.over_odds, b0.under_odds)), 3)
                 if anchor_cons and c is not None and pd.notna(c["all_mean"]):
@@ -248,21 +282,25 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                    model_prob=model_p, market_prob=market_p,
                    line=np.nan, over_odds=np.nan, under_odds=np.nan, source="", as_of="",
                    p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False,
-                   n_books=int(c["n"]) if c else 0, cons_p_over=np.nan, cons_ev=np.nan)
-        b = book.get((_key(p.player), p.stat))
-        if b is not None and (pd.notna(b.over_odds) or pd.notna(b.under_odds)):
-            line = 0.5 if p.stat == "anytime_td" else float(b.line)
+                   n_books=int(c["n"]) if c else 0, cons_p_over=np.nan, cons_ev=np.nan,
+                   book="", dk_line=np.nan, dk_ev=np.nan)
+        # price the bet at each book Alex uses and keep the better one
+        cands = []
+        for name, src in (("DraftKings", book), ("FanDuel", alt)):
+            r_ = src.get((_key(p.player), p.stat))
+            pr_ = _side_prices(d, p.stat, r_) if r_ is not None else None
+            if pr_ is not None:
+                cands.append((pr_, name, r_))
+        if cands:
+            dk = [x for x in cands if x[1] == "DraftKings"]
+            if dk:
+                row.update(dk_line=dk[0][0][4], dk_ev=round(dk[0][0][0], 4))
+            (e_best, best, probs, odds, line, oo, uo), bname, b = max(cands, key=lambda x: x[0][0])
             over = _probs(d, line)
-            under = (over[2], over[1], over[0])
-            oo = b.over_odds if pd.notna(b.over_odds) else None
-            uo = b.under_odds if pd.notna(b.under_odds) else None
-            e_o = ev(over, oo) if oo is not None else -1.0
-            e_u = ev(under, uo) if uo is not None else -1.0
-            best, probs, odds = ("Over", over, oo) if e_o >= e_u else ("Under", under, uo)
             row.update(line=line, over_odds=oo if oo is not None else np.nan, under_odds=uo if uo is not None else np.nan,
                        source=str(b.source), as_of=str(b.as_of), p_over=round(over[0], 3), best_side=best,
-                       ev=round(max(e_o, e_u), 4), stake=round(kelly_stake(probs, odds), 2),
-                       flag=max(e_o, e_u) >= C.MIN_EV)
+                       ev=round(e_best, 4), stake=round(kelly_stake(probs, odds), 2),
+                       flag=e_best >= C.MIN_EV, book=bname)
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it

@@ -47,6 +47,11 @@ def _pct(x, digits=0) -> str:
     return "—" if pd.isna(x) else f"{x * 100:.{digits}f}%"
 
 
+def _bk(r) -> str:
+    """Short label for the book a price comes from: DK (DraftKings) unless the bet is priced at FanDuel."""
+    return "FD" if str(getattr(r, "book", "")) == "FanDuel" else "DK"
+
+
 def _signed_pct(x, digits=1) -> str:
     return "—" if pd.isna(x) else f"{x * 100:+.{digits}f}%"
 
@@ -95,7 +100,7 @@ def _top_props(props: pd.DataFrame | None, n: int = 5) -> str:
                 'Lines fill in through the weekend.</p>')
     rows = "".join(
         f"""<tr><td><b>{escape(r.player)}</b> {'Anytime TD' if r.stat == 'anytime_td' else f'{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}'}
-        <span class="cell-sub">{r.team} vs {r.opp} · DK {escape(r.as_of)}{_books_note(r)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
+        <span class="cell-sub">{r.team} vs {r.opp} · {_bk(r)} {escape(r.as_of)}{_books_note(r)}</span>{'<span class="inj">Large edge: check news and the current line</span>' if r.ev > 0.15 else ''}</td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td>
         <td class="n {'good' if r.flag else ''}">{_signed_pct(r.ev)}{'' if r.flag else ' <span class="muted">lean</span>'}</td></tr>"""
@@ -148,7 +153,7 @@ def _leans_section(live, props, log) -> str:
         if len(pl):
             def prow(r):
                 what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
-                return (f"""<tr><td><b>{escape(r.player)}</b> {what}<span class="cell-sub">{escape(r.game)} · DK {escape(str(r.as_of))}{_books_note(r)}</span></td>
+                return (f"""<tr><td><b>{escape(r.player)}</b> {what}<span class="cell-sub">{escape(r.game)} · {_bk(r)} {escape(str(r.as_of))}{_books_note(r)}</span></td>
         <td class="n">{_odds(r.over_odds if r.best_side == 'Over' else r.under_odds)}</td>
         <td class="n">{_pct(r.p_over if r.best_side == 'Over' else 1 - r.p_over, 1)}</td><td class="n">{_signed_pct(r.ev)}</td></tr>""")
             head = '<thead><tr><th>Lean</th><th class="n">Odds</th><th class="n">Win %</th><th class="n">Edge</th></tr></thead>'
@@ -310,7 +315,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         if bp:
             book, bl, bo = bp[0]
             line_now = g.spread_line if market == "spread" else (g.total_line if market == "total" else None)
-            better = (book != "DraftKings") and (bo != o["odds"] or (line_now is not None and pd.notna(bl)
+            better = (book not in ("DraftKings", o.get("book", "DraftKings"))) and (bo != o["odds"] or (line_now is not None and pd.notna(bl)
                                                                      and abs(abs(bl) - abs(line_now)) > 0.01))
             if better:
                 ln = "" if market == "moneyline" or pd.isna(bl) else (f"{bl:+g} " if market == "spread" else f"{bl:g} ")
@@ -501,7 +506,7 @@ def _card_tds(tds, best=None) -> str:
         priced = pd.notna(getattr(r, "market_prob", np.nan))
         if pd.notna(dk):
             value = (dk / 100 + 1 if dk > 0 else 100 / -dk + 1) * r.adj_projection > 1
-            dk_cell = f'<span class="n tdk{" good" if value else ""}">{_odds(dk)}</span>'
+            dk_cell = f'<span class="n tdk{" good" if value else ""}">{_odds(dk)}{"<sup>FD</sup>" if _bk(r) == "FD" else ""}</span>'
         else:
             dk_cell = '<span class="n tdk muted">—</span>'
         star = "" if priced else '<sup class="muted" title="No market price yet: model only">*</sup>'
@@ -517,17 +522,17 @@ def _card_tds(tds, best=None) -> str:
         alt = (f" · best anywhere {_odds(other[1])} {escape(str(other[0]))}"
                if other and pd.notna(other[1]) and decimal(float(other[1])) > decimal(float(v.over_odds)) else "")
         tag = "Bet" if v.flag else "Lean"
-        value_line = (f'<p class="tdval"><b>Best TD value:</b> {escape(v.player)} ({v.team}) DK {_odds(v.over_odds)}, '
+        value_line = (f'<p class="tdval"><b>Best TD value:</b> {escape(v.player)} ({v.team}) {_bk(v)} {_odds(v.over_odds)}, '
                       f'fair {_odds(fair_american(v.adj_projection))}, edge {_signed_pct(v.ev)} · {tag}{alt}</p>')
     elif len(priced):
-        value_line = '<p class="tdval muted">No DraftKings touchdown price beats fair odds in this game right now.</p>'
+        value_line = '<p class="tdval muted">No DraftKings or FanDuel touchdown price beats fair odds in this game right now.</p>'
     else:
         value_line = ""
-    note = "Green DK price = pays more than fair odds (a value bet)."
+    note = "Price is DraftKings' unless marked FD (FanDuel pays more). Green = pays more than fair odds (a value bet)."
     if model_only:
         note += " * No market price yet, so the chance is the model's alone; it firms up when DraftKings posts the line."
     return f"""<div class="tds"><h4>Most likely TD scorers</h4><ol class="tdtable">
-      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">DK</span></li>{"".join(rows)}</ol>
+      <li class="hd"><span>Player</span><span class="n">Chance</span><span class="n">Fair</span><span class="n">Price</span></li>{"".join(rows)}</ol>
       {value_line}<p class="cell-sub">{note}</p></div>"""
 
 
@@ -540,7 +545,7 @@ def _prop_rows(grp, gi) -> str:
         fair = (_odds(fair_american(r.a)) if r.stat == "anytime_td" else f"{r.fair_line:g}")
         if known:
             line = "Yes" if r.stat == "anytime_td" else f"{r.line:g}"
-            line += f'<span class="cell-sub">DK {escape(r.as_of)}</span>'
+            line += f'<span class="cell-sub">{_bk(r)} {escape(r.as_of)}</span>'
             over = _odds(r.over_odds) if pd.notna(r.over_odds) else "—"
             under = _odds(r.under_odds) if pd.notna(r.under_odds) else "—"
             cls = "hit" if r.flag else ("lean" if r.ev > 0 else "no")
@@ -573,21 +578,23 @@ def _card_props(grp, gi, best=None) -> str:
                 what = f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
             tag = "Bet" if r.flag else ("Lean" if r.ev > 0 else "No edge")
             b = (best or {}).get((r.player, r.stat, "Over" if r.stat == "anytime_td" else r.best_side, float(r.line)))
-            if b and b[0] != "DraftKings" and pd.notna(price) and decimal(b[1]) > decimal(price):
+            if b and b[0] not in ("DraftKings", "FanDuel") and pd.notna(price) and decimal(b[1]) > decimal(price):
                 what += f" · Best: {b[0]} {_odds(b[1])}"
+            if _bk(r) == "FD":
+                what = f"{what} · at FanDuel"
             warn = '<span class="inj">Big edge: check the line</span>' if r.ev > 0.15 else ""
             items.append(f"""<li><span class="tdn"><b>{escape(r.player)}</b>{warn}<span class="cell-sub">{escape(what)}</span></span>
             <span class="n tdk">{_odds(price)}</span>
             <span class="n tdp {'good' if r.flag else ('bad' if r.ev <= 0 else '')}">{_signed_pct(r.ev)}</span>
             <span class="tdo">{tag}</span></li>""")
-        top = (f'<ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">DK</span><span class="n">Edge</span><span></span></li>'
+        top = (f'<ol class="tdtable edges"><li class="hd"><span>Bet</span><span class="n">Price</span><span class="n">Edge</span><span></span></li>'
                + "".join(items) + '</ol>')
     else:
-        top = '<p class="cell-sub" style="margin:0">No edge · no DraftKings prop lines found yet for this game.</p>'
+        top = '<p class="cell-sub" style="margin:0">No edge · no DraftKings or FanDuel prop lines found yet for this game.</p>'
     return f"""<div class="tds"><h4>Top prop edges</h4>{top}</div>
       <details class="allprops"><summary>All {len(grp)} props</summary>
         <div class="tablebox"><table class="props">
-        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">DK line</th>
+        <thead><tr><th>Player · prop</th><th class="n">Proj.</th><th class="n">Fair</th><th class="n">Line</th>
         <th class="n">Over</th><th class="n">Under</th><th class="n">Edge</th></tr></thead>
         <tbody>{_prop_rows(grp, gi)}</tbody></table></div>
         <p class="cell-sub" style="margin:6px 0 0">Fair is the line where over and under are equally likely (fair odds to score for touchdowns). Compare it with the line in your app.</p>
@@ -796,7 +803,7 @@ def _auto_props_section(props: pd.DataFrame | None, lines_checked: str | None) -
             oo = f"{int(r.over_odds):+d}" if known and pd.notna(r.over_odds) else ("" if r.stat == "anytime_td" else "-110")
             uo = f"{int(r.under_odds):+d}" if known and pd.notna(r.under_odds) else ("" if r.stat == "anytime_td" or known else "-110")
             fair = (_odds(fair_american(r.a)) if r.stat == "anytime_td" else f"{r.fair_line:g}")
-            src = f'<span class="cell-sub">DK {escape(r.as_of)}</span>' if known else ""
+            src = f'<span class="cell-sub">{_bk(r)} {escape(r.as_of)}</span>' if known else ""
             line_cell = ('<span class="muted">Scores</span>' if r.stat == "anytime_td" else
                          f'<input id="{rid}_l" class="pin" inputmode="decimal" value="{line_val}" aria-label="Line">')
             under_cell = ('' if r.stat == "anytime_td" else
@@ -1155,7 +1162,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
       <div><h3>Games</h3>{_bets_section(upcoming)}</div>
       <div><h3>Top 5 prop edges</h3>{_top_props(open_props)}</div>
     </div>
-    <p class="note">Prop lines are this week's DraftKings prices (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
+    <p class="note">Prop lines are this week's DraftKings prices, or FanDuel's (marked FD) when FanDuel pays more for the same bet (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
     Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>

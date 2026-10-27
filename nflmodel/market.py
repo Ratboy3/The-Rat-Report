@@ -119,6 +119,15 @@ def best_game_prices(path) -> dict:
     return out
 
 
+def book_game_lines(path, book: str = "fanduel") -> dict:
+    """(game, market, side) -> (line, odds) at one book, from the all-books game-lines pull."""
+    gl = _read(path)
+    if gl is None or gl.empty:
+        return {}
+    gl = gl[(gl.book == book) & gl.odds.notna()]
+    return {(r.game, r.market, r.side): (r.line, r.odds) for r in gl.itertuples()}
+
+
 def best_prop_prices(path) -> dict:
     """(player, stat, side, line) -> (book, odds) with the best price at that exact line."""
     pb = _read(path)
