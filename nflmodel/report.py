@@ -1148,7 +1148,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 <style>{CSS}{UI_CSS}</style></head>
 <body>
 <div class="mast"><div class="wrap">
-  <div class="brand"><span class="logo">{LOGO_HTML}</span><div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div></div>
+  <div class="brand"><span class="logo">{LOGO_HTML}</span><div class="brand-meta"><h1 class="sr-only">The Rat Report</h1><p class="kicker">Week {week} · {season} NFL season</p><span class="beta">Beta</span></div></div>
   <div class="mast-stats">
     <div><b>{n_bets}</b><span>game bets</span></div>
     <div><b>{n_props}</b><span>prop bets</span></div>
@@ -1514,7 +1514,7 @@ def _data_uri(name, mime):
         return None
 _logo_uri = _data_uri("logo-rat.webp", "image/webp")
 _fav_uri = _data_uri("favicon-rat.png", "image/png")
-LOGO_HTML = (f'<img src="{_logo_uri}" width="300" height="253" alt="The Rat Report logo">'
+LOGO_HTML = (f'<img src="{_logo_uri}" width="400" height="337" alt="The Rat Report logo">'
              if _logo_uri else LOGO_SVG)
 FAVICON_TAG = (f'<link rel="icon" type="image/png" href="{_fav_uri}">' if _fav_uri
                else f'<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,{FAVICON}">')
@@ -1522,4 +1522,21 @@ UI_CSS += """
 .brand .logo{width:auto;height:auto}
 .brand .logo img{display:block;width:118px;height:auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
 @media (max-width:640px){.brand .logo{width:auto;height:auto}.brand .logo img{width:78px}}
+"""
+
+# Header without the big headline (Oct 27): the logo carries the name.
+UI_CSS += """
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.mast .wrap{align-items:center;padding-block:18px 18px}
+.brand{gap:18px}
+.brand .logo img{width:176px}
+.brand-meta{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.brand-meta .kicker{margin:0;opacity:.8;font-size:13px}
+.brand-meta .beta{margin-left:0;top:0}
+@media (max-width:640px){
+ .mast .wrap{padding-block:14px 16px;gap:14px}
+ .brand{gap:14px}.brand .logo img{width:128px}
+ .brand-meta{gap:8px}.brand-meta .kicker{font-size:11px;line-height:1.5}
+ .mast-stats{gap:20px}.mast-stats b{font-size:26px}
+}
 """
