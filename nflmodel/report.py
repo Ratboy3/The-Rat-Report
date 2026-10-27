@@ -361,7 +361,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
           <dt></dt><dd class="n">{g.away_team} {_odds(g.away_moneyline)}</dd></dl>
           {lean('moneyline')}</div>
       </div>
-      <div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div>
+      <details class="xtra" open><summary>Touchdown scorers and props</summary><div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div></details>
       {_card_injuries(g, inj, (mkt or {}).get('qb'))}
       {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
     </article>"""
@@ -1129,7 +1129,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     cards = "".join(card(gi, it) for gi, it in enumerate(live))
     if done:
         cards += '<h3 class="final-head">Final</h3>' + "".join(card(len(live) + gi, it) for gi, it in enumerate(done))
-    tabs = [("games", "Games"), ("bets", "Best bets"), ("leans", "Leans"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
+    tabs = [("bets", "Bets now"), ("games", "Games"), ("leans", "Leans"), ("results", "Results"), ("ratings", "Ratings"),
+            ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
@@ -1143,7 +1144,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 <title>The Rat Report</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<style>{CSS}</style></head>
+<style>{CSS}{UI_CSS}</style></head>
 <body>
 <div class="mast"><div class="wrap">
   <div><p class="kicker">Week {week} · {season} NFL season</p><h1>The Rat Report <span class="beta">Beta</span></h1></div>
@@ -1156,17 +1157,13 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist">{''.join(toc)}</div></nav>
 <main class="wrap">
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
-  <section id="bets"><h2>Best bets</h2>
+  {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now)}
     {checked_line}
-    <div class="best">
-      <div><h3>Games</h3>{_bets_section(upcoming)}</div>
-      <div><h3>Top 5 prop edges</h3>{_top_props(open_props)}</div>
-    </div>
-    <p class="note">Prop lines are this week's DraftKings prices, or FanDuel's (marked FD) when FanDuel pays more for the same bet (newest available, never more than 3 days old), each with the time it was published; older lines are more likely to have moved, so check your app.{(' Last checked ' + escape(lines_checked) + '.') if lines_checked else ''}
-    Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.</p>
+    <p class="note">Prop prices are DraftKings' or FanDuel's (DK/FD), whichever pays more for the same bet. Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.{(' Prop lines last checked ' + escape(lines_checked) + '.') if lines_checked else ''}</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
   {_leans_section(upcoming, open_props, clv_log)}
+  {_results_section(clv_log)}
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
     A gold bar marks a game with a bet. Finished games move to the bottom with the final score. Each card has the most likely touchdown scorers, the top prop edges, every projected prop, and the latest news.</p>
@@ -1199,5 +1196,295 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 </main>
 <footer><div class="wrap">Generated {generated} from nflverse data through {dt}. Lines move all week, so rerun before betting.
 For entertainment and analysis. Bet only what you can afford to lose. Help is available at 1-800-GAMBLER.</div></footer>
-<script>{TABS_JS}</script>
+<script>{TABS_JS}{UI_JS}</script>
 </body></html>"""
+
+
+# ------------------------------------------------------------------ bets right now, filters, results (Oct 27, 2026)
+STALE_MIN = 180          # a price older than this (minutes) is flagged as stale on the page
+
+
+def _asof_iso(s, now) -> str:
+    """'Tue Oct 27, 1:00 PM CT' -> ISO timestamp with the Central offset ('' if it can't be read)."""
+    from zoneinfo import ZoneInfo
+    try:
+        t = str(s).replace(" CT", "").strip()
+        m = __import__("re").search(r"[A-Z][a-z]{2} [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M", t)
+        if not m:
+            return ""
+        d = datetime.strptime(f"{now.year} {m.group(0)}", "%Y %a %b %d, %I:%M %p").replace(tzinfo=ZoneInfo("America/Chicago"))
+        if d > now + timedelta(days=2):
+            d = d.replace(year=now.year - 1)
+        return d.isoformat()
+    except Exception:
+        return ""
+
+
+def _mkt_key(market: str, stat: str = "") -> str:
+    if market == "prop":
+        return "td" if stat == "anytime_td" else "prop"
+    return {"spread": "side", "total": "total", "moneyline": "ml"}.get(market, market)
+
+
+def _fx_attrs(book: str, mk: str, ev: float) -> str:
+    return f'data-book="{"fd" if book == "FanDuel" else "dk"}" data-mk="{mk}" data-ev="{ev:.4f}"'
+
+
+FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
+  <div class="fgrp"><span>Book</span><button data-f="book" data-v="all" aria-pressed="true">Both</button><button data-f="book" data-v="dk" aria-pressed="false">DraftKings</button><button data-f="book" data-v="fd" aria-pressed="false">FanDuel</button></div>
+  <div class="fgrp"><span>Market</span><button data-f="mk" data-v="all" aria-pressed="true">All</button><button data-f="mk" data-v="side" aria-pressed="false">Spreads</button><button data-f="mk" data-v="total" aria-pressed="false">Totals</button><button data-f="mk" data-v="ml" aria-pressed="false">Moneyline</button><button data-f="mk" data-v="prop" aria-pressed="false">Props</button><button data-f="mk" data-v="td" aria-pressed="false">TDs</button></div>
+  <div class="fgrp"><span>Min edge</span><button data-f="ev" data-v="0" aria-pressed="true">Any</button><button data-f="ev" data-v="0.05" aria-pressed="false">5%+</button><button data-f="ev" data-v="0.08" aria-pressed="false">8%+</button></div>
+</div>"""
+
+
+def _now_section(upcoming, props, log, dk_used, now) -> str:
+    """Every bet that clears the bar right now, one list: pick, book, price, edge, kickoff and how old the price is.
+    Below it, bets logged earlier whose price has since moved so they no longer clear the bar."""
+    rows = []
+    for it in upcoming:
+        g = it["g"]
+        key = f"{g.away_team} @ {g.home_team}"
+        asof = dk_used.get(key, "")
+        for o in it["opts"]:
+            if o["ev"] >= C.MIN_EV:
+                rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
+                                 book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
+                                 mk=_mkt_key(o["market"]), extra=""))
+    if props is not None and not props.empty and "flag" in props:
+        for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
+            what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
+            price = r.over_odds if r.best_side == "Over" else r.under_odds
+            win = r.p_over if r.best_side == "Over" else 1 - r.p_over
+            rows.append(dict(ev=r.ev, pick=f"{r.player} {what}", game=r.game, when="", book=str(getattr(r, "book", "") or "DraftKings"),
+                             odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r)))
+    rows.sort(key=lambda x: -x["ev"])
+    if rows:
+        body = "".join(
+            f"""<tr class="fx" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td><b>{escape(x['pick'])}</b>
+        <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span></td>
+        <td><span class="bk bk-{'fd' if x['book'] == 'FanDuel' else 'dk'}">{'FD' if x['book'] == 'FanDuel' else 'DK'}</span></td>
+        <td class="n">{_odds(x['odds'])}<span class="cell-sub age" data-asof="{_asof_iso(x['asof'], now)}">{escape(str(x['asof']).replace(' CT', ''))}</span></td>
+        <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td></tr>"""
+            for x in rows)
+        table = f"""<div class="tablebox"><table class="nowtable"><thead><tr><th>Bet</th><th>Book</th><th class="n">Price</th>
+        <th class="n hide-sm">Win %</th><th class="n">Edge</th></tr></thead><tbody>{body}</tbody></table></div>
+        <p class="empty fnone" hidden>No bets match these filters.</p>"""
+    else:
+        table = f'<p class="empty">No bet clears the {C.MIN_EV:.0%} bar right now. Leans are on the Leans tab.</p>'
+
+    # bets logged earlier that no longer clear the bar at the current price
+    moved = []
+    if log is not None and len(log) and "tier" in log:
+        cur_game = {}
+        for it in upcoming:
+            for o in it["opts"]:
+                cur_game[(it["g"].game_id, o["market"], o["side"])] = o
+        cur_prop = {}
+        if props is not None and not props.empty:
+            for r in props[props.line.notna()].itertuples():
+                cur_prop[(r.game, r.player, r.stat)] = r
+        live_ids = {it["g"].game_id for it in upcoming}
+        lg = log[(log.tier.fillna("bet") == "bet") & log.game_id.isin(live_ids)]
+        for r in lg.itertuples():
+            if r.market == "prop":
+                c = cur_prop.get((r.game, r.player, r.stat))
+                if c is None:
+                    continue
+                same_side = c.best_side == r.side
+                if same_side and bool(c.flag):
+                    continue
+                now_price = c.over_odds if r.side == "Over" else c.under_odds
+                now_ev = c.ev if same_side else np.nan
+                from .props import LEAN_ONLY_STATS
+                why = ("leans only for now" if same_side and c.stat in LEAN_ONLY_STATS and c.ev >= C.MIN_EV
+                       else "model now prefers the other side" if not same_side else "price moved")
+            else:
+                c = cur_game.get((r.game_id, r.market, r.side))
+                if c is None or c["ev"] >= C.MIN_EV:
+                    continue
+                now_price, now_ev, why = c["odds"], c["ev"], "price moved"
+            moved.append(f"""<tr><td>{escape(_pretty_pick(r.pick))}<span class="cell-sub">{escape(str(r.game))} · flagged {escape(str(r.logged_at))}</span></td>
+        <td class="n">{_odds(r.odds)}<span class="cell-sub">{_signed_pct(r.ev)}</span></td>
+        <td class="n">{_odds(now_price)}<span class="cell-sub">{_signed_pct(now_ev) if pd.notna(now_ev) else '—'}</span></td>
+        <td class="muted">{why}</td></tr>""")
+    moved_html = ""
+    if moved:
+        moved_html = f"""<h3>No longer a bet at today's price</h3>
+    <p class="note">Flagged earlier, but the line or price has moved and the edge is now under {C.MIN_EV:.0%}. If you already have it at the old price, it's still tracked at that price.</p>
+    <div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Then</th><th class="n">Now</th><th>Why</th></tr></thead>
+    <tbody>{''.join(moved)}</tbody></table></div>"""
+    return f"""<section id="bets"><h2>Bets right now</h2>
+    <p class="lede">Every bet that clears the {C.MIN_EV:.0%} edge bar at the latest DraftKings or FanDuel price, best edge first.
+    Each price shows how long ago it was checked; one older than {STALE_MIN // 60} hours is marked <span class="stale-key">stale</span>, so confirm it in your app.</p>
+    {FILTER_BAR}
+    {table}
+    {moved_html}"""
+
+
+def _results_section(log) -> str:
+    """Live results by week, market and book, plus cumulative units over time."""
+    if log is None or not len(log):
+        return '<section id="results"><h2>Results</h2><p class="empty">No results yet.</p></section>'
+    lg = log.copy()
+    lg["tier"] = lg["tier"].fillna("bet") if "tier" in lg else "bet"
+    if "book" not in lg:
+        lg["book"] = np.nan
+    lg["book"] = lg.book.where(lg.book.notna() & (lg.book.astype(str) != ""),
+                               np.where(lg.pick.astype(str).str.contains("(FanDuel)", regex=False), "FanDuel", "DraftKings"))
+    lg["kind"] = np.where(lg.market == "prop", "Prop: " + lg.stat.map(lambda s: STAT_LABEL.get(s, str(s))).astype(str),
+                          lg.market.map({"spread": "Spread", "total": "Total", "moneyline": "Moneyline"}).fillna(lg.market))
+    st = lg[lg.result.isin(["win", "loss", "push"])].copy()
+    st["pnl"] = st.pnl.astype(float)
+    closed = lg[lg.clv.notna() & (pd.to_datetime(lg.kickoff, utc=True, errors="coerce") <= pd.Timestamp.now(tz="UTC"))]
+
+    def agg(df_settled, df_closed, by):
+        keys = sorted(set(df_settled[by]) | set(df_closed[by]), key=str)
+        out = []
+        for k in keys:
+            s, c = df_settled[df_settled[by] == k], df_closed[df_closed[by] == k]
+            w, l_ = int((s.result == "win").sum()), int((s.result == "loss").sum())
+            p = int((s.result == "push").sum())
+            out.append(dict(k=k, rec=f"{w}-{l_}" + (f"-{p}" if p else ""), units=float(s.pnl.sum()) if len(s) else 0.0,
+                            roi=float(s.pnl.mean()) if len(s) else np.nan, clv=float(c.clv.mean()) if len(c) else np.nan,
+                            beat=float((c.clv > 0).mean()) if len(c) else np.nan, n=len(s)))
+        return out
+
+    def table(rows, label):
+        if not rows:
+            return '<p class="empty">Nothing settled yet.</p>'
+        trs = "".join(
+            f"""<tr><td><b>{escape(str(r['k']))}</b></td><td class="n">{r['rec']}</td>
+            <td class="n {'good' if r['units'] > 0 else 'bad' if r['units'] < 0 else ''}">{r['units']:+.1f}</td>
+            <td class="n hide-sm">{_signed_pct(r['roi']) if r['n'] else '—'}</td>
+            <td class="n {'good' if pd.notna(r['clv']) and r['clv'] > 0 else 'bad' if pd.notna(r['clv']) and r['clv'] < 0 else ''}">{_signed_pct(r['clv']) if pd.notna(r['clv']) else '—'}</td>
+            <td class="n hide-sm">{f"{r['beat']:.0%}" if pd.notna(r['beat']) else '—'}</td></tr>""" for r in rows)
+        return f"""<div class="tablebox"><table><thead><tr><th>{label}</th><th class="n">W-L</th><th class="n">Units</th>
+        <th class="n hide-sm">ROI</th><th class="n">Avg CLV</th><th class="n hide-sm">Beat close</th></tr></thead><tbody>{trs}</tbody></table></div>"""
+
+    blocks = []
+    for tier, title in (("bet", "Bets"), ("lean", "Leans")):
+        s, c = st[st.tier == tier], closed[closed.tier == tier]
+        s = s.assign(wk="Week " + s.week.astype(int).astype(str))
+        c = c.assign(wk="Week " + c.week.astype(int).astype(str))
+        wk = sorted(agg(s, c, "wk"), key=lambda r: -int(r["k"].split()[-1]))
+        blocks.append(f"""<div><h3>{title} by week</h3>{table(wk, 'Week')}
+        <h3>{title} by market</h3>{table(agg(s, c, 'kind'), 'Market')}
+        <h3>{title} by book</h3>{table(agg(s, c, 'book'), 'Book')}</div>""")
+
+    # cumulative units, bets and leans, in kickoff order
+    chart = ""
+    if len(st):
+        st["_ko"] = pd.to_datetime(st.kickoff, utc=True, errors="coerce")
+        series = {}
+        st = st.sort_values(["_ko", "logged_at"]).reset_index(drop=True)
+        st["_ord"] = np.arange(1, len(st) + 1)          # one shared order (kickoff, then when logged) for both lines
+        for tier in ("bet", "lean"):
+            s = st[st.tier == tier]
+            if len(s):
+                ords = s._ord.to_numpy(float)
+                series[tier] = (np.concatenate([[0.0], ords]), np.concatenate([[0.0], s.pnl.cumsum().to_numpy()]))
+        if series:
+            W, H, P = 520, 230, 38
+            t_max = max(v[0].max() for v in series.values()) or 1.0
+            lo = min(0.0, min(v[1].min() for v in series.values()))
+            hi = max(0.0, max(v[1].max() for v in series.values()))
+            span = (hi - lo) or 1.0
+            x = lambda t: P + (W - 2 * P) * (t / t_max)
+            y = lambda v: 12 + (H - 36) * (hi - v) / span
+            lines = []
+            for tier, (ts, v) in series.items():
+                pts = " ".join(f"{x(t):.1f},{y(val):.1f}" for t, val in zip(ts, v))
+                lines.append(f'<polyline class="cu cu-{tier}" points="{pts}"/>'
+                             f'<text class="cu-lab cu-{tier}" x="{x(ts[-1]) + 6:.0f}" y="{y(v[-1]) + 4:.1f}">{v[-1]:+.1f}u</text>')
+            first = st._ko.min().tz_convert("America/Chicago").strftime("%b %-d")
+            last = st._ko.max().tz_convert("America/Chicago").strftime("%b %-d")
+            chart = f"""<h3>Units over time</h3>
+    <figure class="chart"><svg viewBox="0 0 {W + 50} {H}" role="img" aria-label="Cumulative units won, bets and leans, in kickoff order">
+      <line class="zero" x1="{P}" x2="{W - P}" y1="{y(0):.1f}" y2="{y(0):.1f}"/>
+      <text class="ax" x="{P - 6}" y="{y(hi) + 4:.1f}" text-anchor="end">{hi:+.0f}</text>
+      <text class="ax" x="{P - 6}" y="{y(lo) + 4:.1f}" text-anchor="end">{lo:+.0f}</text>
+      <text class="ax" x="{P - 6}" y="{y(0) + 4:.1f}" text-anchor="end">0</text>
+      {''.join(lines)}
+      <text class="ax" x="{P}" y="{H - 6}">first</text><text class="ax" x="{W - P}" y="{H - 6}" text-anchor="end">latest</text>
+    </svg><figcaption><span class="key key-bet"></span>Bets <span class="key key-lean"></span>Leans · one unit staked per bet, in kickoff order ({first} to {last})</figcaption></figure>"""
+
+    tot = {t: st[st.tier == t] for t in ("bet", "lean")}
+    cl = {t: closed[closed.tier == t] for t in ("bet", "lean")}
+    def tile(t, lab):
+        s, c = tot[t], cl[t]
+        w, l_ = int((s.result == "win").sum()), int((s.result == "loss").sum())
+        clv = _signed_pct(c.clv.mean()) if len(c) else "—"
+        return (f'<div><span>{lab}</span><b>{w}-{l_}</b><em>{s.pnl.sum():+.1f} units · avg CLV '
+                f'<i class="{"good" if len(c) and c.clv.mean() > 0 else "bad" if len(c) and c.clv.mean() < 0 else ""}">{clv}</i> · {len(c)} closed</em></div>')
+    return f"""<section id="results"><h2>Results</h2>
+    <p class="lede">Every flagged bet and every lean since tracking began (Week 7, 2026), graded at the price it was posted.
+    CLV compares that price with the closing line: over hundreds of bets it's the most reliable sign of a real edge, well before win-loss settles down.
+    Bets placed at FanDuel are measured against DraftKings' closing line, so their CLV includes the better price.</p>
+    <div class="leanstrip">{tile('bet', 'Bets')}{tile('lean', 'Leans')}</div>
+    {chart}
+    <div class="best">{''.join(blocks)}</div></section>"""
+
+
+UI_JS = """
+(function(){
+  // price age: "12 min ago", stale after STALE minutes
+  function ages(){
+    var now=Date.now();
+    [].forEach.call(document.querySelectorAll('[data-asof]'),function(el){
+      var t=Date.parse(el.dataset.asof); if(!el.dataset.asof||isNaN(t)) return;
+      var m=Math.max(0,Math.round((now-t)/60000));
+      var txt=m<60?(m+' min ago'):(m<1440?(Math.floor(m/60)+' h '+(m%60)+' min ago'):(Math.floor(m/1440)+' d ago'));
+      el.textContent=txt; el.classList.toggle('stale', m>STALE); if(m>STALE) el.title='Price checked '+txt+': confirm it in your app';
+    });
+  }
+  ages(); setInterval(ages, 60000);
+  // filters for the bets list
+  var state={book:'all',mk:'all',ev:'0'};
+  try{var s=JSON.parse(localStorage.getItem('rr_filters')||'null'); if(s) state=Object.assign(state,s);}catch(e){}
+  function apply(){
+    var rows=[].slice.call(document.querySelectorAll('tr.fx')), shown=0;
+    rows.forEach(function(r){
+      var ok=(state.book==='all'||r.dataset.book===state.book)&&(state.mk==='all'||r.dataset.mk===state.mk)&&(parseFloat(r.dataset.ev)>=parseFloat(state.ev));
+      r.hidden=!ok; if(ok) shown++;
+    });
+    var none=document.querySelector('.fnone'); if(none) none.hidden=!(rows.length&&!shown);
+    [].forEach.call(document.querySelectorAll('.fbar button'),function(b){b.setAttribute('aria-pressed', String(state[b.dataset.f]===b.dataset.v))});
+  }
+  [].forEach.call(document.querySelectorAll('.fbar button'),function(b){
+    b.addEventListener('click',function(){state[b.dataset.f]=b.dataset.v; try{localStorage.setItem('rr_filters',JSON.stringify(state))}catch(e){} apply();});
+  });
+  apply();
+  // phones: touchdown and prop panels start collapsed on each game card
+  if(window.matchMedia&&window.matchMedia('(max-width:640px)').matches){
+    [].forEach.call(document.querySelectorAll('details.xtra'),function(d){d.open=false});
+  }
+})();
+""".replace("STALE", str(STALE_MIN))
+
+UI_CSS = """
+.fbar{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 12px}
+.fgrp{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.fgrp>span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-right:4px}
+.fbar button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 11px;cursor:pointer;min-height:32px}
+.fbar button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.fbar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bk{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:3px;padding:1px 6px;border:1px solid var(--line)}
+.bk-fd{color:var(--accent);border-color:var(--accent)}
+.age.stale,.stale-key{color:var(--flag);font-weight:600}
+.nowtable td{vertical-align:middle}
+@media (max-width:520px){.hide-sm{display:none}}
+.chart{margin:0 0 18px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .zero{stroke:var(--line);stroke-width:1}
+.chart .ax{font-size:13px;fill:var(--muted);font-family:var(--mono)}
+.chart .cu{fill:none;stroke-width:2.5;stroke-linejoin:round}
+.chart .cu-bet{stroke:var(--accent)}.chart .cu-lean{stroke:var(--muted);stroke-dasharray:5 4}
+.chart .cu-lab{font-size:14px;font-weight:600;font-family:var(--mono)}.chart text.cu-bet{fill:var(--accent)}.chart text.cu-lean{fill:var(--muted)}
+.chart figcaption{font-size:12.5px;color:var(--muted);margin-top:4px}
+#results .best h3{margin-top:22px}#results .best h3:first-child{margin-top:0}
+.key{display:inline-block;width:16px;height:0;border-top:2.5px solid var(--accent);vertical-align:middle;margin:0 4px 0 8px}
+.key-lean{border-top:2.5px dashed var(--muted)}
+details.xtra>summary{display:none}
+@media (max-width:640px){details.xtra>summary{display:block;cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;padding:10px 14px;border-top:1px solid var(--line)}
+ details.xtra>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}}
+"""

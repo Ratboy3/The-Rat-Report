@@ -29,7 +29,7 @@ ET = ZoneInfo("America/New_York")
 CT = ZoneInfo("America/Chicago")
 COLS = ["bet_id", "logged_at", "season", "week", "game_id", "game", "kickoff", "market", "side", "pick", "player",
         "stat", "line", "odds", "model_prob", "ev", "close_line", "close_odds", "close_odds2", "close_at", "clv", "value_at_close",
-        "result", "pnl", "tier", "cons_prob", "hours_before"]
+        "result", "pnl", "tier", "cons_prob", "hours_before", "book"]
 
 
 def _kickoff(g) -> datetime:
@@ -88,7 +88,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
         if c not in log:
             log[c] = np.nan
     log["tier"] = log["tier"].fillna("bet")
-    log = log[COLS].astype({c: "object" for c in ("player", "stat", "close_at", "result", "tier")})
+    log = log[COLS].astype({c: "object" for c in ("player", "stat", "close_at", "result", "tier", "book")})
     hrs = lambda g: round((_kickoff(g) - now).total_seconds() / 3600, 1)
     miss = log.hours_before.isna()
     if miss.any():   # rows logged before this column existed: from the logged-at stamp
@@ -120,7 +120,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
             new.append(dict(bet_id=bid, logged_at=_stamp(now), season=season, week=week, game_id=g.game_id, game=key,
                             kickoff=_kickoff(g).isoformat(), market=o["market"], side=o["side"], pick=o["pick"],
                             player="", stat="", line=line, odds=o["odds"], model_prob=round(o["win_prob"], 4),
-                            ev=round(o["ev"], 4), tier=tier, hours_before=hrs(g)))
+                            ev=round(o["ev"], 4), tier=tier, hours_before=hrs(g), book=o.get("book", "DraftKings")))
     if props is not None and len(props):
         for r in props[props.flag.astype(bool) | (props.ev > 0)].itertuples():
             g = gid.get(r.game)
@@ -137,7 +137,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                             kickoff=_kickoff(g).isoformat(), market="prop", side=r.best_side, pick=f"{r.player} {what}",
                             player=r.player, stat=r.stat, line=r.line, odds=odds,
                             model_prob=round(float(r.p_over if r.best_side == "Over" else 1 - r.p_over), 4), ev=round(r.ev, 4),
-                            tier=tier, hours_before=hrs(g),
+                            tier=tier, hours_before=hrs(g), book=(getattr(r, "book", "") or "DraftKings"),
                             cons_prob=(round(float(r.cons_p_over if r.best_side == "Over" else 1 - r.cons_p_over), 4)
                                        if pd.notna(getattr(r, "cons_p_over", np.nan)) else np.nan)))
     if new:
