@@ -40,7 +40,7 @@ jobs:
         run: |
           git config user.name "Rat Report data bot"
           git config user.email "actions@users.noreply.github.com"
-          git add -f data/hist_game_lines.csv data/hist_pull_log.csv data/hist_pull_errors.csv 2>/dev/null; git add -f data/hist_*.csv 2>/dev/null || true
+          git add -f data/hist_*.csv || true
           git diff --cached --quiet && exit 0
           git commit -m "Historical game lines $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
           for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
