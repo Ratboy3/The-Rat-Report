@@ -274,6 +274,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         if USE["agg"]:
             team_tds = max(0.3, team_tds + AGG_TD_PER_10 * coach_agg.get(team, 0.0) / 10)
         team_weeks = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
+        qb_chg = bool(getattr(g, f"{side}_qb_change", 0) or 0)
+        lead_out = _leads_out(recent, team, set(eligible)) if USE["nextman"] else set()
         for pid in on_team:
             rows = stats[stats.player_id == pid]
             last = rows.sort_values(["season", "week"]).iloc[-1]
@@ -330,8 +332,12 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                         est *= opp_f.get((opp, pos, st), 1.0)
                     if USE["vol"]:
                         est *= vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
+                    if USE["backupqb"] and qb_chg and pos != "QB":
+                        est *= BACKUP_QB.get(st, 1.0) if (st != "rush_yds" or pos == "RB") else 1.0
+                    if pos in lead_out:
+                        est *= NEXT_MAN.get((pos, st), 1.0)
                     est *= SCALE.get(st, 1.0)
-                    if st in SHRINK_TO:                  # pull extreme projections toward the league average
+                    if st in SHRINK_TO:                 # pull extreme projections toward the league average
                         m0, k0 = SHRINK_TO[st]
                         est = m0 + k0 * (est - m0)
                 if st == "anytime_td":
@@ -384,7 +390,39 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # games for a previous team (slightly worse at 35% and 15% weight).
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
        "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False,
-       "routes": False, "zerofill": False, "newteam": False}
+       "routes": False, "zerofill": False, "newteam": False, "backupqb": True, "nextman": True}
+# Round 7 (Oct 27, 2026), replay 2025 wk5-18 + 2026 wk3-7, each factor fit on one season and checked on the other
+# (log loss of the over/under at the current projection's median line, on the affected player-games):
+# Backup QB starting (the model's QB-change flag): the team's receivers fall short of their receiving-yards
+# projection (actual/projected 0.925 in 2025, 0.953 in 2026) and its running backs out-rush theirs (1.07 / 1.19).
+# Out of sample: receiving yds 0.6920 -> 0.6848 (2025 fit, 2026 test) and 0.6923 -> 0.6890 (2026 fit, 2025 test);
+# RB rushing 0.6934 -> 0.6928 and 0.6935 -> 0.6833. Receptions were mixed and QB passing yards got worse (no change).
+BACKUP_QB = {"rec_yds": 0.93, "rush_yds": 1.10}
+# Next man up: when a team's top-usage player at a position (carries + targets for RBs, targets for WR/TE; 2+ games
+# this season) is out, his same-position teammates beat their projections: RB rushing yds x1.50 in both seasons,
+# receptions x1.10 (1.10 / 1.14). Out of sample: RB rushing 0.6970 -> 0.6943 and 0.6931 -> 0.6432; receptions
+# 0.7023 -> 0.6915 and 0.7094 -> 0.6966. Receiving yards were mixed (better one way, worse the other): no change.
+# The broader version (every injured teammate's share redistributed, "redis") tested worse and stays off.
+NEXT_MAN = {("RB", "rush_yds"): 1.50, ("RB", "receptions"): 1.10, ("WR", "receptions"): 1.10, ("TE", "receptions"): 1.10}
+# Wind and cold (Round 7): not used. Windy games (12+ mph outdoors) did see lower passing and receiving in 2025
+# (x0.90 / x0.87), but the game total already prices the weather and the factor made 2026 worse out of sample
+# (passing yds 0.6955 -> 0.8254 on the 6 windy QB-games so far; receiving 0.6958 -> 0.7112). Retest in December.
+
+
+def _leads_out(recent: pd.DataFrame, team: str, eligible: set) -> set:
+    """Positions (RB/WR/TE) whose top-usage player this season (2+ games) is not available this week."""
+    r = recent[(recent.team == team) & recent.position.isin(["RB", "WR", "TE"])]
+    if r.empty:
+        return set()
+    use = np.where(r.position == "RB", r.carries.fillna(0) + r.targets.fillna(0), r.targets.fillna(0))
+    u = r.assign(u=use).groupby(["position", "player_id"]).agg(u=("u", "mean"), n=("week", "nunique")).reset_index()
+    u = u[u.n >= 2]
+    out = set()
+    for pos, x in u.groupby("position"):
+        lead = x.sort_values("u").iloc[-1].player_id
+        if lead not in eligible:
+            out.add(pos)
+    return out
 # Calibration: QBs beat the passing-yards projection on average (2025 actual/projected = 1.031). Applied to 2026
 # (out of sample) it cut the bias from +10.2 to +3.3 yards and the average miss from 57.4 to 57.1. The same
 # fix for rushing, receiving and receptions did not help on 2026, so those stay at 1.0. (Oct 26, 2026)
