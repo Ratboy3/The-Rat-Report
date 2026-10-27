@@ -1142,7 +1142,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     cards = "".join(card(gi, it) for gi, it in enumerate(live))
     if done:
         cards += '<h3 class="final-head">Final</h3>' + "".join(card(len(live) + gi, it) for gi, it in enumerate(done))
-    tabs = [("bets", "Bets now"), ("games", "Games"), ("leans", "Leans"), ("results", "Results"), ("ratings", "Ratings"),
+    tabs = [("bets", "Best bets"), ("games", "Games"), ("leans", "Leans"), ("results", "Results"), ("ratings", "Ratings"),
             ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
@@ -1327,7 +1327,7 @@ def _now_section(upcoming, props, log, dk_used, now) -> str:
     <p class="note">Flagged earlier, but the line or price has moved and the edge is now under {C.MIN_EV:.0%}. If you already have it at the old price, it's still tracked at that price.</p>
     <div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Then</th><th class="n">Now</th><th>Why</th></tr></thead>
     <tbody>{''.join(moved)}</tbody></table></div>"""
-    return f"""<section id="bets"><h2>Bets right now</h2>
+    return f"""<section id="bets"><h2>Best bets right now</h2>
     <p class="lede">Every bet that clears the {C.MIN_EV:.0%} edge bar at the latest DraftKings or FanDuel price, best edge first.
     Each price shows how long ago it was checked; one older than {STALE_MIN // 60} hours is marked <span class="stale-key">stale</span>, so confirm it in your app.</p>
     {FILTER_BAR}
