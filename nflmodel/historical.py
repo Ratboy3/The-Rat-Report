@@ -101,12 +101,13 @@ EVENTS_URL = "https://api.the-odds-api.com/v4/historical/sports/americanfootball
 EVENT_ODDS_URL = "https://api.the-odds-api.com/v4/historical/sports/americanfootball_nfl/events/{eid}/odds"
 
 
-def run_props(games: pd.DataFrame, spec: str, max_credits: int = 6000) -> None:
+def run_props(games: pd.DataFrame, spec: str, max_credits: int = 6000, floor: int | None = None) -> None:
     """Closing player props (the 6 markets the model prices, 10 named books incl. DraftKings, FanDuel, Pinnacle)
     ~5 minutes before each kickoff. Costs ~1 credit per snapshot to list events plus ~60 per game (10 x 6 markets).
     Stops at max_credits or before the month's balance drops under KEEP_FLOOR. Resumable: games already fetched
     (hist_props_log.csv) are skipped."""
     key = O.api_key()
+    keep = KEEP_FLOOR if floor is None else floor
     snaps = snapshots(games, parse_weeks(spec))
     done = set(pd.read_csv(PROPS_LOG).event_id) if PROPS_LOG.exists() else set()
     PROPS_LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -122,8 +123,8 @@ def run_props(games: pd.DataFrame, spec: str, max_credits: int = 6000) -> None:
                if s < datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) <= s + timedelta(minutes=20)
                and e["id"] not in done]
         for e in evs:
-            if left is not None and (spent + 60 > max_credits or left - 60 < KEEP_FLOOR):
-                print(f"Stopping: spent {spent} (cap {max_credits}), {left} left (floor {KEEP_FLOOR})")
+            if left is not None and (spent + 60 > max_credits or left - 60 < keep):
+                print(f"Stopping: spent {spent} (cap {max_credits}), {left} left (floor {keep})")
                 print(f"Done: {spent} credits spent")
                 return
             q = requests.get(EVENT_ODDS_URL.format(eid=e["id"]), timeout=60, params={

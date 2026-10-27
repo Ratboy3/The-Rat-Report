@@ -15,6 +15,9 @@ on:
         description: "Fetch only the first snapshot"
         type: boolean
         default: true
+      floor:
+        description: "Stop before credits left fall below this"
+        default: "8000"
       props:
         description: "Player props instead of game lines (~60 credits per game)"
         type: boolean
@@ -39,7 +42,7 @@ jobs:
       - name: Historical pull
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python run.py fetch-history --weeks "${{ inputs.weeks }}" --max-credits "${{ inputs.max_credits }}" ${{ inputs.test && '--test' || '' }} ${{ inputs.props && '--props' || '' }}
+        run: python run.py fetch-history --weeks "${{ inputs.weeks }}" --max-credits "${{ inputs.max_credits }}" ${{ inputs.test && '--test' || '' }} ${{ inputs.props && '--props' || '' }} --floor "${{ inputs.floor }}"
       - name: Commit
         run: |
           git config user.name "Rat Report data bot"
