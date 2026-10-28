@@ -298,6 +298,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                    n_books=int(c["n"]) if c else 0, cons_p_over=np.nan, cons_ev=np.nan,
                    book="", dk_line=np.nan, dk_ev=np.nan)
         row.update({k: v for k, v in p._asdict().items() if k.startswith("why_")})   # "Why this bet" factors
+        row.update(why_team_pts=team_pts.get(p.team, np.nan), why_team_ppg=team_ppg.get(p.team, np.nan))
         # price the bet at each book Alex uses and keep the better one
         cands = []
         for name, src in (("DraftKings", book), ("FanDuel", alt)):

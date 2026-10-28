@@ -1,13 +1,9 @@
-"""'Why this bet': two or three plain-English reasons behind each flagged bet, built from the same numbers the
-model used (Oct 28, 2026). Nothing here changes a projection; it only explains one.
-
-Game bets: the model's own line vs the market's, split into the pieces the game model adds up
-(team strength, home field, rest, travel, QB, injuries, weather). Props: the player's recent production and
-each adjustment the player model applied (opponent, pace/pass mix, team total, backup QB, next man up).
+"""'Why this bet': the reasons behind each flagged bet, in sections (the number, form, usage, matchup, game,
+price), built from the same numbers the model used. Nothing here changes a projection; it only explains one.
+Built Oct 28, 2026; deeper stats version the same day (game logs, hit rates vs the line, usage, opponent ranks,
+team rating ranks, injuries).
 """
 from __future__ import annotations
-
-import math
 
 import numpy as np
 import pandas as pd
@@ -17,6 +13,8 @@ from .model import _design, margin_features, total_features
 
 STAT_WORD = {"pass_yds": "passing yards", "pass_tds": "passing TDs", "rush_yds": "rushing yards",
              "rec_yds": "receiving yards", "receptions": "receptions", "anytime_td": "touchdown"}
+STAT_SHORT = {"pass_yds": "pass yds", "pass_tds": "pass TDs", "rush_yds": "rush yds", "rec_yds": "rec yds",
+              "receptions": "catches"}
 POS_WORD = {"QB": "QBs", "RB": "RBs", "WR": "WRs", "TE": "TEs"}
 
 
@@ -28,13 +26,86 @@ def _odds(o) -> str:
     return f"{int(o):+d}" if pd.notna(o) else "—"
 
 
+def _ord(n: int) -> str:
+    n = int(n)
+    suf = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suf}"
+
+
+def _rank_word(rank: int, n: int, most: str, fewest: str) -> str:
+    """'3rd most of 32' / '2nd fewest of 32'."""
+    if rank <= n / 2:
+        return f"{_ord(rank)} {most} of {n}"
+    return f"{_ord(n - rank + 1)} {fewest} of {n}"
+
+
 def _line(team: str, margin: float) -> str:
-    """Home-margin style number as a spread for `team` (positive margin = team favored)."""
     if abs(margin) < 0.05:
         return "pick'em"
     return f"{team} by {abs(margin):.1f}"
 
 
+def _num(x, nd=1) -> str:
+    return f"{x:.{nd}f}".rstrip("0").rstrip(".") if nd else f"{x:.0f}"
+
+
+# ------------------------------------------------------------------ team context for game bets
+def team_context(ratings, play, injuries=None, qbs=None) -> dict:
+    """team -> ranks and numbers shown in game explanations (built once per page)."""
+    ctx = {}
+    try:
+        t = ratings.table()
+        n = len(t)
+        t["net_rk"] = t.net.rank(ascending=False, method="min")
+        t["off_rk"] = t["off"].rank(ascending=False, method="min")
+        t["def_rk"] = t["def"].rank(ascending=False, method="min")
+        for r in t.itertuples():
+            ctx[r.team] = dict(n=n, net=r.net, net_rk=int(r.net_rk), off=r.off, off_rk=int(r.off_rk),
+                               dfn=r[3], def_rk=int(r.def_rk))
+    except Exception:
+        pass
+    try:
+        eo, ed = pd.Series(play["epa"].off), pd.Series(play["epa"].deff)
+        eo_rk, ed_rk = eo.rank(ascending=False, method="min"), ed.rank(ascending=False, method="min")
+        for team in eo.index:
+            ctx.setdefault(team, {}).update(epa_off=float(eo[team]), epa_off_rk=int(eo_rk[team]),
+                                            epa_def=float(ed.get(team, np.nan)), epa_def_rk=int(ed_rk.get(team, 0)),
+                                            epa_n=len(eo))
+    except Exception:
+        pass
+    for team, v in (injuries or {}).items():
+        if v and v.get("players"):
+            ctx.setdefault(team, {})["inj"] = [(nm, p, x, st) for nm, p, x, st in v["players"] if abs(x) >= 0.1][:3]
+    for team, q in (qbs or {}).items():
+        if q:
+            ctx.setdefault(team, {})["qb"] = q
+    return ctx
+
+
+def _team_line(t: str, c: dict) -> str | None:
+    if not c or "net_rk" not in c:
+        return None
+    s = (f"{t} rates {c['net']:+.1f} pts vs an average team ({_ord(c['net_rk'])} of {c['n']}; "
+         f"offense {_ord(c['off_rk'])}, defense {_ord(c['def_rk'])})")
+    if "epa_off_rk" in c:
+        s += (f", EPA/play offense {c['epa_off']:+.2f} ({_ord(c['epa_off_rk'])}), "
+              f"defense {_ord(c['epa_def_rk'])}")
+    return s
+
+
+def _inj_line(home, away, ctx) -> str | None:
+    bits = []
+    for t in (away, home):
+        c = ctx.get(t, {})
+        q = c.get("qb")
+        if q:
+            bits.append(f"{t} QB {q['new']} in for {q['usual']} ({q['pts']:+.1f} pts)")
+        for nm, p, x, st in c.get("inj", [])[:2]:
+            bits.append(f"{t} {nm} {p} {x:+.1f}" + (f" ({st})" if st else ""))
+    return "; ".join(bits) if bits else None
+
+
+# ------------------------------------------------------------------ game bets
 def _margin_parts(g: pd.Series, sm) -> dict:
     """Contributions (home-team points) to the pure model margin, grouped for people."""
     d = _design(pd.DataFrame([g]))
@@ -83,70 +154,97 @@ def _total_parts(g: pd.Series, sm) -> dict:
     }
 
 
-def game_why(g: pd.Series, o: dict, sm) -> list[str]:
-    """Reasons for one game bet (spread, total or moneyline)."""
+def game_why(g: pd.Series, o: dict, sm, ctx: dict | None = None) -> list[tuple[str, str]]:
+    """Sections explaining one game bet (spread, total or moneyline)."""
+    ctx = ctx or {}
     home, away = g.home_team, g.away_team
     out = []
     need = implied(o["odds"]) if pd.notna(o.get("odds")) else None
     if o["market"] in ("spread", "moneyline"):
         bet_team = home if o["side"] == "home" else away
-        sign = 1 if o["side"] == "home" else -1               # converts home-margin numbers to the bet team's view
-        mkt, mod, prj = g.spread_line, g.model_margin, g.proj_margin
+        sign = 1 if o["side"] == "home" else -1
         fav = lambda m: _line(home if m >= 0 else away, m)
-        out.append(f"Our numbers make it {fav(mod)} on their own; the market has {fav(mkt)}. "
-                   f"Blended with the market (we lean mostly on it), the projection is {fav(prj)}.")
+        out.append(("The number", f"Our model alone makes it {fav(g.model_margin)}; the market has {fav(g.spread_line)}. "
+                                  f"Blended (mostly market) the projection is {fav(g.proj_margin)}, "
+                                  f"{abs(g.proj_margin - g.spread_line):.1f} pts toward {bet_team} vs the line."))
+        lines = [x for x in (_team_line(away, ctx.get(away)), _team_line(home, ctx.get(home))) if x]
+        if lines:
+            out.append(("Matchup", ". ".join(lines) + "."))
         parts = _margin_parts(g, sm)
         words = {
-            "strength": lambda v: f"team strength (season ratings and play-by-play efficiency) is worth {_pts(v)} to {home if v > 0 else away}",
-            "home": lambda v: f"home field {_pts(v)}",
-            "rest": lambda v: f"rest and byes {_pts(v)} toward {home if v > 0 else away}"
+            "strength": lambda v: f"team strength {_pts(v)} to {home if v > 0 else away}",
+            "home": lambda v: f"home field {_pts(v)} to {home}",
+            "rest": lambda v: f"rest {_pts(v)} to {home if v > 0 else away}"
                               + (f" ({home} {int(g.home_rest)} days, {away} {int(g.away_rest)})" if pd.notna(g.get("home_rest")) else ""),
-            "travel": lambda v: f"travel / body clock costs {away} {_pts(v)}",
-            "qb": lambda v: f"quarterback situation {_pts(v)} toward {home if v > 0 else away}",
-            "injuries": lambda v: f"injuries {_pts(v)} toward {home if v > 0 else away}",
-            "coach": lambda v: f"4th-down aggressiveness {_pts(v)} toward {home if v > 0 else away}",
-            "manual": lambda v: f"news adjustment {_pts(v)} toward {home if v > 0 else away}",
+            "travel": lambda v: f"travel/body clock {_pts(v)} against {away}",
+            "qb": lambda v: f"QB situation {_pts(v)} to {home if v > 0 else away}",
+            "injuries": lambda v: f"injuries {_pts(v)} to {home if v > 0 else away}",
+            "coach": lambda v: f"4th-down aggressiveness {_pts(v)} to {home if v > 0 else away}",
+            "manual": lambda v: f"news adjustment {_pts(v)} to {home if v > 0 else away}",
         }
-        # the biggest pieces of the model's number, then the ones that help this bet
-        ranked = sorted(((k, v) for k, v in parts.items() if abs(v) >= 0.3), key=lambda kv: -abs(kv[1]))
-        helps = [(k, v) for k, v in ranked if v * sign > 0]
-        lead = [ranked[0]] if ranked else []
-        extra = [kv for kv in helps if kv not in lead][:2]
-        bits = [words[k](v) for k, v in lead + extra]
-        if bits:
-            out.append("Biggest pieces: " + "; ".join(bits) + ".")
+        ranked = sorted(((k, v) for k, v in parts.items() if abs(v) >= 0.2), key=lambda kv: -abs(kv[1]))
+        if ranked:
+            out.append(("How the model gets there", "; ".join(words[k](v) for k, v in ranked[:5]) + "."))
+        inj = _inj_line(home, away, ctx)
+        if inj:
+            out.append(("Injuries and QBs", inj + "."))
         if o["market"] == "moneyline" and need is not None:
-            out.append(f"At {_odds(o['odds'])}, {bet_team} needs to win {need:.1%} of the time to break even; "
-                       f"we have {o['win_prob']:.1%}.")
+            price = (f"At {_odds(o['odds'])}, {bet_team} needs to win {need:.1%} of the time to break even; "
+                     f"we have {o['win_prob']:.1%}.")
             if o["odds"] >= 200:
-                out.append("Long-odds underdog: a small difference in win chance makes a big edge here, "
-                           "so this is one of the moneylines the Tuesday review is watching.")
+                price += (" Long-odds underdog: a small difference in win chance makes a big edge, so this is one "
+                          "of the moneylines the Tuesday review is watching.")
+            out.append(("Price", price))
         elif need is not None:
             line = -g.spread_line if o["side"] == "home" else g.spread_line
-            out.append(f"{bet_team} {line:+g} covers {o['win_prob']:.1%} of the time in our numbers; "
-                       f"{_odds(o['odds'])} needs {need:.1%}.")
-    else:  # total
+            out.append(("Price", f"{bet_team} {line:+g} covers {o['win_prob']:.1%} of the time in our numbers; "
+                                 f"{_odds(o['odds'])} needs {need:.1%}."))
+    else:
         side = "Over" if o["side"] == "over" else "Under"
-        out.append(f"Our numbers project {g.model_total:.1f} points on their own; the market total is {g.total_line:g}. "
-                   f"Blended, the projection is {g.proj_total:.1f}.")
+        out.append(("The number", f"Our model alone projects {g.model_total:.1f} points; the market total is {g.total_line:g}. "
+                                  f"Blended (mostly market) the projection is {g.proj_total:.1f}."))
+        lines = []
+        for t, opp in ((away, home), (home, away)):
+            c, co = ctx.get(t, {}), ctx.get(opp, {})
+            if "off_rk" in c and "def_rk" in co:
+                lines.append(f"{t} offense {_ord(c['off_rk'])} vs {opp} defense {_ord(co['def_rk'])}")
+        if lines:
+            out.append(("Matchup", "; ".join(lines) + f" (points ratings, of {ctx[away]['n']})."))
         parts = _total_parts(g, sm)
         bits = []
-        if abs(parts["weather"]) >= 0.3 and isinstance(g.get("wx"), str):
-            bits.append(f"weather ({g.wx}) {parts['weather']:+.1f}")
-        for k, lab in (("injuries", "injuries"), ("qb", "QB change"), ("coach", "4th-down aggressiveness")):
-            if abs(parts[k]) >= 0.3:
-                bits.append(f"{lab} {parts[k]:+.1f}")
         if pd.notna(g.get("r_total")):
-            bits.insert(0, f"the two offenses and defenses rate for {g.r_total:.1f} points before game factors")
+            bits.append(f"the two teams' ratings add up to {g.r_total:.1f} points")
+        if isinstance(g.get("wx"), str):
+            bits.append(f"weather {g.wx}" + (f" ({parts['weather']:+.1f})" if abs(parts["weather"]) >= 0.2 else ", no effect"))
+        for k, lab in (("injuries", "injuries"), ("qb", "QB change"), ("coach", "4th-down aggressiveness"), ("dome", "dome")):
+            if abs(parts[k]) >= 0.2:
+                bits.append(f"{lab} {parts[k]:+.1f}")
         if bits:
-            out.append("Biggest pieces: " + "; ".join(bits[:3]) + ".")
+            out.append(("How the model gets there", "; ".join(bits) + "."))
+        inj = _inj_line(home, away, ctx)
+        if inj:
+            out.append(("Injuries and QBs", inj + "."))
         if need is not None:
-            out.append(f"The {side} hits {o['win_prob']:.1%} of the time in our numbers; {_odds(o['odds'])} needs {need:.1%}.")
-    return out[:4]
+            out.append(("Price", f"The {side} hits {o['win_prob']:.1%} of the time in our numbers; {_odds(o['odds'])} needs {need:.1%}."))
+    return out
 
 
-def prop_why(r) -> list[str]:
-    """Reasons for one flagged prop (a row of the props table from props.price_auto)."""
+# ------------------------------------------------------------------ props
+def _log_vals(s) -> list[tuple[float, str]]:
+    if not isinstance(s, str) or not s:
+        return []
+    out = []
+    for part in s.split("|"):
+        v, _, o = part.partition(":")
+        try:
+            out.append((float(v), o))
+        except ValueError:
+            pass
+    return out
+
+
+def prop_why(r) -> list[tuple[str, str]]:
+    """Sections explaining one flagged prop (a row of the props table from props.price_auto)."""
     g = lambda k, d=np.nan: getattr(r, k, d)
     stat, side = r.stat, r.best_side
     book = "FanDuel" if str(g("book", "")) == "FanDuel" else "DraftKings"
@@ -154,59 +252,108 @@ def prop_why(r) -> list[str]:
     win = r.p_over if side == "Over" else 1 - r.p_over
     out = []
     if stat == "anytime_td":
+        tds, gp = g("why_td_scored"), g("why_td_games")
+        if pd.notna(gp) and gp > 0:
+            s = f"Scored in {int(tds)} of {int(gp)} games this season"
+            if pd.notna(g("why_rush_td")):
+                s += f" ({int(g('why_rush_td'))} rushing, {int(g('why_rec_td'))} receiving TDs)"
+            out.append(("Form", s + "."))
+        if pd.notna(g("why_rz_pg")):
+            out.append(("Usage", f"{g('why_rz_pg'):.1f} red-zone touches per game, {g('why_gl_pg'):.1f} inside the 10 "
+                                  f"(carries + targets)."))
         share, ttd = g("why_share"), g("why_team_tds")
         if pd.notna(share) and pd.notna(ttd):
-            out.append(f"{r.team} projects {ttd:.1f} touchdowns; {r.player} gets about {share:.0%} of the team's "
-                       f"rushing/receiving TDs (red-zone touches weighted), so the model gives him {g('model_prob'):.0%} to score.")
-        if pd.notna(g("why_td_games")) and g("why_td_games") > 0:
-            out.append(f"He has scored in {int(g('why_td_scored'))} of {int(g('why_td_games'))} games this season.")
+            tp = g("why_team_pts")
+            s = f"{r.team} projects {ttd:.1f} touchdowns" + (f" ({tp:.1f} points)" if pd.notna(tp) else "")
+            s += f"; he gets about {share:.0%} of the team's rushing/receiving TDs, so the model alone gives him {g('model_prob'):.0%}."
+            out.append(("The number", s))
         mp = g("market_prob")
         if pd.notna(mp):
-            out.append(f"The market (after the book's margin) says {mp:.0%}; we blend 40% model / 60% market for "
-                       f"{r.adj_projection:.1%}. At {book} {_odds(price)} the break-even is {implied(price):.1%}.")
-        if pd.notna(price) and price >= 600:
-            out.append("Long-odds touchdown: small chance differences make big edges, so the Tuesday review is "
-                       "watching these. Only same-day API prices can make it a bet.")
-        return out[:4]
-    word = STAT_WORD.get(stat, stat)
-    l3, avg = g("why_l3"), g("why_avg")
-    if pd.notna(avg):
-        s = f"{r.player} averages {avg:.1f} {word} (recent games weighted)"
-        s += f", {l3:.1f} over his last 3." if pd.notna(l3) else "."
-        out.append(s)
-    adj = []
-    fo = g("why_f_opp")
-    if pd.notna(fo) and abs(fo - 1) >= 0.03:
-        adj.append(f"{r.opp} {'allows' if fo > 1 else 'holds'} {POS_WORD.get(r.position, r.position)} to "
-                   f"{abs(fo - 1):.0%} {'more' if fo > 1 else 'fewer'} {word} than average")
-    fv = g("why_f_vol")
-    if pd.notna(fv) and abs(fv - 1) >= 0.03:
-        adj.append(f"expected plays and pass/run mix {fv - 1:+.0%}")
+            s = (f"The market says {mp:.0%} after the book's margin; blended 40% model / 60% market = {r.adj_projection:.1%}. "
+                 f"At {book} {_odds(price)} the break-even is {implied(price):.1%}.")
+            if pd.notna(price) and price >= 600:
+                s += " Long-odds touchdown: small chance differences make big edges, so the Tuesday review is watching these."
+            out.append(("Price", s))
+        cp = g("cons_p_over")
+        if pd.notna(cp):
+            out.append(("Other books", f"{cp:.0%} to score across the other books "
+                                       f"({'above' if cp > implied(price) else 'below'} the {implied(price):.1%} break-even)."))
+        return out
+
+    word, short = STAT_WORD.get(stat, stat), STAT_SHORT.get(stat, stat)
+    line = float(r.line)
+    log = _log_vals(g("why_log"))
+    if log:
+        last = log[:5]
+        hit = lambda vals: sum((v > line) if side == "Over" else (v < line) for v in vals)
+        vals = [v for v, _ in last]
+        s = (f"Last {len(last)}: " + ", ".join(f"{_num(v)} vs {o}" for v, o in last)
+             + f" (avg {np.mean(vals):.1f}). {side} {line:g} hit in {hit(vals)} of {len(vals)}")
+        allv = [v for v, _ in log]
+        gp = g("why_gp")
+        if pd.notna(gp) and gp > len(last):
+            s += f"; season avg {g('why_season_avg'):.1f} over {int(gp)} games"
+        if pd.notna(gp) and gp < 4 and pd.notna(g("why_prev_avg")) and g("why_prev_gp", 0) >= 4:
+            s += f". Only {int(gp)} game{'s' if gp != 1 else ''} this season; last season he averaged {g('why_prev_avg'):.1f} over {int(g('why_prev_gp'))}"
+        out.append(("Form", s + "."))
+    use = []
+    if stat in ("rec_yds", "receptions") and pd.notna(g("why_tgt_pg")):
+        use.append(f"{g('why_tgt_pg'):.1f} targets per game")
+        if pd.notna(g("why_tshare")):
+            use.append(f"{g('why_tshare'):.0%} target share")
+        if stat == "rec_yds" and pd.notna(g("why_ay_pg")):
+            use.append(f"{g('why_ay_pg'):.0f} air yards per game")
+        if stat == "receptions" and pd.notna(g("why_catch")):
+            use.append(f"{g('why_catch'):.0%} catch rate")
+    elif stat == "rush_yds" and pd.notna(g("why_car_pg")):
+        use.append(f"{g('why_car_pg'):.1f} carries per game")
+        if pd.notna(g("why_ypc")):
+            use.append(f"{g('why_ypc'):.1f} yards per carry")
+    elif stat in ("pass_yds", "pass_tds") and pd.notna(g("why_att_pg")):
+        use.append(f"{g('why_att_pg'):.1f} attempts per game")
+        if pd.notna(g("why_ypa")):
+            use.append(f"{g('why_ypa'):.1f} yards per attempt")
+    if use:
+        out.append(("Usage", ", ".join(use) + " this season."))
+    if pd.notna(g("why_opp_pg")):
+        fo = g("why_f_opp")
+        grp = "QBs" if r.position == "QB" else f"opposing {POS_WORD.get(r.position, r.position)} combined"
+        s = (f"{r.opp} allows {g('why_opp_pg'):.1f} {short} per game to {grp} over its last 8 games "
+             f"({_rank_word(int(g('why_opp_rank')), int(g('why_opp_n')), 'most', 'fewest')})")
+        if pd.notna(fo) and abs(fo - 1) >= 0.01:
+            s += f", worth {fo - 1:+.0%} to the projection"
+        out.append(("Matchup", s + "."))
+    game = []
+    tp, ppg = g("why_team_pts"), g("why_team_ppg")
     sf = g("script_factor")
-    if pd.notna(sf) and abs(sf - 1) >= 0.03:
-        adj.append(f"{r.team}'s team total vs its scoring average {sf - 1:+.0%}")
+    if pd.notna(tp) and pd.notna(ppg) and stat != "receptions":   # team total isn't used for receptions (Oct 28 test)
+        game.append(f"{r.team} projected for {tp:.1f} points vs its {ppg:.1f} average"
+                    + (f" ({sf - 1:+.0%})" if pd.notna(sf) and abs(sf - 1) >= 0.01 else ""))
+    fv = g("why_f_vol")
+    if pd.notna(fv) and abs(fv - 1) >= 0.01:
+        game.append(f"expected plays and pass/run mix {fv - 1:+.0%}")
     fb = g("why_f_bqb")
     if pd.notna(fb) and abs(fb - 1) >= 0.01:
-        adj.append(f"backup QB starting {fb - 1:+.0%}")
+        game.append(f"backup QB starting {fb - 1:+.0%}")
     fn = g("why_f_next")
     if pd.notna(fn) and abs(fn - 1) >= 0.01:
-        adj.append(f"top teammate at his position out (next man up) {fn - 1:+.0%}")
+        game.append(f"top teammate at his position out {fn - 1:+.0%}")
     if str(g("injury", "") or ""):
-        adj.append(f"injury report: {g('injury')}")
-    if adj:
-        out.append("Adjustments: " + "; ".join(adj[:3]) + ".")
+        game.append(f"injury report: {g('injury')}")
+    if game:
+        out.append(("Game", "; ".join(game) + "."))
     mp, mo = g("market_prob"), g("model_prob")
     if pd.notna(mp) and pd.notna(mo):
-        out.append(f"Model {mo:.1f} vs the line's implied {mp:.1f}; blended (mostly market) {r.adj_projection:.1f}. "
-                   f"{side} {r.line:g} hits {win:.1%}; {book} {_odds(price)} needs {implied(price):.1%}.")
+        out.append(("The number", f"Model alone {mo:.1f}, the line implies {mp:.1f}; blended (mostly market) {r.adj_projection:.1f}."))
+    s = f"{side} {line:g} hits {win:.1%} of the time; {book} {_odds(price)} needs {implied(price):.1%}."
     dkl = g("dk_line")
-    if book == "FanDuel" and pd.notna(dkl) and abs(float(dkl) - float(r.line)) >= 0.5:
-        better = (side == "Over" and r.line < dkl) or (side == "Under" and r.line > dkl)
-        out.append(f"Line shopping: DraftKings has {dkl:g}, FanDuel {r.line:g}"
-                   + (f", the better number for the {side}." if better else "."))
+    if book == "FanDuel" and pd.notna(dkl) and abs(float(dkl) - line) >= 0.5:
+        better = (side == "Over" and line < dkl) or (side == "Under" and line > dkl)
+        s += f" DraftKings has {dkl:g}" + (f", so FanDuel's {line:g} is the better number for the {side}." if better else ".")
+    out.append(("Price", s))
     cp = g("cons_p_over")
     if pd.notna(cp):
         cs = cp if side == "Over" else 1 - cp
-        agree = "agree" if cs > implied(price) else "don't fully agree"
-        out.append(f"Other books put the {side} at {cs:.0%}: they {agree}.")
-    return out[:4]
+        out.append(("Other books", f"{cs:.0%} for the {side} across the other books "
+                                   f"({'above' if cs > implied(price) else 'below'} the {implied(price):.1%} break-even)."))
+    return out

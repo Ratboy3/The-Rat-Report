@@ -200,6 +200,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
     role = _snap_roles(season, week, roster)
     opp_f = _opponent_factors(stats, season, week)
+    opp_tab = _opponent_table(stats, season, week)    # raw allowed per game + rank, for "Why this bet"
     man, splits, lg_man = ({}, {}, 0.3)
     if USE["coverage"]:
         try:
@@ -332,6 +333,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     why["base"] = est
                     why["avg"] = mean
                     why["l3"] = float(_value(rows.sort_values(["season", "week"]).tail(3), st).mean())
+                    why.update(_why_detail(rows, st, pos, season, opp_tab.get((opp, pos, st))))
                     if USE["opp"]:
                         why["f_opp"] = opp_f.get((opp, pos, st), 1.0)
                         est *= why["f_opp"]
@@ -356,9 +358,10 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     why = {"share": shares.get(pid, 0.0), "team_tds": team_tds,
                            "td_games": int((rows.season == season).sum()),
                            "td_scored": int((_value(rows[rows.season == season], st) > 0).sum())}
+                    why.update(_why_td_detail(rows, pid, season, rz))
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
                                 projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning,
-                                **{f"why_{k}": round(float(v), 4) for k, v in why.items()}))
+                                **{f"why_{k}": (v if isinstance(v, str) else round(float(v), 4)) for k, v in why.items()}))
     if not out:
         return pd.DataFrame()
     df = pd.DataFrame(out)
@@ -490,6 +493,63 @@ def _snap_roles(season: int, week: int, roster) -> dict:
         if usual > 0.05:
             out[pfr[pid]] = float(np.clip(1 + ROLE_WEIGHT * (last2 / usual - 1), 0.6, 1.3))
     return out
+
+
+def _opponent_table(stats: pd.DataFrame, season: int, week: int) -> dict:
+    """(opponent, position, stat) -> (allowed per game over its last 8 games, rank 1 = most allowed, teams ranked).
+    Same window as _opponent_factors; only used to explain bets."""
+    s = stats[(stats.season == season) | ((stats.season == season - 1) & (stats.week >= 12))]
+    out = {}
+    for stat in ("rush_yds", "rec_yds", "receptions", "pass_yds", "pass_tds"):
+        col = STATS[stat][0]
+        g = s.groupby(["opponent_team", "position", "season", "week"])[col].sum().reset_index()
+        g = g.sort_values(["season", "week"]).groupby(["opponent_team", "position"]).tail(8)
+        per = g.groupby(["opponent_team", "position"])[col].mean()
+        for pos, grp in per.groupby(level="position"):
+            rk = grp.rank(ascending=False, method="min")
+            for (opp, _), v in grp.items():
+                out[(opp, pos, stat)] = (float(v), int(rk[(opp, pos)]), int(len(grp)))
+    return out
+
+
+def _why_detail(rows: pd.DataFrame, st: str, pos: str, season: int, opp_row) -> dict:
+    """Game log, usage and matchup numbers behind one projection (explanations only)."""
+    cur = rows[rows.season == season].sort_values("week", ascending=False)
+    vals = _value(cur, st)
+    prev = rows[rows.season == season - 1]
+    d = {"gp": len(cur), "season_avg": float(vals.mean()) if len(cur) else np.nan,
+         "prev_gp": len(prev), "prev_avg": float(_value(prev, st).mean()) if len(prev) else np.nan,
+         "log": "|".join(f"{v:g}:{o}" for v, o in zip(vals.head(6).round(1), cur.opponent_team.head(6)))}
+    n = max(1, len(cur))
+    if st in ("rec_yds", "receptions"):
+        d["tgt_pg"] = float(cur.targets.fillna(0).sum() / n)
+        d["tshare"] = float(cur.target_share.mean()) if "target_share" in cur and cur.target_share.notna().any() else np.nan
+        d["ay_pg"] = float(cur.receiving_air_yards.fillna(0).sum() / n)
+        tg = cur.targets.fillna(0).sum()
+        d["catch"] = float(cur.receptions.fillna(0).sum() / tg) if tg else np.nan
+    elif st == "rush_yds":
+        car = cur.carries.fillna(0).sum()
+        d["car_pg"] = float(car / n)
+        d["ypc"] = float(cur.rushing_yards.fillna(0).sum() / car) if car else np.nan
+    elif st in ("pass_yds", "pass_tds"):
+        att = cur.attempts.fillna(0).sum()
+        d["att_pg"] = float(att / n)
+        d["ypa"] = float(cur.passing_yards.fillna(0).sum() / att) if att else np.nan
+    if opp_row is not None:
+        d["opp_pg"], d["opp_rank"], d["opp_n"] = opp_row
+    return d
+
+
+def _why_td_detail(rows: pd.DataFrame, pid, season: int, rz) -> dict:
+    """Touchdown history and red-zone usage this season (explanations only)."""
+    cur = rows[rows.season == season]
+    d = {"rush_td": float(cur.rushing_tds.fillna(0).sum()), "rec_td": float(cur.receiving_tds.fillna(0).sum())}
+    if rz is not None and len(rz):
+        r = rz[(rz.player_id == pid) & (rz.season == season)]
+        n = max(1, len(cur))
+        d["rz_pg"] = float((r.rz_carries.fillna(0) + r.rz_targets.fillna(0)).sum() / n)
+        d["gl_pg"] = float((r.gl_carries.fillna(0) + r.gl_targets.fillna(0)).sum() / n)
+    return d
 
 
 def _opponent_factors(stats: pd.DataFrame, season: int, week: int) -> dict:

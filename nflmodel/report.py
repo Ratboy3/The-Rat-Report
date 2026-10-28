@@ -1175,7 +1175,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist">{''.join(toc)}</div></nav>
 <main class="wrap">
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
-  {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now, sm)}
+  {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now, sm, _why_ctx(ratings, play, injuries, market_info))}
     {checked_line}
     <p class="note">Prop prices are DraftKings' or FanDuel's (DK/FD), whichever pays more for the same bet. Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.{(' Prop lines last checked ' + escape(lines_checked) + '.') if lines_checked else ''}</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
@@ -1269,11 +1269,22 @@ def _why(make) -> str:
         return ""
     if not lines:
         return ""
-    return ('<details class="why"><summary>Why this bet</summary><ul>'
-            + "".join(f"<li>{escape(t)}</li>" for t in lines) + "</ul></details>")
+    items = "".join((f"<li><b>{escape(t[0])}.</b> {escape(t[1])}</li>" if isinstance(t, tuple) else f"<li>{escape(t)}</li>")
+                    for t in lines)
+    return f'<details class="why"><summary>Why this bet</summary><ul>{items}</ul></details>'
 
 
-def _now_section(upcoming, props, log, dk_used, now, sm=None) -> str:
+def _why_ctx(ratings, play, injuries, market_info) -> dict:
+    if not SHOW_WHY:
+        return {}
+    try:
+        return W.team_context(ratings, play, injuries, (market_info or {}).get("qb"))
+    except Exception as e:
+        print(f"  why context skipped ({e})")
+        return {}
+
+
+def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     """Every bet that clears the bar right now, one list: pick, book, price, edge, kickoff and how old the price is.
     Below it, bets logged earlier whose price has since moved so they no longer clear the bar."""
     rows = []
@@ -1285,7 +1296,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None) -> str:
             if o["ev"] >= C.MIN_EV:
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: W.game_why(g, o, sm) if sm is not None else [])))
+                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: W.game_why(g, o, sm, wctx) if sm is not None else [])))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
