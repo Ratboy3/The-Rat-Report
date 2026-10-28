@@ -1269,6 +1269,7 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 </div>"""
 
 
+SHOW_SIZE = False  # suggested bet size column on Best bets (preview Oct 28, 2026; not approved yet)
 SHOW_WHY = True    # "Why this bet" panels on Best bets (approved by Alex Oct 28, 2026)
 
 
@@ -1296,6 +1297,38 @@ def _why_ctx(ratings, play, injuries, market_info) -> dict:
     except Exception as e:
         print(f"  why context skipped ({e})")
         return {}
+
+
+def _size_td(odds) -> str:
+    """Suggested size cell: units to risk, and what a win pays."""
+    if not SHOW_SIZE:
+        return ""
+    from .betting import decimal, suggested_units
+    u = suggested_units(odds)
+    try:
+        wins = u * (decimal(float(odds)) - 1)
+        sub = f'<span class="cell-sub">wins {wins:.1f}u</span>'
+    except (TypeError, ValueError):
+        sub = ""
+    return f'<td class="n size hide-sm"><b>{u:g}u</b>{sub}</td>'
+
+
+def _size_sm(odds) -> str:
+    """Phones: the size goes under the bet name (no room for its own column)."""
+    if not SHOW_SIZE:
+        return ""
+    from .betting import decimal, suggested_units
+    u = suggested_units(odds)
+    try:
+        w = f" · wins {u * (decimal(float(odds)) - 1):.1f}u"
+    except (TypeError, ValueError):
+        w = ""
+    return f'<span class="cell-sub size-sm">Size <b>{u:g}u</b>{w}</span>'
+
+
+SIZE_NOTE = (f'<p class="note size-note"><b>Size</b> is a suggestion in units (u): 1u on every bet, and less on prices longer than '
+             f'+{C.UNIT_LONGSHOT_ODDS} so a win pays about {C.UNIT_LONGSHOT_WIN:g}u. Pick a unit that fits your bankroll '
+             f'(many bettors use 1% to 2%). Bigger edges haven\'t won more often in our testing, so the size doesn\'t grow with the edge.</p>')
 
 
 def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
@@ -1327,11 +1360,11 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     def _rows_html(rows):
         return "".join(
             f"""<tr class="fx" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td><b>{escape(x['pick'])}</b>
-        <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span></td>
+        <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span>{_size_sm(x['odds'])}</td>
         <td><span class="bk bk-{'fd' if x['book'] == 'FanDuel' else 'dk'}">{'FD' if x['book'] == 'FanDuel' else 'DK'}</span></td>
         <td class="n">{_odds(x['odds'])}<span class="cell-sub age" data-asof="{_asof_iso(x['asof'], now)}">{escape(str(x['asof']).replace(' CT', ''))}</span></td>
-        <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td></tr>"""
-            + (f"""<tr class="fx why-row" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td colspan="5">{x['why']}</td></tr>""" if x['why'] else "")
+        <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td>{_size_td(x['odds'])}</tr>"""
+            + (f"""<tr class="fx why-row" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td colspan="{6 if SHOW_SIZE else 5}">{x['why']}</td></tr>""" if x['why'] else "")
             for x in rows)
 
     def _group(kind, title, rows, empty):
@@ -1339,7 +1372,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             return f'<div class="betgroup" data-kind="{kind}"><h3>{title}</h3><p class="empty">{empty}</p></div>'
         return (f'<div class="betgroup" data-kind="{kind}"><h3>{title} <span class="cnt">{len(rows)}</span></h3>'
                 f'<div class="tablebox"><table class="nowtable"><thead><tr><th>Bet</th><th>Book</th><th class="n">Price</th>'
-                f'<th class="n hide-sm">Win %</th><th class="n">Edge</th></tr></thead><tbody>{_rows_html(rows)}</tbody></table></div>'
+                f'<th class="n hide-sm">Win %</th><th class="n">Edge</th>{'<th class="n hide-sm">Size</th>' if SHOW_SIZE else ''}</tr></thead><tbody>{_rows_html(rows)}</tbody></table></div>'
                 f'<p class="empty gnone" hidden>No {title.lower()} match these filters.</p></div>')
     if rows:
         table = (_group("game", "Game bets", game_rows, "No spread, total or moneyline clears the bar right now.")
@@ -1394,6 +1427,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     return f"""<section id="bets"><h2>Best bets right now</h2>
     <p class="lede">Every bet that clears the {C.MIN_EV:.0%} edge bar at the latest DraftKings or FanDuel price, split into game bets and player props, best edge first. Use the switch to show one or both.
     Each price shows how long ago it was checked; one older than {STALE_MIN // 60} hours is marked <span class="stale-key">stale</span>, so confirm it in your app.</p>
+    {SIZE_NOTE if rows and SHOW_SIZE else ''}
     {toggle if rows else ''}
     {FILTER_BAR if rows else ''}
     {table}
@@ -1583,6 +1617,8 @@ UI_CSS = """
 .age.stale,.stale-key{color:var(--flag);font-weight:600}
 .nowtable td{vertical-align:middle}
 @media (max-width:520px){.hide-sm{display:none}}
+.size-sm{display:none}
+@media (max-width:520px){.size-sm{display:block}}
 .chart{margin:0 0 18px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
 .chart svg{width:100%;height:auto;display:block}
 .chart .zero{stroke:var(--line);stroke-width:1}

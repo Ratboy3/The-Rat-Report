@@ -25,6 +25,10 @@ MIN_EV = 0.03                  # flag bets with at least +3% expected value
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0
+# Suggested bet size (Oct 28, 2026): 1 unit on every Best bet; at plus money longer than +150 the size shrinks so a
+# win pays about 1.5 units. Bigger edges did not win more often in testing, so size does not scale with edge.
+UNIT_LONGSHOT_ODDS = 150
+UNIT_LONGSHOT_WIN = 1.5
 
 # --- props ---
 PROP_CV = {"pass_yds": 0.33, "rush_yds": 0.78, "rec_yds": 0.79}   # sd / mean of projection misses, measured by props-backtest 2025-26

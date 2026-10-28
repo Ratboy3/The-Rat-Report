@@ -35,6 +35,17 @@ def kelly_stake(probs, american, bankroll=C.BANKROLL) -> float:
     return bankroll * min(f * C.KELLY_FRACTION, C.MAX_STAKE_PCT)
 
 
+def suggested_units(american) -> float:
+    """Suggested size in units: 1u, or less at long plus-money prices so a win pays about UNIT_LONGSHOT_WIN units."""
+    try:
+        a = float(american)
+    except (TypeError, ValueError):
+        return 1.0
+    if a != a or a <= C.UNIT_LONGSHOT_ODDS:
+        return 1.0
+    return max(0.1, round(C.UNIT_LONGSHOT_WIN / (decimal(a) - 1), 1))
+
+
 def fmt_line(x: float) -> str:
     return "PK" if x == 0 else f"{x:+.1f}"
 
