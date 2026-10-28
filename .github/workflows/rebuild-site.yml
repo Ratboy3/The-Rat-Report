@@ -1,0 +1,70 @@
+# Rebuilds the website (index.html) from the code and data in this repo, on GitHub's own servers.
+# Added Oct 27, 2026: the claude.ai hourly runs often refreshed the report but failed to push the website,
+# so the site no longer depends on them. Claude's runs still do the research (QBs, injuries, news) and push
+# news.csv / overrides.csv / prop_lines.csv / td_market.csv / bets_log.csv here; this rebuild picks them up.
+#
+# Runs after every odds/weather pull, whenever research files or code change, and on demand.
+# Commits only index.html, so it never fights the Claude runs over bets_log.csv or lines_history.csv.
+name: Rebuild website
+
+on:
+  workflow_run:
+    workflows: ["Fetch DraftKings props", "Fetch game lines and weather"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "news.csv"
+      - "overrides.csv"
+      - "prop_lines.csv"
+      - "td_market.csv"
+      - "bets_log.csv"
+      - "run.py"
+      - "nflmodel/**"
+      - "assets/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rebuild-site
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy scipy requests
+      - name: Build the report
+        run: |
+          python run.py build-epa
+          python run.py build-extras
+          python run.py report --refresh
+      - name: Publish index.html
+        run: |
+          set -e
+          f=$(ls -t output/report_*_wk*.html | head -1)
+          gen=$(grep -o 'Generated [^<]* CT' "$f" | head -1 | sed 's/ from.*//')
+          cp "$f" /tmp/index.html
+          git config user.name "Rat Report site bot"
+          git config user.email "actions@users.noreply.github.com"
+          git reset -q --hard
+          for i in 1 2 3 4 5; do
+            git pull -q --rebase origin main
+            cp /tmp/index.html index.html
+            if git diff --quiet -- index.html; then echo "No change"; exit 0; fi
+            git add index.html
+            git commit -q -m "Site rebuild: ${gen}"
+            if git push -q origin HEAD:main; then echo "Pushed: ${gen}"; exit 0; fi
+            git reset -q --hard origin/main
+            sleep 10
+          done
+          echo "Push failed after 5 tries"; exit 1
