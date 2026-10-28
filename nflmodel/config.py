@@ -14,6 +14,7 @@ RIDGE_LAMBDA = 4.0             # shrinkage of team ratings toward league average
 # --- stage 2: situational adjustments (fit walk-forward from history) ---
 STAGE2_MIN_SEASON = 2008       # first season whose games train stage 2 / the market blend
 QB_LOOKBACK_GAMES = 6          # "usual starter" = most common QB over this many prior games
+QB_RETURN_LOOKBACK_GAMES = 17  # totals/props: not a change if he was the most common starter over this many (returning starter)
 
 # --- probability model ---
 KEY_NUMBER_SMOOTHING = 2.5     # kernel width used to find key numbers (3, 7, 10...)

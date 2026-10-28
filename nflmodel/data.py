@@ -106,7 +106,7 @@ def add_qb_flags(df: pd.DataFrame) -> None:
         df[["game_id", "date", "home_team", "home_qb_name"]].set_axis(["game_id", "date", "team", "qb"], axis=1).assign(side="home"),
         df[["game_id", "date", "away_team", "away_qb_name"]].set_axis(["game_id", "date", "team", "qb"], axis=1).assign(side="away"),
     ]).sort_values("date")
-    flags = {}
+    flags, flags_t = {}, {}
     for team, grp in long.groupby("team"):
         hist: list[str] = []
         for row in grp.itertuples():
@@ -115,9 +115,18 @@ def add_qb_flags(df: pd.DataFrame) -> None:
             usual = max(reversed(recent), key=recent.count) if recent else None
             change = int(usual is not None and isinstance(row.qb, str) and row.qb != usual)
             flags[(row.game_id, row.side)] = change
+            # Returning established starter (e.g. back from injury after a backup's run) is not a change for the
+            # total or the props: he must also differ from the most common starter over the last 17 games.
+            # Game-model walk-forward 2012-26 (Oct 28, 2026): total blended miss 10.5608 -> 10.5564 (7 seasons
+            # better, 4 worse); spread blend 9.9772 -> 9.9783 (noise), so the spread keeps the plain flag.
+            longer = [q for q in hist[-C.QB_RETURN_LOOKBACK_GAMES:] if isinstance(q, str)]
+            usual_long = max(reversed(longer), key=longer.count) if longer else None
+            flags_t[(row.game_id, row.side)] = int(change and row.qb != usual_long)
             hist.append(row.qb)
     df["home_qb_change"] = [flags.get((g, "home"), 0) for g in df.game_id]
     df["away_qb_change"] = [flags.get((g, "away"), 0) for g in df.game_id]
+    df["home_qb_change_t"] = [flags_t.get((g, "home"), 0) for g in df.game_id]
+    df["away_qb_change_t"] = [flags_t.get((g, "away"), 0) for g in df.game_id]
 
 
 def apply_overrides(df: pd.DataFrame, path: str | os.PathLike | None) -> pd.DataFrame:
@@ -152,4 +161,6 @@ def apply_overrides(df: pd.DataFrame, path: str | os.PathLike | None) -> pd.Data
                 df.loc[m, ["total_line", "mkt_total"]] = v
             else:
                 df.loc[m, k] = v
+                if k in ("home_qb_change", "away_qb_change"):    # an override sets both versions of the flag
+                    df.loc[m, f"{k}_t"] = v
     return df

@@ -272,9 +272,9 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         tags.append(f"{g.home_team} off bye")
     if g.away_bye:
         tags.append(f"{g.away_team} off bye")
-    if g.home_qb_change:
+    if g.get("home_qb_change_t", g.home_qb_change):
         tags.append(f"{g.home_team} QB change")
-    if g.away_qb_change:
+    if g.get("away_qb_change_t", g.away_qb_change):
         tags.append(f"{g.away_team} QB change")
     if g.away_west_early:
         tags.append(f"{g.away_team} early body clock")

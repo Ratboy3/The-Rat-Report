@@ -30,7 +30,10 @@ def total_features() -> list[str]:
 def _design(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
     d["div_x_margin"] = d["div_game"] * d["r_margin"]
-    d["qb_changes"] = d["home_qb_change"] + d["away_qb_change"]
+    # totals use the returning-starter-aware flag when present (data.add_qb_flags, Oct 28, 2026)
+    ht = d["home_qb_change_t"] if "home_qb_change_t" in d else d["home_qb_change"]
+    at = d["away_qb_change_t"] if "away_qb_change_t" in d else d["away_qb_change"]
+    d["qb_changes"] = ht + at
     # EPA in points per 100 plays, success rate in percentage points, so the
     # regression's coefficients sit on the same scale as the points features
     for src, dst in (("e_margin", "epa_margin"), ("e_sum", "epa_sum"), ("s_margin", "sr_margin"), ("s_sum", "sr_sum")):

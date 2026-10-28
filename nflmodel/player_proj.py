@@ -275,7 +275,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         if USE["agg"]:
             team_tds = max(0.3, team_tds + AGG_TD_PER_10 * coach_agg.get(team, 0.0) / 10)
         team_weeks = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
-        qb_chg = bool(getattr(g, f"{side}_qb_change", 0) or 0)
+        qb_chg = bool(getattr(g, f"{side}_qb_change_t", getattr(g, f"{side}_qb_change", 0)) or 0)   # backup QB starting (a returning starter is not one)
         lead_out = _leads_out(recent, team, set(eligible)) if USE["nextman"] else set()
         for pid in on_team:
             rows = stats[stats.player_id == pid]
