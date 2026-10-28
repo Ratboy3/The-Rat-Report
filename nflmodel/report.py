@@ -1245,12 +1245,19 @@ def _mkt_key(market: str, stat: str = "") -> str:
 
 
 def _fx_attrs(book: str, mk: str, ev: float) -> str:
-    return f'data-book="{"fd" if book == "FanDuel" else "dk"}" data-mk="{mk}" data-ev="{ev:.4f}"'
+    kind = "prop" if mk in ("prop", "td") else "game"
+    return f'data-book="{"fd" if book == "FanDuel" else "dk"}" data-mk="{mk}" data-kind="{kind}" data-ev="{ev:.4f}"'
+
+
+def _kind_toggle(n_game: int, n_prop: int) -> str:
+    """Game bets / Player props switch at the top of Best bets (Oct 28): remembered on the device."""
+    b = lambda v, lab, n: f'<button data-f="kind" data-v="{v}" aria-pressed="{str(v == "all").lower()}">{lab} <span class="cnt">{n}</span></button>'
+    return (f'<div class="seg fbar" role="group" aria-label="Show game bets or player props">'
+            f'{b("all", "All", n_game + n_prop)}{b("game", "Game bets", n_game)}{b("prop", "Player props", n_prop)}</div>')
 
 
 FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
   <div class="fgrp"><span>Book</span><button data-f="book" data-v="all" aria-pressed="true">Both</button><button data-f="book" data-v="dk" aria-pressed="false">DraftKings</button><button data-f="book" data-v="fd" aria-pressed="false">FanDuel</button></div>
-  <div class="fgrp"><span>Market</span><button data-f="mk" data-v="all" aria-pressed="true">All</button><button data-f="mk" data-v="side" aria-pressed="false">Spreads</button><button data-f="mk" data-v="total" aria-pressed="false">Totals</button><button data-f="mk" data-v="ml" aria-pressed="false">Moneyline</button><button data-f="mk" data-v="prop" aria-pressed="false">Props</button><button data-f="mk" data-v="td" aria-pressed="false">TDs</button></div>
   <div class="fgrp"><span>Min edge</span><button data-f="ev" data-v="0" aria-pressed="true">Any</button><button data-f="ev" data-v="0.05" aria-pressed="false">5%+</button><button data-f="ev" data-v="0.08" aria-pressed="false">8%+</button></div>
 </div>"""
 
@@ -1306,8 +1313,12 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
                              odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r),
                              why=_why(lambda: W.prop_why(r))))
     rows.sort(key=lambda x: -x["ev"])
-    if rows:
-        body = "".join(
+    game_rows = [x for x in rows if x["mk"] not in ("prop", "td")]
+    prop_rows = [x for x in rows if x["mk"] in ("prop", "td")]
+    toggle = _kind_toggle(len(game_rows), len(prop_rows))
+
+    def _rows_html(rows):
+        return "".join(
             f"""<tr class="fx" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td><b>{escape(x['pick'])}</b>
         <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span></td>
         <td><span class="bk bk-{'fd' if x['book'] == 'FanDuel' else 'dk'}">{'FD' if x['book'] == 'FanDuel' else 'DK'}</span></td>
@@ -1315,9 +1326,17 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
         <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td></tr>"""
             + (f"""<tr class="fx why-row" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td colspan="5">{x['why']}</td></tr>""" if x['why'] else "")
             for x in rows)
-        table = f"""<div class="tablebox"><table class="nowtable"><thead><tr><th>Bet</th><th>Book</th><th class="n">Price</th>
-        <th class="n hide-sm">Win %</th><th class="n">Edge</th></tr></thead><tbody>{body}</tbody></table></div>
-        <p class="empty fnone" hidden>No bets match these filters.</p>"""
+
+    def _group(kind, title, rows, empty):
+        if not rows:
+            return f'<div class="betgroup" data-kind="{kind}"><h3>{title}</h3><p class="empty">{empty}</p></div>'
+        return (f'<div class="betgroup" data-kind="{kind}"><h3>{title} <span class="cnt">{len(rows)}</span></h3>'
+                f'<div class="tablebox"><table class="nowtable"><thead><tr><th>Bet</th><th>Book</th><th class="n">Price</th>'
+                f'<th class="n hide-sm">Win %</th><th class="n">Edge</th></tr></thead><tbody>{_rows_html(rows)}</tbody></table></div>'
+                f'<p class="empty gnone" hidden>No {title.lower()} match these filters.</p></div>')
+    if rows:
+        table = (_group("game", "Game bets", game_rows, "No spread, total or moneyline clears the bar right now.")
+                 + _group("prop", "Player props", prop_rows, "No player prop clears the bar right now."))
     else:
         table = f'<p class="empty">No bet clears the {C.MIN_EV:.0%} bar right now. Leans are on the Leans tab.</p>'
 
@@ -1363,9 +1382,10 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     <div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Then</th><th class="n">Now</th><th>Why</th></tr></thead>
     <tbody>{''.join(moved)}</tbody></table></div>"""
     return f"""<section id="bets"><h2>Best bets right now</h2>
-    <p class="lede">Every bet that clears the {C.MIN_EV:.0%} edge bar at the latest DraftKings or FanDuel price, best edge first.
+    <p class="lede">Every bet that clears the {C.MIN_EV:.0%} edge bar at the latest DraftKings or FanDuel price, split into game bets and player props, best edge first. Use the switch to show one or both.
     Each price shows how long ago it was checked; one older than {STALE_MIN // 60} hours is marked <span class="stale-key">stale</span>, so confirm it in your app.</p>
-    {FILTER_BAR}
+    {toggle if rows else ''}
+    {FILTER_BAR if rows else ''}
     {table}
     {moved_html}"""
 
@@ -1488,15 +1508,20 @@ UI_JS = """
   }
   ages(); setInterval(ages, 60000);
   // filters for the bets list
-  var state={book:'all',mk:'all',ev:'0'};
-  try{var s=JSON.parse(localStorage.getItem('rr_filters')||'null'); if(s) state=Object.assign(state,s);}catch(e){}
+  var state={book:'all',kind:'all',ev:'0'};
+  try{var s=JSON.parse(localStorage.getItem('rr_filters')||'null'); if(s){delete s.mk; state=Object.assign(state,s);}}catch(e){}
   function apply(){
     var rows=[].slice.call(document.querySelectorAll('tr.fx')), shown=0;
     rows.forEach(function(r){
-      var ok=(state.book==='all'||r.dataset.book===state.book)&&(state.mk==='all'||r.dataset.mk===state.mk)&&(parseFloat(r.dataset.ev)>=parseFloat(state.ev));
+      var ok=(state.book==='all'||r.dataset.book===state.book)&&(parseFloat(r.dataset.ev)>=parseFloat(state.ev));
       r.hidden=!ok; if(ok) shown++;
     });
-    var none=document.querySelector('.fnone'); if(none) none.hidden=!(rows.length&&!shown);
+    [].forEach.call(document.querySelectorAll('.betgroup'),function(g){
+      g.hidden=!(state.kind==='all'||g.dataset.kind===state.kind);
+      var rs=g.querySelectorAll('tr.fx'), vis=0; [].forEach.call(rs,function(r){if(!r.hidden) vis++;});
+      var gn=g.querySelector('.gnone'); if(gn) gn.hidden=!(rs.length&&!vis);
+      var tb=g.querySelector('.tablebox'); if(tb) tb.hidden=rs.length&&!vis;
+    });
     [].forEach.call(document.querySelectorAll('.fbar button'),function(b){b.setAttribute('aria-pressed', String(state[b.dataset.f]===b.dataset.v))});
   }
   [].forEach.call(document.querySelectorAll('.fbar button'),function(b){
@@ -1699,4 +1724,15 @@ UI_CSS += """
 table.nowtable tr.fx:has(+ tr.why-row) td{border-bottom:0;padding-bottom:2px}
 table.nowtable tr.why-row td{padding-top:0}
 table.nowtable tr.why-row details.why{margin-top:0}
+"""
+
+UI_CSS += """
+.seg{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);margin:0 0 12px;flex-wrap:nowrap}
+.seg button{border:0;border-radius:999px;background:transparent;color:var(--ink);font:inherit;font-size:14px;font-weight:600;padding:7px 14px;min-height:36px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+.seg .cnt,.betgroup h3 .cnt{font-family:var(--mono);font-size:12px;opacity:.75;margin-left:2px}
+.betgroup{margin-top:6px}
+.betgroup+.betgroup{margin-top:22px}
+.betgroup h3{margin:0 0 8px}
+@media (max-width:640px){.seg{display:flex;width:100%}.seg button{flex:1;padding:7px 6px;font-size:13px}}
 """
