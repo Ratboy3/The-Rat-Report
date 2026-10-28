@@ -272,13 +272,20 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         tags.append(f"{g.home_team} off bye")
     if g.away_bye:
         tags.append(f"{g.away_team} off bye")
-    if g.get("home_qb_change_t", g.home_qb_change):
-        tags.append(f"{g.home_team} QB change")
-    if g.get("away_qb_change_t", g.away_qb_change):
-        tags.append(f"{g.away_team} QB change")
+    mkt = mkt or {}
+    qst = mkt.get("qb_status") or {}
+    for t, side in ((g.away_team, "away"), (g.home_team, "home")):
+        q = qst.get(t)
+        if q and q["kind"] == "backup":
+            tags.append(f"{t} backup QB: {q['qb']} for {q['other']}")
+        elif q and q["kind"] == "returning":
+            tags.append(f"{t} QB {q['qb'].split()[-1]} returns")
+        elif q and q["kind"] == "unclear":
+            tags.append(f"⚠ {t} QB to confirm")
+        elif not q and g.get(f"{side}_qb_change_t", g.get(f"{side}_qb_change", 0)):
+            tags.append(f"{t} QB change")
     if g.away_west_early:
         tags.append(f"{g.away_team} early body clock")
-    mkt = mkt or {}
     if not g.dome and isinstance(g.get("wx"), str):
         tags.append(("⚠ " if g.get("wind_excess", 0) > 0 or g.get("cold", 0) or g.get("precip", 0) else "") + g.wx)
     tend = mkt.get("tendencies")
@@ -1285,7 +1292,7 @@ def _why_ctx(ratings, play, injuries, market_info) -> dict:
     if not SHOW_WHY:
         return {}
     try:
-        return W.team_context(ratings, play, injuries, (market_info or {}).get("qb"))
+        return W.team_context(ratings, play, injuries, (market_info or {}).get("qb"), (market_info or {}).get("qb_status"))
     except Exception as e:
         print(f"  why context skipped ({e})")
         return {}

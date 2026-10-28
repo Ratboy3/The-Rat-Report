@@ -50,7 +50,7 @@ def _num(x, nd=1) -> str:
 
 
 # ------------------------------------------------------------------ team context for game bets
-def team_context(ratings, play, injuries=None, qbs=None) -> dict:
+def team_context(ratings, play, injuries=None, qbs=None, qb_status=None) -> dict:
     """team -> ranks and numbers shown in game explanations (built once per page)."""
     ctx = {}
     try:
@@ -79,6 +79,9 @@ def team_context(ratings, play, injuries=None, qbs=None) -> dict:
     for team, q in (qbs or {}).items():
         if q:
             ctx.setdefault(team, {})["qb"] = q
+    for team, q in (qb_status or {}).items():
+        if q:
+            ctx.setdefault(team, {})["qb_status"] = q
     return ctx
 
 
@@ -97,9 +100,11 @@ def _inj_line(home, away, ctx) -> str | None:
     bits = []
     for t in (away, home):
         c = ctx.get(t, {})
-        q = c.get("qb")
-        if q:
-            bits.append(f"{t} QB {q['new']} in for {q['usual']} ({q['pts']:+.1f} pts)")
+        q, qs = c.get("qb"), c.get("qb_status")
+        if qs and qs["kind"] != "starter":
+            bits.append(f"{t}: {qs['text']}" + (f" ({q['pts']:+.1f} pts on the spread vs {q['usual']})" if q else ""))
+        elif q:
+            bits.append(f"{t} QB {q['new']} in for {q['usual']} ({q['pts']:+.1f} pts on the spread)")
         for nm, p, x, st in c.get("inj", [])[:2]:
             bits.append(f"{t} {nm} {p} {x:+.1f}" + (f" ({st})" if st else ""))
     return "; ".join(bits) if bits else None
@@ -216,7 +221,7 @@ def game_why(g: pd.Series, o: dict, sm, ctx: dict | None = None) -> list[tuple[s
             bits.append(f"the two teams' ratings add up to {g.r_total:.1f} points")
         if isinstance(g.get("wx"), str):
             bits.append(f"weather {g.wx}" + (f" ({parts['weather']:+.1f})" if abs(parts["weather"]) >= 0.2 else ", no effect"))
-        for k, lab in (("injuries", "injuries"), ("qb", "QB change"), ("coach", "4th-down aggressiveness"), ("dome", "dome")):
+        for k, lab in (("injuries", "injuries"), ("qb", "backup QB starting"), ("coach", "4th-down aggressiveness"), ("dome", "dome")):
             if abs(parts[k]) >= 0.2:
                 bits.append(f"{lab} {parts[k]:+.1f}")
         if bits:

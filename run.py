@@ -81,6 +81,7 @@ def cmd_picks(a):
     wk, _ = injuries.attach(wk, season, week, a.refresh)
     from nflmodel import qb
     wk, _ = qb.attach(wk, games, season, week)
+    wk = qb.apply_status(wk, qb.status(wk, season, week))     # QB changes checked against the injury report
     from nflmodel import aggression
     wk = aggression.attach(wk, aggression.load_cached(games))
     proj = sm.predict(wk)
@@ -271,6 +272,8 @@ def cmd_report(a):
     wk, inj = injuries.attach(wf[(wf.season == season) & (wf.week == week)], season, week, a.refresh)
     from nflmodel import qb
     wk, qb_info = qb.attach(wk, games, season, week)
+    qb_status = qb.status(wk, season, week)                 # who starts at QB, checked against the injury report
+    wk = qb.apply_status(wk, qb_status)
     from nflmodel import aggression
     wk = aggression.attach(wk, aggression.load_cached(games))
     proj = sm.predict(wk)
@@ -331,7 +334,7 @@ def cmd_report(a):
     mkt = dict(history=market.record_history(a.lines_history, proj), best_games=market.best_game_prices(a.game_lines),
                best_props=market.best_prop_prices(a.prop_books), dk_used=getattr(a, "_dk_used", {}),
                tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None,
-               qb=qb_info)
+               qb=qb_info, qb_status=qb_status)
     prop_bt = pd.read_csv("prop_backtest.csv") if Path("prop_backtest.csv").exists() else None
     clv_log = None
     if a.bets_log:
