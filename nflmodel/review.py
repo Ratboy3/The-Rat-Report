@@ -210,6 +210,7 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
             out["log"].append(dict(tier=tier, kind=kind, n=len(g), wins=int((g.result == "win").sum()),
                                    losses=int((g.result == "loss").sum()), units=round(float(g.pnl.astype(float).sum()), 2),
                                    clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
+        _sizing(pd.read_csv(bets_log), season, week, out)
     try:
         sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
         if sp:
@@ -224,6 +225,36 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
     return out
 
 
+def _sizing(log: pd.DataFrame, season: int, week: int, out: dict) -> None:
+    """Suggested bet size (on since Oct 28, 2026): flat 1u vs suggested units on graded bets and leans, this week and
+    season to date, plus results by edge size (does a bigger edge win more? if so, size could grow with the edge)."""
+    from .betting import suggested_units
+    l = log[(log.season == season) & (log.week <= week) & log.result.isin(["win", "loss", "push"])].copy()
+    if l.empty:
+        return
+    l["tier"] = l.tier.fillna("bet")
+    l["u"] = [suggested_units(o) for o in l.odds]
+    l["pnl"] = l.pnl.astype(float)
+    l["edge"] = pd.cut(l.ev, [0, 0.03, 0.05, 0.08, 10], labels=["0-3%", "3-5%", "5-8%", "8%+"])
+    out["sizing"] = []
+    for span, d in (("this week", l[l.week == week]), ("season", l)):
+        for tier, g in d.groupby("tier"):
+            out["sizing"].append(dict(span=span, tier=tier, group="all", n=len(g), flat_u=round(g.pnl.sum(), 2),
+                                      sized_risked=round(g.u.sum(), 1), sized_u=round((g.u * g.pnl).sum(), 2),
+                                      roi=round(g.pnl.mean(), 3)))
+    for e, g in l.groupby("edge", observed=True):
+        out["sizing"].append(dict(span="season", tier="bets+leans", group=f"edge {e}", n=len(g), flat_u=round(g.pnl.sum(), 2),
+                                  sized_risked=round(g.u.sum(), 1), sized_u=round((g.u * g.pnl).sum(), 2), roi=round(g.pnl.mean(), 3)))
+    allr = l
+    if len(allr) >= 60 and allr.pnl.sum() - (allr.u * allr.pnl).sum() > 5:
+        out["flags"].append(f"sizing: flat 1u is ahead of suggested size by {allr.pnl.sum() - (allr.u * allr.pnl).sum():.1f}u "
+                            f"season to date on {len(allr)} graded bets and leans (longshot wins are what sizing gives up)")
+    lo, hi = l[l.edge == "3-5%"], l[l.edge == "8%+"]
+    if len(lo) >= 40 and len(hi) >= 40 and hi.pnl.mean() - lo.pnl.mean() >= 0.10:
+        out["flags"].append(f"sizing: 8%+ edges ROI {hi.pnl.mean():+.1%} vs 3-5% {lo.pnl.mean():+.1%} ({len(hi)} / {len(lo)}): "
+                            "retest sizing up with the edge")
+
+
 def _write(out: dict, out_dir: str) -> None:
     now = datetime.now(CT).strftime("%a %b %-d, %-I:%M %p CT")
     md = [f"# Weekly review: {out['season']} week {out['week']} (run {now})", "", "## Props vs DraftKings lines"]
@@ -235,6 +266,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
+    if out.get("sizing"):
+        md += ["", "## Bet size: flat 1u vs suggested size", pd.DataFrame(out["sizing"]).to_markdown(index=False)]
     if out.get("sharp"):
         md += ["", "## DraftKings vs Pinnacle (sharp-book check)", pd.DataFrame([out["sharp"]]).to_markdown(index=False)]
     if out.get("sharp_props"):
@@ -250,6 +283,8 @@ def _write(out: dict, out_dir: str) -> None:
         rows.append(dict(season=out["season"], week=out["week"], check="sharp", **out["sharp"]))
     if out.get("sharp_props"):
         rows.append(dict(season=out["season"], week=out["week"], check="sharp_props", **out["sharp_props"]))
+    for r in out.get("sizing", []):
+        rows.append(dict(season=out["season"], week=out["week"], check="sizing", **r))
     f = Path(out_dir, "reviews.csv")
     old = pd.read_csv(f) if f.exists() else pd.DataFrame()
     if len(old):
