@@ -9,6 +9,7 @@ import pandas as pd
 
 from . import config as C
 from .betting import decimal, fair_american, implied
+from . import why as W
 
 NAMES = {
     "ARI": "Cardinals", "ATL": "Falcons", "BAL": "Ravens", "BUF": "Bills", "CAR": "Panthers", "CHI": "Bears",
@@ -1155,6 +1156,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>The Rat Report</title>
+<script>try{{var t=localStorage.getItem("rr_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}}catch(e){{}}</script>
+<meta name="color-scheme" content="light dark">
 {FAVICON_TAG}
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@700;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -1166,12 +1169,13 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     <div><b>{n_bets}</b><span>game bets</span></div>
     <div><b>{n_props}</b><span>prop bets</span></div>
     <div><b>{updated}</b><span>updated (CT)</span></div>
+    <button type="button" class="theme-btn" aria-label="Switch between light and dark mode" title="Light / dark mode"><span aria-hidden="true"></span></button>
   </div>
 </div></div>
 <nav class="toc" aria-label="Sections"><div class="wrap" role="tablist">{''.join(toc)}</div></nav>
 <main class="wrap">
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
-  {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now)}
+  {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now, sm)}
     {checked_line}
     <p class="note">Prop prices are DraftKings' or FanDuel's (DK/FD), whichever pays more for the same bet. Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.{(' Prop lines last checked ' + escape(lines_checked) + '.') if lines_checked else ''}</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
@@ -1251,7 +1255,25 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 </div>"""
 
 
-def _now_section(upcoming, props, log, dk_used, now) -> str:
+SHOW_WHY = False   # "Why this bet" panels on Best bets (built Oct 28; on once Alex approves the wording)
+
+
+def _why(make) -> str:
+    """'Why this bet' panel: a tap-to-open list of the reasons (empty if they can't be built)."""
+    if not SHOW_WHY:
+        return ""
+    try:
+        lines = make()
+    except Exception as e:                      # an explanation must never break the page
+        print(f"  why skipped ({e})")
+        return ""
+    if not lines:
+        return ""
+    return ('<details class="why"><summary>Why this bet</summary><ul>'
+            + "".join(f"<li>{escape(t)}</li>" for t in lines) + "</ul></details>")
+
+
+def _now_section(upcoming, props, log, dk_used, now, sm=None) -> str:
     """Every bet that clears the bar right now, one list: pick, book, price, edge, kickoff and how old the price is.
     Below it, bets logged earlier whose price has since moved so they no longer clear the bar."""
     rows = []
@@ -1263,14 +1285,15 @@ def _now_section(upcoming, props, log, dk_used, now) -> str:
             if o["ev"] >= C.MIN_EV:
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra=""))
+                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: W.game_why(g, o, sm) if sm is not None else [])))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
             price = r.over_odds if r.best_side == "Over" else r.under_odds
             win = r.p_over if r.best_side == "Over" else 1 - r.p_over
             rows.append(dict(ev=r.ev, pick=f"{r.player} {what}", game=r.game, when="", book=str(getattr(r, "book", "") or "DraftKings"),
-                             odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r)))
+                             odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r),
+                             why=_why(lambda: W.prop_why(r))))
     rows.sort(key=lambda x: -x["ev"])
     if rows:
         body = "".join(
@@ -1279,6 +1302,7 @@ def _now_section(upcoming, props, log, dk_used, now) -> str:
         <td><span class="bk bk-{'fd' if x['book'] == 'FanDuel' else 'dk'}">{'FD' if x['book'] == 'FanDuel' else 'DK'}</span></td>
         <td class="n">{_odds(x['odds'])}<span class="cell-sub age" data-asof="{_asof_iso(x['asof'], now)}">{escape(str(x['asof']).replace(' CT', ''))}</span></td>
         <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td></tr>"""
+            + (f"""<tr class="fx why-row" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td colspan="5">{x['why']}</td></tr>""" if x['why'] else "")
             for x in rows)
         table = f"""<div class="tablebox"><table class="nowtable"><thead><tr><th>Bet</th><th>Book</th><th class="n">Price</th>
         <th class="n hide-sm">Win %</th><th class="n">Edge</th></tr></thead><tbody>{body}</tbody></table></div>
@@ -1617,4 +1641,51 @@ details.past-leans>summary{font-weight:600}
  .card .tablebox{overflow-x:visible}
  .card table.props td[data-l]:empty{display:none}
 }
+"""
+
+# Dark mode (Oct 28): follows the phone/computer setting; the moon/sun button in the header switches it and the
+# choice is remembered on that device. The header stays dark green in both themes.
+UI_CSS += """
+:root{--mast-bg:#14211A;--mast-ink:#F1F4F2}
+:root[data-theme="dark"]{--mast-bg:#0A100D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--mast-bg:#0A100D}}
+.mast{background:var(--mast-bg);color:var(--mast-ink);border-bottom:1px solid var(--line)}
+.mast-stats{align-items:center}
+.theme-btn{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid rgba(241,244,242,.28);background:transparent;color:var(--mast-ink);
+  cursor:pointer;display:grid;place-items:center;padding:0;align-self:center}
+.theme-btn:hover{border-color:rgba(241,244,242,.6)}
+.theme-btn:focus-visible{outline:2px solid var(--flag);outline-offset:2px}
+.theme-btn span{width:18px;height:18px;border-radius:50%;box-shadow:inset -6px -3px 0 0 var(--mast-ink);transform:rotate(-20deg)}
+:root[data-theme="dark"] .theme-btn span{box-shadow:none;background:var(--mast-ink);width:12px;height:12px;
+  outline:3px dotted rgba(241,244,242,.75);outline-offset:3px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .theme-btn span{box-shadow:none;background:var(--mast-ink);width:12px;height:12px;
+  outline:3px dotted rgba(241,244,242,.75);outline-offset:3px}}
+"""
+UI_JS += """
+(function(){
+  var b=document.querySelector('.theme-btn'); if(!b) return;
+  var root=document.documentElement, mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+  function dark(){var t=root.getAttribute('data-theme'); return t?t==='dark':!!(mq&&mq.matches);}
+  function label(){b.setAttribute('aria-label', dark()?'Switch to light mode':'Switch to dark mode'); b.title=dark()?'Light mode':'Dark mode';}
+  b.addEventListener('click',function(){var t=dark()?'light':'dark'; root.setAttribute('data-theme',t);
+    try{localStorage.setItem('rr_theme',t)}catch(e){} label();});
+  if(mq&&mq.addEventListener) mq.addEventListener('change',label);
+  label();
+})();
+"""
+
+UI_CSS += """
+details.why{margin-top:6px;font-size:13px}
+details.why>summary{cursor:pointer;color:var(--accent);font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:4px}
+details.why>summary::-webkit-details-marker{display:none}
+details.why>summary::after{content:"\\25BE";font-size:11px}
+details.why[open]>summary::after{content:"\\25B4"}
+details.why ul{margin:6px 0 2px;padding:8px 10px 8px 24px;background:var(--chip);border-radius:6px;color:var(--ink);max-width:62ch}
+details.why li{margin:3px 0;line-height:1.45}
+"""
+
+UI_CSS += """
+table.nowtable tr.fx:has(+ tr.why-row) td{border-bottom:0;padding-bottom:2px}
+table.nowtable tr.why-row td{padding-top:0}
+table.nowtable tr.why-row details.why{margin-top:0}
 """

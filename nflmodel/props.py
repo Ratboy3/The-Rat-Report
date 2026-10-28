@@ -56,9 +56,10 @@ def price_props(props: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict[str
 
 
 # ------------------------------------------------------------------ automatic props
-def _script_factor(team: str, team_pts: dict, team_ppg: dict) -> float:
+def _script_factor(team: str, team_pts: dict, team_ppg: dict, stat: str | None = None) -> float:
+    w = C.PROP_SCRIPT_WEIGHT_BY_STAT.get(stat, C.PROP_SCRIPT_WEIGHT)
     if team in team_pts and team_ppg.get(team):
-        return 1 + C.PROP_SCRIPT_WEIGHT * (team_pts[team] / team_ppg[team] - 1)
+        return 1 + w * (team_pts[team] / team_ppg[team] - 1)
     return 1.0
 
 
@@ -260,7 +261,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     anchor_cons = K.use_consensus()   # other books' consensus as the market anchor, once it has tested better
     rows = []
     for p in players.itertuples():
-        f = _script_factor(p.team, team_pts, team_ppg)
+        f = _script_factor(p.team, team_pts, team_ppg, p.stat)
         c = cons.get((_key(p.player), p.stat))
         model_p, market_p = None, None
         if p.stat == "anytime_td":
@@ -296,6 +297,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                    p_over=np.nan, best_side="", ev=np.nan, stake=0.0, flag=False,
                    n_books=int(c["n"]) if c else 0, cons_p_over=np.nan, cons_ev=np.nan,
                    book="", dk_line=np.nan, dk_ev=np.nan)
+        row.update({k: v for k, v in p._asdict().items() if k.startswith("why_")})   # "Why this bet" factors
         # price the bet at each book Alex uses and keep the better one
         cands = []
         for name, src in (("DraftKings", book), ("FanDuel", alt)):

@@ -34,7 +34,17 @@ PROP_CV = {"pass_yds": 0.33, "rush_yds": 0.78, "rec_yds": 0.79}   # sd / mean of
 PROP_GAMMA_SHAPE = {"rush_yds": 2.5, "rec_yds": 2.0}
 PROP_NB_SIZE = {"receptions": 7.5}  # receptions vary more than a Poisson count: negative binomial with this size
 PROP_COUNT = {"receptions", "pass_tds", "anytime_td"}
-PROP_SCRIPT_WEIGHT = 0.5       # how much a team's projected points move its players' projections
+PROP_SCRIPT_WEIGHT = 0.5       # how much a team's projected points move its players' projections (default)
+# Per stat (Oct 28, 2026), tested on real DraftKings closing lines, 2025 wk1-6 (2,151 lines) and 2026 wk1-7
+# (2,628), log loss of the live 25/75 blend. Factor = 1 + w x (team's market-implied points / its season ppg - 1).
+#   pass TDs   w 0.5 -> 1.0: 0.6731 -> 0.6721 (2025), 0.6508 -> 0.6500 (2026)  better in both
+#   receptions w 0.5 -> 0  : 0.6875 -> 0.6877 (2025), 0.6871 -> 0.6844 (2026)  better overall
+#   passing/receiving/rushing yds: mixed between seasons for every w and baseline tried (season ppg, ppg shrunk
+#   toward last season, league average), so they stay at 0.5.
+PROP_SCRIPT_WEIGHT_BY_STAT = {"pass_tds": 1.0, "receptions": 0.0}
+# Tested and OFF (Oct 28): pulling receivers' receiving yds and the QB's passing yds toward each other when they
+# disagree (QB proj / sum of receivers' proj vs its median 1.25). Receiving yds +0.0003 both seasons (noise-sized),
+# passing yds and receptions better in one season, worse in the other.
 
 # --- time zones (hours behind Eastern) for travel effects ---
 TEAM_TZ = {

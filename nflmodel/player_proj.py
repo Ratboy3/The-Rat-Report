@@ -303,6 +303,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             returning = bool(team_weeks) and team_weeks[-1] not in pw and len(pw & set(team_weeks[-5:-1])) >= 2
             for st in BY_POS[pos]:
                 mean, wsum = _weighted(rows, st, season)
+                why = {}                                   # factors behind the projection, for "Why this bet"
                 prior = typical.get((pos, st), mean)
                 k = SHRINK_TD_GAMES if st == "anytime_td" else SHRINK_GAMES
                 est = (mean * wsum + prior * k) / (wsum + k)
@@ -328,14 +329,21 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                 if USE["returning"] and returning and st != "anytime_td":
                     est *= RETURN_FACTOR
                 if st != "anytime_td":
+                    why["base"] = est
+                    why["avg"] = mean
+                    why["l3"] = float(_value(rows.sort_values(["season", "week"]).tail(3), st).mean())
                     if USE["opp"]:
-                        est *= opp_f.get((opp, pos, st), 1.0)
+                        why["f_opp"] = opp_f.get((opp, pos, st), 1.0)
+                        est *= why["f_opp"]
                     if USE["vol"]:
-                        est *= vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
+                        why["f_vol"] = vol["pass" if st in ("pass_yds", "pass_tds", "rec_yds", "receptions") else "rush"]
+                        est *= why["f_vol"]
                     if USE["backupqb"] and qb_chg and pos != "QB":
-                        est *= BACKUP_QB.get(st, 1.0) if (st != "rush_yds" or pos == "RB") else 1.0
+                        why["f_bqb"] = BACKUP_QB.get(st, 1.0) if (st != "rush_yds" or pos == "RB") else 1.0
+                        est *= why["f_bqb"]
                     if pos in lead_out:
-                        est *= NEXT_MAN.get((pos, st), 1.0)
+                        why["f_next"] = NEXT_MAN.get((pos, st), 1.0)
+                        est *= why["f_next"]
                     est *= SCALE.get(st, 1.0)
                     if st in SHRINK_TO:                 # pull extreme projections toward the league average
                         m0, k0 = SHRINK_TO[st]
@@ -345,8 +353,12 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     if lam < 0.06:
                         continue
                     est = 1 - math.exp(-lam)               # P(at least one TD)
+                    why = {"share": shares.get(pid, 0.0), "team_tds": team_tds,
+                           "td_games": int((rows.season == season).sum()),
+                           "td_scored": int((_value(rows[rows.season == season], st) > 0).sum())}
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
-                                projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning))
+                                projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning,
+                                **{f"why_{k}": round(float(v), 4) for k, v in why.items()}))
     if not out:
         return pd.DataFrame()
     df = pd.DataFrame(out)
