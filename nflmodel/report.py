@@ -1269,7 +1269,7 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 </div>"""
 
 
-SHOW_SIZE = False  # suggested bet size column on Best bets (preview Oct 28, 2026; not approved yet)
+SHOW_SIZE = True   # suggested bet size on Best bets (approved by Alex Oct 28, 2026)
 SHOW_WHY = True    # "Why this bet" panels on Best bets (approved by Alex Oct 28, 2026)
 
 
