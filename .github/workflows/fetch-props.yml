@@ -1,10 +1,10 @@
 # The Odds API pulls on the paid 20K plan (20,000 credits/month; upgraded Oct 27, 2026).
 # Runs every hour; `python run.py fetch-plan` decides what to pull at that Central time (see odds_api.fetch_plan):
 #   game lines, all books + Pinnacle: every hour 6 AM-11 PM CT (3 credits each)
-#   props, every game this week: Wed-Sat at 9 AM, 4 PM, 9 PM CT (6 credits per game)
+#   props, every game this week: Tue-Sat at 9 AM, 4 PM, 9 PM CT (6 credits per game)
 #   props, all of Sunday's games: Sunday 7 AM CT
 #   props for games kicking off within 3 hours: every other hour 6 AM-11 PM CT (inactives, late moves)
-# Expected ~7,500 credits a month; below 1,500 credits left only the near-kickoff pulls run.
+# Expected ~8,500 credits a month; below 1,500 credits left only the near-kickoff pulls run.
 # Runs at :20 so the hourly Rat Report update (~:50) starts from fresh prices. GitHub can start scheduled runs late.
 # The API key lives in the repo secret ODDS_API_KEY.
 name: Fetch DraftKings props

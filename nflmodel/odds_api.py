@@ -229,7 +229,8 @@ def fetch_games(path: str = "game_lines.csv") -> None:
 
 
 # ------------------------------------------------------------------ paid-plan schedule (20K credits/month, Oct 27, 2026)
-PROP_FULL_HOURS = (9, 16, 21)   # Wed-Sat full-week prop pulls (CT): morning, after the ~3-4 PM injury reports, evening
+PROP_FULL_DAYS = (1, 2, 3, 4, 5)   # Tue-Sat (Mon = 0). Tuesday added Oct 28 at Alex's request: books post next week's props early
+PROP_FULL_HOURS = (9, 16, 21)   # Tue-Sat full-week prop pulls (CT): morning, after the ~3-4 PM injury reports, evening
 LINES_FROM, LINES_TO = 6, 23    # game lines every hour in this window (CT), 3 credits each
 NEAR_KICKOFF_H = 3              # every hour: props for games kicking off within this many hours
 CREDIT_FLOOR = 1500             # below this many credits left, keep only the near-kickoff pulls
@@ -244,9 +245,9 @@ def credits_left() -> int | None:
 
 
 def fetch_plan(now: datetime | None = None) -> None:
-    """Runs every hour from GitHub Actions and decides what to pull (expected ~7,500 credits/month):
+    """Runs every hour from GitHub Actions and decides what to pull (expected ~8,500 credits/month):
       game lines (all books + Pinnacle) every hour 6 AM-11 PM CT                    ~340/week
-      props for every game this week, Wed-Sat at 9 AM, 4 PM and 9 PM CT             ~1,000/week
+      props for every game this week, Tue-Sat at 9 AM, 4 PM and 9 PM CT             ~1,250/week
       props for the whole day's games, Sunday 7 AM CT                               ~85/week
       props for games kicking off within 3 hours, every hour (inactives, late moves) ~300/week"""
     now = now or datetime.now(CT)
@@ -284,8 +285,8 @@ def _mark_full_pull(now):
 
 
 def _due_slot(now, wd, hr):
-    """The full-pull slot that is due now and not yet done: ('week', hour) Wed-Sat, ('sunday', 7) Sunday morning."""
-    if wd in (2, 3, 4, 5):
+    """The full-pull slot that is due now and not yet done: ('week', hour) Tue-Sat, ('sunday', 7) Sunday morning."""
+    if wd in PROP_FULL_DAYS:
         hours = [h for h in PROP_FULL_HOURS if h <= hr]
         kind = "week"
     elif wd == 6 and 7 <= hr <= 11:
