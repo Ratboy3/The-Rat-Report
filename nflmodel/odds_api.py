@@ -256,9 +256,46 @@ def fetch_plan(now: datetime | None = None) -> None:
     low = left is not None and left < CREDIT_FLOOR
     if LINES_FROM <= hr <= LINES_TO:
         fetch_games()
-    if not low and wd in (2, 3, 4, 5) and hr in PROP_FULL_HOURS:
+    # Full pulls are scheduled by slot, not exact hour: GitHub often starts the :20 run 30-60 min late, and an
+    # exact-hour check skipped the Wed 9 AM pull on Oct 28. A slot is done once per day (props_full_pull.txt).
+    slot = _due_slot(now, wd, hr)
+    if not low and slot is not None and slot[0] == "week":
         fetch()
-    elif not low and wd == 6 and hr == 7:
+        _mark_full_pull(now)
+    elif not low and slot is not None and slot[0] == "sunday":
         fetch(hours=14)
+        _mark_full_pull(now)
     elif LINES_FROM <= hr <= LINES_TO:
         fetch(hours=NEAR_KICKOFF_H)
+
+
+FULL_PULL_FILE = Path(__file__).resolve().parent.parent / "props_full_pull.txt"
+
+
+def _last_full_pull():
+    try:
+        return datetime.fromisoformat(FULL_PULL_FILE.read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _mark_full_pull(now):
+    FULL_PULL_FILE.write_text(now.isoformat(timespec="minutes") + "\n")
+
+
+def _due_slot(now, wd, hr):
+    """The full-pull slot that is due now and not yet done: ('week', hour) Wed-Sat, ('sunday', 7) Sunday morning."""
+    if wd in (2, 3, 4, 5):
+        hours = [h for h in PROP_FULL_HOURS if h <= hr]
+        kind = "week"
+    elif wd == 6 and 7 <= hr <= 11:
+        hours, kind = [7], "sunday"
+    else:
+        return None
+    if not hours:
+        return None
+    start = now.replace(hour=hours[-1], minute=0, second=0, microsecond=0)
+    last = _last_full_pull()
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=now.tzinfo)
+    return None if (last is not None and last >= start) else (kind, hours[-1])
