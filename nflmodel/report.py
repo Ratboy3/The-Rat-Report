@@ -1255,7 +1255,7 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 </div>"""
 
 
-SHOW_WHY = False   # "Why this bet" panels on Best bets (built Oct 28; on once Alex approves the wording)
+SHOW_WHY = True    # "Why this bet" panels on Best bets (approved by Alex Oct 28, 2026)
 
 
 def _why(make) -> str:
