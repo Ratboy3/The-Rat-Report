@@ -1365,12 +1365,15 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
                 now_ev = c.ev if same_side else np.nan
                 from .props import LEAN_ONLY_STATS
                 why = ("leans only for now" if same_side and c.stat in LEAN_ONLY_STATS and c.ev >= C.MIN_EV
-                       else "model now prefers the other side" if not same_side else "price moved")
+                       else "model now prefers the other side" if not same_side
+                       else "price moved" if pd.isna(r.odds) or pd.isna(now_price) or abs(float(now_price) - float(r.odds)) > 0.5
+                       else "model updated (same price)")
             else:
                 c = cur_game.get((r.game_id, r.market, r.side))
                 if c is None or c["ev"] >= C.MIN_EV:
                     continue
-                now_price, now_ev, why = c["odds"], c["ev"], "price moved"
+                now_price, now_ev = c["odds"], c["ev"]
+                why = "price moved" if pd.isna(r.odds) or abs(float(now_price) - float(r.odds)) > 0.5 else "model updated (same price)"
             moved.append(f"""<tr><td>{escape(_pretty_pick(r.pick))}<span class="cell-sub">{escape(str(r.game))} · flagged {escape(str(r.logged_at))}</span></td>
         <td class="n">{_odds(r.odds)}<span class="cell-sub">{_signed_pct(r.ev)}</span></td>
         <td class="n">{_odds(now_price)}<span class="cell-sub">{_signed_pct(now_ev) if pd.notna(now_ev) else '—'}</span></td>
