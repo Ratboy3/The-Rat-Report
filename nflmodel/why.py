@@ -257,7 +257,7 @@ def prop_why(r) -> list[tuple[str, str]]:
             s = f"Scored in {int(tds)} of {int(gp)} games this season"
             if pd.notna(g("why_rush_td")):
                 s += f" ({int(g('why_rush_td'))} rushing, {int(g('why_rec_td'))} receiving TDs)"
-            out.append(("Form", s + "."))
+            out.append(("This season", s + "."))
         if pd.notna(g("why_rz_pg")):
             out.append(("Usage", f"{g('why_rz_pg'):.1f} red-zone touches per game, {g('why_gl_pg'):.1f} inside the 10 "
                                   f"(carries + targets)."))
@@ -284,18 +284,26 @@ def prop_why(r) -> list[tuple[str, str]]:
     line = float(r.line)
     log = _log_vals(g("why_log"))
     if log:
+        # Oct 28 (Alex): no "hit in X of 5" count. Five games is a tiny sample the model doesn't use; show the game
+        # log for context and the weighted average the projection actually starts from.
         last = log[:5]
-        hit = lambda vals: sum((v > line) if side == "Over" else (v < line) for v in vals)
         vals = [v for v, _ in last]
-        s = (f"Last {len(last)}: " + ", ".join(f"{_num(v)} vs {o}" for v, o in last)
-             + f" (avg {np.mean(vals):.1f}). {side} {line:g} hit in {hit(vals)} of {len(vals)}")
-        allv = [v for v, _ in log]
+        s = "Last " + (f"{len(last)}: " if len(last) > 1 else "game: ") + ", ".join(f"{_num(v)} vs {o}" for v, o in last)
+        s += f" (avg {np.mean(vals):.1f})"
         gp = g("why_gp")
         if pd.notna(gp) and gp > len(last):
             s += f"; season avg {g('why_season_avg'):.1f} over {int(gp)} games"
         if pd.notna(gp) and gp < 4 and pd.notna(g("why_prev_avg")) and g("why_prev_gp", 0) >= 4:
-            s += f". Only {int(gp)} game{'s' if gp != 1 else ''} this season; last season he averaged {g('why_prev_avg'):.1f} over {int(g('why_prev_gp'))}"
-        out.append(("Form", s + "."))
+            s += f"; only {int(gp)} game{'s' if gp != 1 else ''} this season, {g('why_prev_avg'):.1f} avg over {int(g('why_prev_gp'))} last season"
+        base = g("why_base")
+        if pd.notna(base):
+            how = ("his average with recent games weighted most (last season counts some), blended with what his "
+                   "targets and air yards usually produce, then pulled toward a typical player in his role"
+                   if stat in ("rec_yds", "receptions") and r.position in ("WR", "TE", "RB") else
+                   "his average with recent games weighted most (last season counts some), pulled toward a typical "
+                   "player in his role")
+            s += f". The model starts from {base:.1f} {short}: {how}"
+        out.append(("Recent games", s + "."))
     use = []
     if stat in ("rec_yds", "receptions") and pd.notna(g("why_tgt_pg")):
         use.append(f"{g('why_tgt_pg'):.1f} targets per game")
