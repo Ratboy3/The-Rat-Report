@@ -19,6 +19,7 @@ on:
       - "prop_lines.csv"
       - "td_market.csv"
       - "bets_log.csv"
+      - "inactives.csv"
       - "run.py"
       - "nflmodel/**"
       - "assets/**"
