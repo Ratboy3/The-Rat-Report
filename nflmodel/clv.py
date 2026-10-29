@@ -187,7 +187,15 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
 
     # 3. grade finished games
     stats = None
+    ina = set()                     # inactive players: the books void their props (inactives.csv, Oct 29, 2026)
+    ip = Path(path).resolve().parent / "inactives.csv"
+    if ip.exists():
+        d = pd.read_csv(ip, comment="#")
+        ina = set(zip(d.season, d.week, d.player))
     for i, row in log[log.result.isna() | (log.result == "")].iterrows():
+        if row.market == "prop" and (row.season, row.week, row.player) in ina:
+            log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0
+            continue
         gg = games[games.game_id == row.game_id]
         if gg.empty or pd.isna(gg.iloc[0].result):
             continue
