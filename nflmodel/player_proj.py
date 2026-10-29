@@ -172,6 +172,20 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             injury[r.gsis_id] = (status, practice, r.report_primary_injury if isinstance(r.report_primary_injury, str)
                                  else (r.practice_primary_injury if isinstance(r.practice_primary_injury, str) else ""))
 
+    # game-day inactives and late scratches (inactives.csv, added Oct 29, 2026): ruled out after the injury report
+    ip = ROOT / "inactives.csv"
+    if ip.exists():
+        ina = pd.read_csv(ip, comment="#")
+        ina = ina[(ina.season == season) & (ina.week == week)]
+        if len(ina):
+            ids = stats.drop_duplicates("player_id", keep="last").set_index(["player_display_name", "team"]).player_id
+            for r in ina.itertuples():
+                pid = ids.get((r.player, r.team))
+                if pid is not None:
+                    injury[pid] = ("Out", None, str(getattr(r, "reason", "") or "inactive"))
+                else:
+                    print(f"  inactives.csv: no player {r.player} ({r.team})")
+
     # typical regular in each role, for shrinkage
     recent = stats[stats.season == season].copy()
     typical = {}
