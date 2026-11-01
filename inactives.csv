@@ -1,6 +1,13 @@
-# Game-day inactives and late scratches the injury report missed. One row per player; the projection leaves him out.
+# Players ruled out after the final injury report, and game-day inactives / late scratches. One row per player:
+# player projections leave him out, the game model counts him as Out, and his logged props are voided.
 season,week,team,player,reason,source
 2026,8,GB,Jonnu Smith,inactive,"FOX 11, Thu Oct 29, 5:58 PM CT"
 2026,8,GB,Kaleb Johnson,inactive,"NBC Sports, Thu Oct 29, 5:57 PM CT"
 2026,8,CAR,Ja'Tavion Sanders,inactive,"NBC Sports, Thu Oct 29, 5:57 PM CT"
 2026,8,CAR,AJ Dillon,inactive,"NBC Sports, Thu Oct 29, 5:57 PM CT"
+2026,8,NE,A.J. Brown,ruled out (knee),"ESPN, Sat Oct 31, 12:19 PM CT"
+2026,8,NE,TreVeyon Henderson,ruled out (illness),"ESPN, Sat Oct 31, 12:19 PM CT"
+2026,8,ATL,Billy Bowman Jr.,ruled out (hamstring),"RotoWire/Falcons.com, Sat Oct 31"
+2026,8,KC,Mansoor Delane,ruled out (shoulder),"104.7 The Cave, Sat Oct 31, 1:45 PM CT"
+2026,8,KC,L'Jarius Sneed,injured reserve (knee),"104.7 The Cave, Sat Oct 31, 1:45 PM CT"
+2026,8,PHI,Jakorian Bennett,ruled out,"Eagles Wire via Yahoo Sports, Sat Oct 31, 3:25 PM CT"

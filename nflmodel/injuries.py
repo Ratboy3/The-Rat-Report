@@ -71,6 +71,17 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
     team_by_gsis = dict(zip(rw.gsis_id, rw.team))
     injw = inj[(inj.season == season) & (inj.week == week)] if len(inj) else inj
     rep = {r.gsis_id: r for r in injw.itertuples()} if len(injw) else {}
+    # ruled out after the final injury report, or inactive on game day (inactives.csv, Nov 1, 2026)
+    ruled_out = {}
+    ip = Path(__file__).resolve().parent.parent / "inactives.csv"
+    if ip.exists():
+        d = pd.read_csv(ip, comment="#")
+        d = d[(d.season == season) & (d.week == week)]
+        by_name = {(r.full_name, r.team): r.gsis_id for r in rw.itertuples() if isinstance(r.full_name, str)}
+        for r in d.itertuples():
+            g = by_name.get((r.player, r.team))
+            if g is not None:
+                ruled_out[g] = str(getattr(r, "reason", "") or "Out")
 
     snaps = snaps[(snaps.game_type == "REG") & (snaps.week < week)].copy()
     snaps["grp"] = snaps.position.map(POS_GROUP)
@@ -103,7 +114,9 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
             # chance he misses this week
             r = rep.get(gsis)
             p_miss, note = 0.0, ""
-            if status_by_gsis.get(gsis) not in (None, "ACT"):
+            if gsis in ruled_out:
+                p_miss, note = 1.0, "Out"
+            elif status_by_gsis.get(gsis) not in (None, "ACT"):
                 p_miss, note = 1.0, "Inactive / IR"
             elif r is not None and isinstance(r.report_status, str) and r.report_status in P_MISS:
                 p_miss, note = P_MISS[r.report_status], r.report_status
