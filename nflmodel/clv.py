@@ -187,6 +187,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
 
     # 3. grade finished games
     stats = None
+    snaps = None
     ina = set()                     # inactive players: the books void their props (inactives.csv, Oct 29, 2026)
     ip = Path(path).resolve().parent / "inactives.csv"
     if ip.exists():
@@ -208,11 +209,28 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                 except Exception:
                     stats = pd.DataFrame()
             s = stats[(stats.week == row.week) & (stats.player_display_name == row.player)] if len(stats) else stats
-            if s.empty:
-                continue
             col = {"pass_yds": "passing_yards", "pass_tds": "passing_tds", "rush_yds": "rushing_yards",
                    "rec_yds": "receiving_yards", "receptions": "receptions"}.get(row.stat)
-            val = float(s.iloc[0][["rushing_tds", "receiving_tds"]].fillna(0).sum()) if row.stat == "anytime_td" else float(s.iloc[0][col])
+            if s.empty:
+                # no stat line: played without touching the ball (graded as 0) or didn't play (void, as the books
+                # settle it). Snap counts decide, once they're posted for both teams (Nov 3, 2026).
+                if snaps is None:
+                    try:
+                        from .injuries import _load_snaps
+                        snaps = _load_snaps(int(row.season), True)
+                    except Exception:
+                        snaps = pd.DataFrame()
+                sw = snaps[snaps.week == row.week] if len(snaps) else snaps
+                teams = set(str(row.game).split(" @ "))
+                if len(sw) == 0 or not teams <= set(sw.team):
+                    continue                                   # snap counts not posted yet
+                me = sw[sw.player == row.player]
+                if me.empty or float(me[["offense_snaps", "defense_snaps", "st_snaps"]].fillna(0).sum(axis=1).max()) == 0:
+                    log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0
+                    continue
+                val = 0.0
+            else:
+                val = float(s.iloc[0][["rushing_tds", "receiving_tds"]].fillna(0).sum()) if row.stat == "anytime_td" else float(s.iloc[0][col])
             diff = (val - float(row.line)) if row.side == "Over" else (float(row.line) - val)
         elif row.market == "spread":
             diff = (g.result - row.line) if row.side == "home" else (row.line - g.result)
