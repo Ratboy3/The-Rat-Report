@@ -30,6 +30,12 @@ def load_games(path: str | os.PathLike | None = None, refresh: bool = False) -> 
             else:
                 print(f"Download failed ({e}); using the saved copy in {CACHE}")
                 df = pd.read_csv(CACHE)
+        try:                       # finished games nflverse hasn't scored yet: ESPN's scoreboard (Nov 3, 2026)
+            from .scores import fill_finals
+            df = fill_finals(df)
+            df.to_csv(CACHE, index=False)
+        except Exception as e:
+            print(f"  ESPN finals skipped ({e})")
     else:
         df = pd.read_csv(src)
     return prepare(df)

@@ -4,7 +4,10 @@
 # news.csv / overrides.csv / prop_lines.csv / td_market.csv / bets_log.csv here; this rebuild picks them up.
 #
 # Runs after every odds/weather pull, whenever research files or code change, and on demand.
-# Commits only index.html, so it never fights the Claude runs over bets_log.csv or lines_history.csv.
+# Since Nov 3, 2026 it also keeps the bet tracker going on its own (logs new bets, closing prices and results,
+# and fills final scores from ESPN), so tracking doesn't stop when the claude.ai runs do. bets_log.csv and
+# lines_history.csv are merged, never overwritten: the repo's copy + the bot's last copy (data/*_bot.csv) +
+# this run's results (nflmodel/logs.py), so an older copy pushed by a Claude run can't drop rows.
 name: Rebuild website
 
 on:
@@ -44,25 +47,31 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pandas numpy scipy requests
+      - name: Merge the bet tracker
+        run: python run.py merge-logs
       - name: Build the report
         run: |
           python run.py build-epa
           python run.py build-extras
           python run.py report --refresh
-      - name: Publish index.html
+      - name: Publish index.html and the bet tracker
         run: |
           set -e
           f=$(ls -t output/report_*_wk*.html | head -1)
           gen=$(grep -o 'Generated [^<]* CT' "$f" | head -1 | sed 's/ from.*//')
-          cp "$f" /tmp/index.html
+          mkdir -p /tmp/run
+          cp "$f" /tmp/run/index.html
+          cp bets_log.csv lines_history.csv /tmp/run/
           git config user.name "Rat Report site bot"
           git config user.email "actions@users.noreply.github.com"
-          git reset -q --hard
           for i in 1 2 3 4 5; do
+            git reset -q --hard
             git pull -q --rebase origin main
-            cp /tmp/index.html index.html
-            if git diff --quiet -- index.html; then echo "No change"; exit 0; fi
-            git add index.html
+            cp /tmp/run/index.html index.html
+            python run.py merge-logs --extra /tmp/run --save-bot
+            git add index.html bets_log.csv lines_history.csv
+            git add -f data/bets_log_bot.csv data/lines_history_bot.csv
+            if git diff --cached --quiet; then echo "No change"; exit 0; fi
             git commit -q -m "Site rebuild: ${gen}"
             if git push -q origin HEAD:main; then echo "Pushed: ${gen}"; exit 0; fi
             git reset -q --hard origin/main

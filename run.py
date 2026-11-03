@@ -508,13 +508,17 @@ def main():
     wr = sub.add_parser("weekly-review", help="last week vs real DraftKings lines and results -> review_S_wkW.md, reviews.csv")
     wr.add_argument("--season", type=int)
     wr.add_argument("--week", type=int)
+    ml = sub.add_parser("merge-logs", help="merge bets_log.csv / lines_history.csv with the bot copies (and --extra DIR)")
+    ml.add_argument("--extra", help="folder holding other copies of bets_log.csv / lines_history.csv")
+    ml.add_argument("--save-bot", action="store_true", help="also write data/*_bot.csv")
     sn = sub.add_parser("stamp-news", help="stamp news.csv (or --news FILE) with the current Central time")
     sn.add_argument("--news", default="news.csv")
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
         s.add_argument("--refresh", action="store_true", help="re-download data from nflverse")
     a = p.parse_args()
     {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
-     "stamp-news": cmd_stamp_news, "props-backtest": cmd_props_backtest,
+     "stamp-news": cmd_stamp_news,
+     "merge-logs": lambda a: __import__("nflmodel.logs", fromlist=["merge_all"]).merge_all(a.extra, a.save_bot), "props-backtest": cmd_props_backtest,
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
      "fetch-early": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_early"]).fetch_early(a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
