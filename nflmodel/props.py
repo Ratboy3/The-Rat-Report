@@ -186,6 +186,12 @@ BET_BOOKS = {"draftkings": "DraftKings", "fanduel": "FanDuel"}
 # beat DraftKings on those lines. Re-enable once out-of-sample real-line tests (e.g. fit on 2025 historical props,
 # checked on 2026) show passing yards beating the market. The weekly review checks it every Tuesday.
 LEAN_ONLY_STATS = {"pass_yds"}
+# FanDuel line-shop props (FanDuel's line differs from DraftKings'): a bet only if the same side is also worth at
+# least this much at DraftKings' own line and price; otherwise a lean (Nov 3, 2026). Tested on real closing lines
+# (DraftKings + FanDuel, 2025 wk1-6 and 2026 wk1-7, current model): line-shop bets 2025 -7.4% ROI (212) / 2026
+# +3.0% (167) -> with the rule -1.6% (72) / +10.7% (50); thresholds 0, 1.5% and 3% all better in both seasons.
+# Live Week 8: line-shop prop bets went 32-36 (-7.3u) and FanDuel's line moved further from DraftKings' 42% of the time.
+LINE_SHOP_MIN_DK_EV = 0.015
 BET_BOOK_SOURCES = tuple(BET_BOOKS.values())
 
 
@@ -319,6 +325,18 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
+            # line shopping: a FanDuel bet at a different line than DraftKings' must also be worth something at
+            # DraftKings' own line and price (same side), or it stays a lean (LINE_SHOP_MIN_DK_EV, Nov 3, 2026)
+            if bname == "FanDuel" and dk and p.stat != "anytime_td":
+                r_dk = dk[0][2]
+                if pd.notna(r_dk.line) and float(r_dk.line) != line:
+                    o_dk = _probs(d, float(r_dk.line))
+                    dk_side = (ev(o_dk, r_dk.over_odds) if best == "Over" and pd.notna(r_dk.over_odds) else
+                               ev((o_dk[2], o_dk[1], o_dk[0]), r_dk.under_odds) if best == "Under" and pd.notna(r_dk.under_odds)
+                               else -1.0)
+                    row.update(dk_ev=round(dk_side, 4))
+                    if dk_side < LINE_SHOP_MIN_DK_EV:
+                        row.update(flag=False)
             # the other books' view of DraftKings' line: their consensus chance and the edge it implies at DK's price
             if c is not None:
                 cp = (c["others_td"] if p.stat == "anytime_td" else
