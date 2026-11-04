@@ -1373,6 +1373,24 @@ SIZE_NOTE = (f'<p class="note size-note"><b>Size</b> is a suggestion in units (u
              f'(many bettors use 1% to 2%). Bigger edges haven\'t won more often in our testing, so the size doesn\'t grow with the edge.</p>')
 
 
+def _ml_note(g, o) -> list:
+    """Moneyline bets: say whether the model actually disagrees with the spread, or the edge is only the price."""
+    if o.get("market") != "moneyline" or pd.isna(getattr(g, "proj_margin", np.nan)) or pd.isna(g.spread_line):
+        return []
+    home = o.get("side") == "home"
+    team, opp = (g.home_team, g.away_team) if home else (g.away_team, g.home_team)
+    gap = (g.proj_margin - g.spread_line) * (1 if home else -1)
+    fav = g.home_team if g.proj_margin > 0 else g.away_team
+    view = f"Our numbers have {fav} by {abs(g.proj_margin):.1f}; the spread is {abs(g.spread_line):g}."
+    if abs(gap) < 0.5:
+        return [("What kind of bet", view + f" We agree with the spread, so this isn't a call that {team} plays better than "
+                 f"expected: the moneyline simply pays more than a {abs(g.spread_line):g}-point line implies. Big-underdog "
+                 "moneylines like this have paid off over time (2012-26: +20% to +44% on about 100 bets), but they lose most "
+                 "weeks, so keep the size small.")]
+    side_word = "better" if gap > 0 else "worse"
+    return [("What kind of bet", view + f" That's {abs(gap):.1f} points {side_word} for {team} than the market.")]
+
+
 def _pin_note(o) -> list:
     v = o.get("pinnacle")
     if v == "agrees":
@@ -1394,7 +1412,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _pin_note(o))))
+                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _ml_note(g, o) + _pin_note(o))))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
