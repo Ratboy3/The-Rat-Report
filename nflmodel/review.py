@@ -212,6 +212,7 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
                                    clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
         _sizing(pd.read_csv(bets_log), season, week, out)
         _recrush(pd.read_csv(bets_log), season, week, out)
+        _receptions_check(pd.read_csv(bets_log), season, out)
     try:
         sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
         if sp:
@@ -276,6 +277,16 @@ def _recrush(log: pd.DataFrame, season: int, week: int, out: dict) -> None:
     if len(c) >= 60 and c.mean() < 0:
         out["flags"].append(f"rec/rush yds bets (40% model weight): average CLV {c.mean():+.2%} on {len(c)} bets: "
                             "cap at 5% edge or return to 25% weight")
+
+
+def _receptions_check(log: pd.DataFrame, season: int, out: dict) -> None:
+    """Receptions bets lost to the close in Weeks 7-8 (avg CLV -4.5%, beat the close 2 of 23) while closing-line
+    tests were mixed (2025 -12% ROI on 50, 2026 +15% on 34). Rule (Nov 3, 2026): at 50+ receptions bets with a
+    closing price this season, if average CLV is below zero, make receptions leans only (props.LEAN_ONLY_STATS)."""
+    b = log[(log.season == season) & (log.stat == "receptions") & (log.tier.fillna("bet") == "bet") & log.clv.notna()]
+    if len(b) >= 50 and b.clv.mean() < 0:
+        out["flags"].append(f"receptions bets: average CLV {b.clv.mean():+.2%} on {len(b)} bets (beat the close "
+                            f"{(b.clv > 0).mean():.0%}): make receptions leans only")
 
 
 def _write(out: dict, out_dir: str) -> None:

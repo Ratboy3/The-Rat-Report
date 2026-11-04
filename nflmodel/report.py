@@ -405,6 +405,47 @@ def _movement_html(g, mkt) -> str:
     return f'<div class="move cell-sub">{" · ".join(bits)}</div>' if bits else ""
 
 
+def _record_tables(log) -> str:
+    """Track record of bets (not leans) by market and by week: record, units, suggested-size units, ROI, CLV."""
+    from .betting import suggested_units
+    tier = log["tier"].fillna("bet") if "tier" in log else pd.Series("bet", index=log.index)
+    b = log[(tier == "bet")].copy()
+    if b.empty:
+        return ""
+    lab = {"pass_yds": "Passing yards", "pass_tds": "Passing TDs", "rush_yds": "Rushing yards", "rec_yds": "Receiving yards",
+           "receptions": "Receptions", "anytime_td": "Anytime TD"}
+    b["what"] = np.where(b.market == "prop", "Prop: " + b.stat.map(lab).fillna(b.stat.astype(str)), b.market.astype(str).str.capitalize())
+    b["closed"] = pd.to_datetime(b.kickoff, utc=True, errors="coerce") <= pd.Timestamp.now(tz="UTC")
+    b["pnl"] = pd.to_numeric(b.pnl, errors="coerce")
+    b["u"] = [suggested_units(o) for o in b.odds]
+
+    def row(name, x):
+        g = x[x.result.isin(["win", "loss", "push"])]
+        c = x[x.closed & x.clv.notna()]
+        if not len(g) and not len(c):
+            return ""
+        roi = g.pnl.mean() if len(g) else np.nan
+        cl = c.clv.mean() if len(c) else np.nan
+        return (f"""<tr><td>{escape(str(name))}</td><td class="n">{int((g.result == 'win').sum())}-{int((g.result == 'loss').sum())}"""
+                f"""{'-' + str(int((g.result == 'push').sum())) if (g.result == 'push').any() else ''}</td>"""
+                f"""<td class="n {'good' if g.pnl.sum() > 0 else 'bad' if g.pnl.sum() < 0 else ''}">{g.pnl.sum():+.1f}</td>"""
+                f"""<td class="n hide-sm">{(g.u * g.pnl).sum():+.1f}</td>"""
+                f"""<td class="n hide-sm">{_signed_pct(roi) if pd.notna(roi) else '—'}</td>"""
+                f"""<td class="n {'good' if pd.notna(cl) and cl > 0 else 'bad' if pd.notna(cl) and cl < 0 else ''}">{_signed_pct(cl) if pd.notna(cl) else '—'}</td>"""
+                f"""<td class="n hide-sm">{f"{(c.clv > 0).mean():.0%}" if len(c) else '—'}</td></tr>""")
+    head = ('<thead><tr><th></th><th class="n">W-L</th><th class="n">Units (1u)</th><th class="n hide-sm">Units (size)</th>'
+            '<th class="n hide-sm">ROI</th><th class="n">Avg CLV</th><th class="n hide-sm">Beat close</th></tr></thead>')
+    by_mkt = "".join(row(k, x) for k, x in sorted(b.groupby("what"), key=lambda t: (t[0].startswith("Prop"), t[0])))
+    by_wk = "".join(row(f"{int(se)} Week {int(wk)}", x) for (se, wk), x in sorted(b.groupby(["season", "week"]), reverse=True))
+    total = row("All bets", b)
+    return f"""<h3>Track record by market</h3>
+    <p class="note">Bets only (leans are separate). Units (1u) = 1 unit on every bet; Units (size) = the suggested size shown on Best bets.
+    Avg CLV = how much better our price was than the closing line, the most reliable early sign of a real edge.</p>
+    <div class="tablebox"><table>{head}<tbody>{by_mkt}{total}</tbody></table></div>
+    <h3>Track record by week</h3>
+    <div class="tablebox"><table>{head}<tbody>{by_wk}</tbody></table></div>"""
+
+
 def _clv_section(log) -> str:
     """Live results: every flagged bet against the closing line, then win/loss once settled."""
     from .clv import summary
@@ -444,15 +485,16 @@ def _clv_section(log) -> str:
                       for r in tt.itertuples())
         timing_html = f"""<details class="more"><summary>Bet early or wait? CLV by time before kickoff</summary>
     <p class="note">If bets logged early beat the close more often than ones logged late, the model's edges get priced in during the week
-    and it pays to bet as soon as they show up. Too few closed bets yet to say; this fills in each week.</p>
+    and it pays to bet as soon as they show up. Weeks 7-8: bets logged 3+ days out beat the close about half the time, late ones about a fifth. This fills in each week.</p>
     <div class="tablebox"><table><thead><tr><th>Logged</th><th>Type</th><th class="n">Closed</th><th class="n">Avg CLV</th><th class="n">Beat close</th></tr></thead>
     <tbody>{trs}</tbody></table></div></details>"""
     return f"""<h3>Closing line value (live)</h3>
     <p class="lede">Every flagged bet is logged at the price when it was first flagged, then re-priced at the closing
     DraftKings line. Positive CLV means the bet was worth more than the closing market said: the earliest reliable sign of a real edge.
-    Leans (small positive edges below the 3% bar) are tracked the same way in their own rows, so they never mix into the bet record.</p>
+    Leans (small positive edges below the bar, totals, passing yards and edges too big to trust) are tracked the same way in their own rows, so they never mix into the bet record.</p>
     <div class="tablebox"><table><thead><tr><th>Type</th><th class="n">Logged</th><th class="n">Closed</th><th class="n">Avg CLV</th>
     <th class="n">Beat close</th><th class="n">W-L</th><th class="n">Units</th></tr></thead><tbody>{rows}</tbody></table></div>
+    {_record_tables(log)}
     <details class="more"><summary>Latest logged bets</summary><div class="tablebox"><table><thead><tr><th>Bet</th><th class="n">Price</th>
     <th class="n">Edge then</th><th class="n">CLV</th><th>Result</th></tr></thead><tbody>{rec_rows}</tbody></table></div></details>
     {lean_more}
