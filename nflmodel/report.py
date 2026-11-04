@@ -1103,6 +1103,7 @@ table.props td{vertical-align:middle}
 @media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;padding:0 6px;border-radius:9px;border:1px solid var(--line);color:var(--muted)}
 details.health{margin:10px 0 0;font-size:13px}
 details.health summary{cursor:pointer;font-weight:600;padding:4px 0;color:var(--muted)}
 details.health summary .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#2e9d5b;vertical-align:middle}
@@ -1415,6 +1416,16 @@ SIZE_NOTE = (f'<p class="note size-note"><b>Size</b> is a suggestion in units (u
              f'(many bettors use 1% to 2%). Bigger edges haven\'t won more often in our testing, so the size doesn\'t grow with the edge.</p>')
 
 
+def _price_bet_tag(g, o) -> str:
+    """Underdog moneylines where the model agrees with the spread: labelled "Price bet" on Best bets (Nov 4, 2026)."""
+    if o.get("market") != "moneyline" or float(o.get("odds", 0) or 0) <= 0:
+        return ""
+    if pd.isna(getattr(g, "proj_margin", np.nan)) or pd.isna(getattr(g, "spread_line", np.nan)):
+        return ""
+    gap = (g.proj_margin - g.spread_line) * (1 if o.get("side") == "home" else -1)
+    return ' · <span class="tag" title="The model agrees with the spread; the moneyline pays more than the spread implies">Price bet</span>' if gap < 0.5 else ""
+
+
 def _ml_note(g, o) -> list:
     """Moneyline bets: say whether the model actually disagrees with the spread, or the edge is only the price."""
     if o.get("market") != "moneyline" or pd.isna(getattr(g, "proj_margin", np.nan)) or pd.isna(g.spread_line):
@@ -1426,10 +1437,10 @@ def _ml_note(g, o) -> list:
     view = f"Our numbers have {fav} by {abs(g.proj_margin):.1f}; the spread is {abs(g.spread_line):g}."
     if abs(gap) < 0.5:
         odds_ = float(o.get("odds", 0))
-        tail = (" Since Nov 4, price-only moneylines at +300 or longer are leans, not bets: a sharp model should have "
-                "a view on the game, not just a better price." if odds_ >= C.LONGSHOT_ML_ODDS else
-                " Big-underdog moneylines like this have paid off over time (2012-26: +20% to +44% on about 100 bets), "
-                "but they lose most weeks, so keep the size small." if odds_ >= 200 else "")
+        tail = (" That makes it a price bet. Underdog moneylines like this, where the model agrees with the spread, have "
+                "paid off over time (2012-26 replay: +12.5% on 144 bets, +13.3% on 65; at +300 or longer +110% on 28, "
+                "+10% on 29): books tend to price big underdogs generously because casual money backs favorites. They "
+                "lose most weeks, so keep the size small." if odds_ > 0 else "")
         return [("What kind of bet", view + f" We agree with the spread, so this isn't a call that {team} plays better than "
                  f"expected: the moneyline simply pays more than a {abs(g.spread_line):g}-point line implies." + tail)]
     side_word = "better" if gap > 0 else "worse"
@@ -1457,7 +1468,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _ml_note(g, o) + _pin_note(o))))
+                                 mk=_mkt_key(o["market"]), extra=_price_bet_tag(g, o), why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _ml_note(g, o) + _pin_note(o))))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"

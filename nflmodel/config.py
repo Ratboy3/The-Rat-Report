@@ -43,7 +43,11 @@ LONGSHOT_ML_ODDS = 300
 # is at least LONGSHOT_ML_MIN_GAP points better for that team than the spread, i.e. a real view on the game, not just
 # the moneyline paying more than the spread implies. History argued the other way on thin samples (price-only big dogs
 # 2012-19 +44% on ~60, 2020-26 +20% on ~44; live +300 MLs 0-2), so the weekly review keeps tracking them as leans.
-LONGSHOT_ML_PRICE_ONLY_LEAN = True
+# Turned OFF the same day after testing: in the 2012-26 replay price-only dogs did BETTER than ones where the model
+# beat the spread (+12.5% / +13.3% vs +5.2% / +10.4%), and price-only +300s were the best group (+110% on 28, +10%
+# on 29) while real-view +300s lost (-21% / -19%). Alex agreed to follow the evidence: such bets stay bets, small size,
+# labelled "Price bet" on the page, tracked in the weekly review; cut on evidence if they keep losing over 25+ bets.
+LONGSHOT_ML_PRICE_ONLY_LEAN = False
 LONGSHOT_ML_MIN_GAP = 0.5
 # Moneyline favorites are leans only (Nov 3, 2026, after Week 9's DEN -142, which only matched the 2.5-pt spread).
 # Walk-forward 2012-26, favorite ML bets at 3%+: 2012-19 -0.6% (239), 2020-26 -3.9% (131); -150 to -200 -10.6% (57).
