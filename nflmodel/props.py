@@ -201,6 +201,13 @@ LEAN_ONLY_STATS = {"pass_yds"}
 # +3.0% (167) -> with the rule -1.6% (72) / +10.7% (50); thresholds 0, 1.5% and 3% all better in both seasons.
 # Live Week 8: line-shop prop bets went 32-36 (-7.3u) and FanDuel's line moved further from DraftKings' 42% of the time.
 LINE_SHOP_MIN_DK_EV = 0.015
+# Sharp-book check on props (Nov 3, 2026). Pinnacle + BetOnline consensus at our line vs DraftKings' own no-vig chance,
+# real closing lines 2025 wk5-18 / 2026 wk3-8, current model: bets where those books liked our side MORE than DraftKings
+# lost (-5.9% ROI on 235 / -9.7% on 97); where they liked it less, won (+5.2% on 313 / +12.6% on 150). DraftKings has
+# been the sharper prop book (consensus-test), so when the others are friendlier than DraftKings, DraftKings is usually
+# right. Such bets are leans. Not applied to TDs (one-sided prices) or when neither book has the prop.
+SHARP_PROP_BOOKS = ("pinnacle", "betonlineag")
+SHARP_PROP_FILTER = True
 BET_BOOK_SOURCES = tuple(BET_BOOKS.values())
 
 
@@ -268,6 +275,14 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             alt[(_key(r.player), str(r.stat).strip())] = pd.Series(dict(
                 player=r.player, stat=r.stat, line=r.line, over_odds=r.over_odds, under_odds=r.under_odds,
                 source="FanDuel (The Odds API)", as_of=r.as_of))
+    # the sharper offshore books' view of each prop (Pinnacle, BetOnline): mean implied by their own line and prices
+    sharp = {}
+    if books is not None and len(books):
+        sb = books[books.book.isin(SHARP_PROP_BOOKS) & books.line.notna() & books.over_odds.notna() & books.under_odds.notna()
+                   & (books.stat != "anytime_td")]
+        for r in sb.itertuples():
+            sharp.setdefault((_key(r.player), str(r.stat).strip()), []).append(
+                _market_mean(r.stat, float(r.line), _no_vig_over(r.over_odds, r.under_odds)))
     market = {}
     if td_market is not None and len(td_market):
         market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
@@ -351,6 +366,17 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                     row.update(dk_ev=round(dk_side, 4))
                     if dk_side < LINE_SHOP_MIN_DK_EV:
                         row.update(flag=False)
+            # DraftKings is the sharper book on props: when Pinnacle/BetOnline like our side MORE than DraftKings does,
+            # DraftKings has usually been right, so the bet is a lean (SHARP_PROP_FILTER, Nov 3, 2026)
+            sm_ = sharp.get((_key(p.player), p.stat))
+            if sm_ and p.stat != "anytime_td" and dk and pd.notna(dk[0][2].line):
+                r_dk = dk[0][2]
+                dk_mean = _market_mean(p.stat, float(r_dk.line), _no_vig_over(r_dk.over_odds, r_dk.under_odds))
+                sp, dp = _probs(_dist(p.stat, float(np.mean(sm_))), line), _probs(_dist(p.stat, dk_mean), line)
+                s_side, d_side = (sp[0], dp[0]) if best == "Over" else (sp[2], dp[2])
+                row.update(sharp_side_p=round(s_side, 3), dk_side_p=round(d_side, 3))
+                if SHARP_PROP_FILTER and s_side > d_side:
+                    row.update(flag=False)
             # the other books' view of DraftKings' line: their consensus chance and the edge it implies at DK's price
             if c is not None:
                 cp = (c["others_td"] if p.stat == "anytime_td" else
