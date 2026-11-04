@@ -4,5 +4,6 @@
 # many odds pages show days-old DraftKings numbers). spread_line > 0 means the HOME team is favored.
 game_id,home_qb_name,home_qb_change,away_qb_name,away_qb_change,spread_line,home_spread_odds,away_spread_odds,total_line,over_odds,under_odds,home_moneyline,away_moneyline
 2026_09_JAX_BAL,Joe Fagnano,1,,,,,,,,,,
-2026_09_ARI_SEA,,,Gardner Minshew,1,,,,,,,,
-2026_09_NYG_PHI,Tanner McKee,1,J.J. McCarthy,1,,,,,,,,
+2026_09_CLE_NO,,,Shedeur Sanders,1,,,,,,,,
+2026_09_NYG_PHI,Joe Milton III,1,J.J. McCarthy,1,,,,,,,,
+2026_09_ARI_SEA,Drew Lock,1,Gardner Minshew,1,,,,,,,,
