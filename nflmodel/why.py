@@ -351,6 +351,9 @@ def prop_why(r) -> list[tuple[str, str]]:
     fn = g("why_f_next")
     if pd.notna(fn) and abs(fn - 1) >= 0.01:
         game.append(f"top teammate at his position out {fn - 1:+.0%}")
+    if pd.notna(g("why_f_back")):
+        game.append("heads up: the regular at his position missed the last game and is back this week, "
+                    "so his recent numbers may overstate his role")
     if str(g("injury", "") or ""):
         game.append(f"injury report: {g('injury')}")
     if game:

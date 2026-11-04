@@ -291,6 +291,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         team_weeks = sorted(stats[(stats.season == season) & (stats.team == team)].week.unique())
         qb_chg = bool(getattr(g, f"{side}_qb_change_t", getattr(g, f"{side}_qb_change", 0)) or 0)   # backup QB starting (a returning starter is not one)
         lead_out = _leads_out(recent, team, set(eligible)) if USE["nextman"] else set()
+        lead_back = _leads_back(stats, team, set(eligible), season)      # {pos: returning regular's player_id}
         for pid in on_team:
             rows = stats[stats.player_id == pid]
             last = rows.sort_values(["season", "week"]).iloc[-1]
@@ -360,6 +361,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     if pos in lead_out:
                         why["f_next"] = NEXT_MAN.get((pos, st), 1.0)
                         est *= why["f_next"]
+                    if pos in lead_back and lead_back[pos] != pid and team_weeks and team_weeks[-1] in pw:
+                        why["f_back"] = LEAD_BACK.get((pos, st), 1.0) if USE["leadback"] else 1.0
+                        est *= why["f_back"]
                     est *= SCALE.get(st, 1.0)
                     if st in SHRINK_TO:                 # pull extreme projections toward the league average
                         m0, k0 = SHRINK_TO[st]
@@ -419,7 +423,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 # games for a previous team (slightly worse at 35% and 15% weight).
 USE = {"recent3": False, "role": False, "redis": False, "opp": True, "vol": True,
        "airyards": True, "coverage": False, "pressure": False, "returning": False, "agg": False,
-       "routes": False, "zerofill": False, "newteam": False, "backupqb": True, "nextman": True}
+       "routes": False, "zerofill": False, "newteam": False, "backupqb": True, "nextman": True,
+       "leadback": False}
 # Round 7 (Oct 27, 2026), replay 2025 wk5-18 + 2026 wk3-7, each factor fit on one season and checked on the other
 # (log loss of the over/under at the current projection's median line, on the affected player-games):
 # Backup QB starting (the model's QB-change flag): the team's receivers fall short of their receiving-yards
@@ -436,6 +441,37 @@ NEXT_MAN = {("RB", "rush_yds"): 1.50, ("RB", "receptions"): 1.10, ("WR", "recept
 # Wind and cold (Round 7): not used. Windy games (12+ mph outdoors) did see lower passing and receiving in 2025
 # (x0.90 / x0.87), but the game total already prices the weather and the factor made 2026 worse out of sample
 # (passing yds 0.6955 -> 0.8254 on the 6 windy QB-games so far; receiving 0.6958 -> 0.7112). Retest in December.
+
+
+# Returning regular (Nov 3, 2026; Week 8 Emanuel Wilson: SEA's fill-in RB played 0 offensive snaps when Zach
+# Charbonnet came back). When a position's top-usage player over the team's last 17 games (4+ games) missed the
+# team's last game but is available this week, the teammates at his position who played without him get LEAD_BACK.
+# Tested Nov 3 (replay 2025 wk5-18 + 2026 wk3-8, 132 affected player-games): fill-ins fall short (RB rushing actual/
+# projected 0.67 / 0.85; WR receptions 0.78 / 0.85) but out of sample it was mixed (WR rec yds 0.6929 -> 0.6952 one
+# way, 0.6913 -> 0.6691 the other; receptions likewise). Off until there are more cases; the tag (why_f_back) still
+# marks them and "Why this bet" warns that the regular is back.
+LEAD_BACK: dict = {}
+
+
+def _leads_back(stats: pd.DataFrame, team: str, eligible: set, season: int) -> dict:
+    """{position: player_id} for RB/WR/TE regulars who missed the team's last game and are available this week."""
+    r = stats[(stats.team == team) & stats.position.isin(["RB", "WR", "TE"])]
+    if r.empty:
+        return {}
+    tw = r[["season", "week"]].drop_duplicates().sort_values(["season", "week"])
+    last17 = tw.tail(17)
+    r = r.merge(last17, on=["season", "week"])
+    last = tuple(tw.iloc[-1])
+    use = np.where(r.position == "RB", r.carries.fillna(0) + r.targets.fillna(0), r.targets.fillna(0))
+    u = r.assign(u=use).groupby(["position", "player_id"]).agg(u=("u", "mean"), n=("week", "size")).reset_index()
+    u = u[u.n >= 4]
+    played_last = set(r[(r.season == last[0]) & (r.week == last[1])].player_id)
+    out = {}
+    for pos, x in u.groupby("position"):
+        lead = x.sort_values("u").iloc[-1].player_id
+        if lead in eligible and lead not in played_last:
+            out[pos] = lead
+    return out
 
 
 def _leads_out(recent: pd.DataFrame, team: str, eligible: set) -> set:
