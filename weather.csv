@@ -1,12 +1,12 @@
-# checked: Tue Nov 3, 6:59 PM CT
+# checked: Wed Nov 4, 1:11 AM CT
 game_id,game,kickoff,wind_mph,temp_f,precip_mm,fetched_at
-2026_09_JAX_BAL,JAX @ BAL,"Thu Nov 5, 7:15 PM CT",3.3,66.3,0.1,"Tue Nov 3, 6:59 PM CT"
-2026_09_DEN_CAR,DEN @ CAR,"Sun Nov 8, 12:00 PM CT",3.1,63.1,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_NYJ_KC,NYJ @ KC,"Sun Nov 8, 12:00 PM CT",3.5,57.3,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_DET_MIA,DET @ MIA,"Sun Nov 8, 12:00 PM CT",7.8,84.3,1.2,"Tue Nov 3, 6:59 PM CT"
-2026_09_NYG_PHI,NYG @ PHI,"Sun Nov 8, 12:00 PM CT",14.0,58.3,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_LA_WAS,LA @ WAS,"Sun Nov 8, 12:00 PM CT",12.1,59.1,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_LV_SF,LV @ SF,"Sun Nov 8, 3:05 PM CT",7.8,70.3,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_GB_NE,GB @ NE,"Sun Nov 8, 3:25 PM CT",13.1,49.8,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_ARI_SEA,ARI @ SEA,"Sun Nov 8, 3:25 PM CT",7.9,54.2,0.0,"Tue Nov 3, 6:59 PM CT"
-2026_09_TB_CHI,TB @ CHI,"Sun Nov 8, 7:20 PM CT",7.5,50.5,0.0,"Tue Nov 3, 6:59 PM CT"
+2026_09_JAX_BAL,JAX @ BAL,"Thu Nov 5, 7:15 PM CT",6.7,68.8,0.7,"Wed Nov 4, 1:11 AM CT"
+2026_09_DEN_CAR,DEN @ CAR,"Sun Nov 8, 12:00 PM CT",3.7,63.2,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_NYJ_KC,NYJ @ KC,"Sun Nov 8, 12:00 PM CT",2.7,54.7,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_DET_MIA,DET @ MIA,"Sun Nov 8, 12:00 PM CT",2.1,87.3,0.1,"Wed Nov 4, 1:11 AM CT"
+2026_09_NYG_PHI,NYG @ PHI,"Sun Nov 8, 12:00 PM CT",13.7,59.5,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_LA_WAS,LA @ WAS,"Sun Nov 8, 12:00 PM CT",13.1,59.5,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_LV_SF,LV @ SF,"Sun Nov 8, 3:05 PM CT",7.1,72.2,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_GB_NE,GB @ NE,"Sun Nov 8, 3:25 PM CT",9.7,48.9,0.5,"Wed Nov 4, 1:11 AM CT"
+2026_09_ARI_SEA,ARI @ SEA,"Sun Nov 8, 3:25 PM CT",11.2,54.0,0.0,"Wed Nov 4, 1:11 AM CT"
+2026_09_TB_CHI,TB @ CHI,"Sun Nov 8, 7:20 PM CT",5.7,49.7,0.0,"Wed Nov 4, 1:11 AM CT"
