@@ -166,12 +166,13 @@ def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: 
     if out.exists():
         old = pd.read_csv(out, comment="#")
         old = old[old.source.astype(str).eq(SOURCE)]
-        # only games under way today: older rows are last week's lines (Nov 4, 2026 fix: they were being priced as
-        # this week's for players DraftKings hadn't posted yet)
-        from .props import _parse_asof
-        t = old.as_of.map(lambda a: _parse_asof(a, now.year))
-        t = t.where(t.isna() | (t <= pd.Timestamp(now.replace(tzinfo=None)) + pd.Timedelta(days=1)), t - pd.DateOffset(years=1))
-        old = old[t.notna() & (t >= pd.Timestamp(now.replace(tzinfo=None)) - pd.Timedelta(hours=12))]
+        # only this NFL week's rows (since the Tuesday before): older rows are last week's lines (Nov 4, 2026 fix: they
+        # were being priced as this week's for players DraftKings hadn't posted yet). Not a 12-hour window: there is
+        # no full pull on Mondays, so Sunday's partial pulls would delete the Monday game's DraftKings rows (audit).
+        from .props import _parse_asof, week_start
+        ref = pd.Timestamp(now.replace(tzinfo=None))
+        t = old.as_of.map(lambda a: _parse_asof(a, ref))
+        old = old[t.notna() & (t >= week_start([ref.normalize()]))]
         seen = set(zip(fresh.player, fresh.stat))
         keep = pd.Series([(p, s) not in seen for p, s in zip(old.player, old.stat)], index=old.index, dtype=bool)
         fresh = pd.concat([fresh, old[keep][COLS]], ignore_index=True)

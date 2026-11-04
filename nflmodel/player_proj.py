@@ -149,6 +149,24 @@ def _td_per_point(stats: pd.DataFrame, games: pd.DataFrame | None, season: int, 
         return 0.10
 
 
+def current_roster(roster: pd.DataFrame, week: int) -> pd.DataFrame:
+    """Each team's roster as of this week (Nov 4, 2026 fixes):
+    - each team's OWN latest roster week up to this one: a team on bye last week has no rows in last week's file, so
+      taking one league-wide week dropped HOU, NO, NYG and SF from Week 9 props and injury adjustments;
+    - one row per player, his latest team (a player traded or signed elsewhere is on his new team only);
+    - when a team's latest roster is from an earlier week, its "INA" (inactive for THAT game only) counts as active:
+      this week's injury report and inactives.csv decide who is out."""
+    r = roster[roster.week <= week].copy()
+    if r.empty:
+        return r
+    latest = r.groupby("team").week.transform("max")
+    r = r[r.week == latest]
+    r = r.sort_values("week").drop_duplicates("gsis_id", keep="last")
+    old = r.week < week
+    r.loc[old & (r.status == "INA"), "status"] = "ACT"
+    return r
+
+
 def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, games: pd.DataFrame | None = None) -> pd.DataFrame:
     """proj: this week's game projections (home/away team, QB names, projected points)."""
     cur = _load("stats", season, refresh)
@@ -164,10 +182,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     depth = _depth_table(season, refresh)
     active, injury = None, {}
     if roster is not None and len(roster):
-        rw = roster[roster.week == min(week, roster.week.max())]
-        # last week's game-day inactives ("INA") aren't out this week until this week's roster says so (Nov 4, 2026)
-        ok = ("ACT", "INA") if rw.week.max() < week else ("ACT",)
-        active = set(rw.loc[rw.status.isin(ok), "gsis_id"])
+        rw = current_roster(roster, week)
+        active = set(zip(rw.loc[rw.status == "ACT", "gsis_id"], rw.loc[rw.status == "ACT", "team"]))
     if inj is not None and len(inj):
         iw = inj[(inj.season == season) & (inj.week == week)]
         for r in iw.itertuples():
@@ -270,9 +286,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         on_team = list(recent[(recent.team == team)].player_id.unique())
         # players back from injury who haven't played this season yet (e.g. a starter coming off IR)
         if roster is not None and len(roster):
-            rw_t = roster[(roster.week == min(week, roster.week.max())) & (roster.team == team)
-                          & roster.status.isin(("ACT", "INA") if roster.week.max() < week else ("ACT",))
-                          & roster.position.isin(BY_POS)]
+            rw_t = rw[(rw.team == team) & (rw.status == "ACT") & rw.position.isin(BY_POS)]
             prior = stats[(stats.season == season - 1) & stats.player_id.isin(set(rw_t.gsis_id))]
             back = prior.groupby("player_id").size()
             on_team += [pid for pid in back[back >= 4].index if pid not in set(on_team)]
@@ -280,7 +294,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         eligible = []
         for pid in on_team:
             last = stats[stats.player_id == pid].sort_values(["season", "week"]).iloc[-1]
-            if last.team != team or (active is not None and pid not in active):
+            if last.team != team or (active is not None and (pid, team) not in active):
                 continue
             inj_ = injury.get(pid)
             if inj_ and inj_[0] in ("Out", "Doubtful"):
@@ -315,7 +329,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             pos, name = last.position, last.player_display_name
             if last.team != team:
                 continue                                   # traded away
-            if active is not None and pid not in active:
+            if active is not None and (pid, team) not in active:
                 continue                                   # IR, inactive, released
             st_inj = injury.get(pid)
             if st_inj and st_inj[0] in ("Out", "Doubtful"):

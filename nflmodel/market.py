@@ -24,10 +24,9 @@ MAX_AGE_H = 48     # DraftKings game lines older than this aren't used
 
 
 def _parse(stamp: str) -> datetime | None:
-    try:
-        return datetime.strptime(f"{datetime.now(CT).year} {stamp.replace(' CT', '')}", "%Y %a %b %d, %I:%M %p").replace(tzinfo=CT)
-    except Exception:
-        return None
+    from .props import _parse_asof     # year closest to now (Nov 4, 2026 audit: December stamps looked like the future in January)
+    t = _parse_asof(stamp, pd.Timestamp(datetime.now(CT).replace(tzinfo=None)))
+    return None if pd.isna(t) else t.to_pydatetime().replace(tzinfo=CT)
 
 
 def _read(path) -> pd.DataFrame | None:
@@ -128,12 +127,16 @@ def book_game_lines(path, book: str = "fanduel") -> dict:
     return {(r.game, r.market, r.side): (r.line, r.odds) for r in gl.itertuples()}
 
 
-def best_prop_prices(path) -> dict:
-    """(player, stat, side, line) -> (book, odds) with the best price at that exact line."""
+def best_prop_prices(path, games: set | None = None) -> dict:
+    """(player, stat, side, line) -> (book, odds) with the best price at that exact line, this week's games only
+    (Nov 4, 2026 audit: prop_books.csv keeps every game ever pulled, and the best price was being taken from earlier
+    weeks' games, e.g. Kimani Vidal '+450 Fanatics' from Week 8)."""
     pb = _read(path)
     out = {}
     if pb is None or pb.empty:
         return out
+    if games is not None and "game" in pb:
+        pb = pb[pb.game.isin(games)]
     pb = pb[pb.book != "pinnacle"]                           # sharp reference only: not a US book you can bet at
     for side, col in (("Over", "over_odds"), ("Under", "under_odds")):
         x = pb.dropna(subset=[col]).copy()

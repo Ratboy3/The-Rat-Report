@@ -19,9 +19,15 @@ BOT = {"bets_log.csv": ROOT / "data" / "bets_log_bot.csv", "lines_history.csv": 
 
 def _ts(s: pd.Series, season: pd.Series | None = None) -> pd.Series:
     """'Sun Nov 1, 10:04 AM CT' -> timestamp (year from the season, or the current year)."""
-    yr = season.astype("Int64").astype(str) if season is not None else str(pd.Timestamp.now().year)
-    return pd.to_datetime(yr + " " + s.astype(str).str.replace(" CT", "", regex=False),
-                          format="%Y %a %b %d, %I:%M %p", errors="coerce")
+    # year: the one closest to the middle of the season (Sep-Feb), so January stamps land in the right year
+    # (Nov 4, 2026 audit: a Dec 31 close was beating a Jan 2 one)
+    from .props import _parse_asof
+    if season is None:
+        ref = pd.Series(pd.Timestamp.now(), index=s.index)
+    else:
+        ref = pd.to_datetime(season.astype("Int64").astype(str) + "-11-15", errors="coerce")
+    return pd.Series([_parse_asof(a, r) if pd.notna(r) else pd.NaT for a, r in zip(s, ref)], index=s.index,
+                     dtype="datetime64[ns]")
 
 
 def merge_bets(frames: list[pd.DataFrame]) -> pd.DataFrame:

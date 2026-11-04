@@ -48,7 +48,8 @@ def espn_finals(days_back: int = 10, timeout: int = 20) -> dict:
             for c in comp["competitors"]:
                 ab = c["team"]["abbreviation"]
                 side[c["homeAway"]] = (ESPN_TO_NFLVERSE.get(ab, ab), int(float(c["score"])))
-            out[(side["away"][0], side["home"][0])] = (side["away"][1], side["home"][1])
+            day = str(ev.get("date", ""))[:10]          # ISO kickoff (UTC); matched to the schedule within a day
+            out[(side["away"][0], side["home"][0], day)] = (side["away"][1], side["home"][1])
         except Exception:
             continue
     return out
@@ -67,9 +68,12 @@ def fill_finals(df: pd.DataFrame, finals: dict | None = None) -> pd.DataFrame:
     df = df.copy()
     n = 0
     for i in df.index[todo]:
-        k = (df.at[i, "away_team"], df.at[i, "home_team"])
-        if k in finals:
-            a, h = finals[k]
+        # match on teams AND date (Nov 4, 2026 audit: matching on teams alone gave a Wild Card rematch the Week 18 score)
+        gd = pd.Timestamp(df.at[i, "gameday"])
+        hit = [v for (aw, hm, day), v in finals.items() if aw == df.at[i, "away_team"] and hm == df.at[i, "home_team"]
+               and day and abs((pd.Timestamp(day) - gd).days) <= 1]
+        if hit:
+            a, h = hit[0]
             df.at[i, "away_score"], df.at[i, "home_score"] = a, h
             df.at[i, "result"], df.at[i, "total"] = h - a, h + a
             n += 1

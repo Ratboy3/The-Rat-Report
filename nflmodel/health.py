@@ -39,18 +39,11 @@ STATS_DUE_H = 40         # last week's player stats and snap counts are due ~1.5
 NEWS_MAX_H = 6           # research update every 2 h, 7:50 AM-9:50 PM
 
 
-def _parse_asof(s, year: int):
-    m = re.match(r"\w+ (\w+ \d+), (.*?) CT", str(s).strip())
-    if not m:
-        return None
-    t = pd.to_datetime(f"{m.group(1)} {year} {m.group(2)}", errors="coerce")
-    if pd.isna(t):
-        return None
-    t = t.to_pydatetime().replace(tzinfo=CT)
-    now = datetime.now(CT)
-    if t > now + timedelta(days=2):          # Dec -> Jan rollover
-        t = t.replace(year=year - 1)
-    return t
+def _parse_asof(s, year=None):
+    """Timestamp string without a year -> aware datetime, year chosen closest to now (Dec -> Jan safe)."""
+    from .props import _parse_asof as p_
+    t = p_(s, pd.Timestamp(datetime.now(CT).replace(tzinfo=None)))
+    return None if pd.isna(t) else t.to_pydatetime().replace(tzinfo=CT)
 
 
 def _checked(path: str | Path):

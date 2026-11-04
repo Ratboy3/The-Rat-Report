@@ -40,14 +40,32 @@ check("article price from before this week is dropped", "Old Article" not in set
 t = P._parse_asof("Wed Dec 30, 9:00 AM CT", 2026)
 check("as_of parses", t is not None and t.month == 12 and t.day == 30)
 
-# 3. last week's game-day inactive (INA) must not count as out this week before the new roster posts
-src = Path(__file__).resolve().parent.parent / "nflmodel" / "injuries.py"
-code = src.read_text()
-check("injuries.py treats last week's INA as active", 'if rw.week.max() < week:' in code and '"ACT" if s_ == "INA"' in code)
-pp = (Path(__file__).resolve().parent.parent / "nflmodel" / "player_proj.py").read_text()
-check("player_proj.py keeps last week's INA players in projections", 'ok = ("ACT", "INA") if rw.week.max() < week' in pp)
-qb = (Path(__file__).resolve().parent.parent / "nflmodel" / "qb.py").read_text()
-check("qb.py ignores last week's INA", 'replace("INA", "ACT")' in qb)
+# 3. rosters: each team's own latest week (bye teams kept), last week's game-day INA not out, one team per player
+from nflmodel.player_proj import current_roster
+ro = pd.DataFrame([
+    dict(week=8, team="KC", gsis_id="d", full_name="Mansoor Delane", status="INA"),     # inactive for Week 8 only
+    dict(week=8, team="KC", gsis_id="s", full_name="L'Jarius Sneed", status="RES"),     # injured reserve: stays out
+    dict(week=7, team="HOU", gsis_id="h", full_name="Bye Team Player", status="ACT"),   # HOU on bye in Week 8
+    dict(week=6, team="HOU", gsis_id="w", full_name="Jared Wayne", status="ACT"),       # moved to MIA in Week 7
+    dict(week=8, team="MIA", gsis_id="w", full_name="Jared Wayne", status="ACT")])
+cr = current_roster(ro, 9)
+st = dict(zip(cr.gsis_id, cr.status)); tm = dict(zip(cr.gsis_id, cr.team))
+check("last week's game-day inactive counts as active", st.get("d") == "ACT")
+check("injured reserve still counts as out", st.get("s") == "RES")
+check("team on bye last week keeps its roster", st.get("h") == "ACT")
+check("player who changed teams is only on his new team", tm.get("w") == "MIA")
+
+# 3b. playoff rematch can't take the regular-season score
+from nflmodel.scores import fill_finals
+df = pd.DataFrame([dict(away_team="BAL", home_team="CIN", gameday="2023-01-08", result=None, home_score=None,
+                        away_score=None, total=None),
+                   dict(away_team="BAL", home_team="CIN", gameday="2023-01-15", result=None, home_score=None,
+                        away_score=None, total=None)])
+f = fill_finals(df, {("BAL", "CIN", "2023-01-08"): (16, 27)})
+check("final score goes to the right date's game only", f.result.notna().tolist() == [True, False])
+
+# 3c. year rollover
+check("'Mon Dec 28' read in January is last December", P._parse_asof("Mon Dec 28, 1:00 PM CT", pd.Timestamp("2027-01-12")).year == 2026)
 
 # 4. the integrity check catches a bet priced from a line no book lists for that game, and a held player
 props = pd.DataFrame([

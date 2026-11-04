@@ -249,10 +249,20 @@ def _td_market(player: str, book_row, market: dict) -> float | None:
     return float(np.mean(vals)) if vals else None
 
 
-def _parse_asof(asof, year: int):
+def _parse_asof(asof, ref):
+    """'Wed Nov 4, 9:11 AM CT' (no year) -> Timestamp. ref is a reference date (or a year): the year that puts the
+    date closest to ref is used, so 'Mon Dec 28' read in January is last December (Nov 4, 2026 audit)."""
     import re
-    m = re.match(r"\w+ (\w+ \d+), (.*?) CT", str(asof))
-    return pd.to_datetime(f"{m.group(1)} {year} {m.group(2)}", errors="coerce") if m else pd.NaT
+    m = re.match(r"\w+ (\w+ \d+), (.*?) CT", str(asof).strip())
+    if not m:
+        return pd.NaT
+    ref = pd.Timestamp(year=int(ref), month=7, day=1) if isinstance(ref, (int, np.integer)) else pd.Timestamp(ref)
+    best = pd.NaT
+    for y in (ref.year - 1, ref.year, ref.year + 1):
+        t = pd.to_datetime(f"{m.group(1)} {y} {m.group(2)}", errors="coerce")
+        if pd.notna(t) and (pd.isna(best) or abs(t - ref) < abs(best - ref)):
+            best = t
+    return best
 
 
 # Market-move alarm (Nov 4, 2026). How far DraftKings' price for our side has moved since it first posted this week, as
@@ -331,8 +341,7 @@ def _this_week_lines(lines: pd.DataFrame, week_proj: pd.DataFrame, books: pd.Dat
                                  index=lines.index)
     if "gameday" in week_proj and len(week_proj):
         start = week_start(week_proj.gameday)
-        t = lines.as_of.map(lambda a: _parse_asof(a, start.year))
-        t = t.where(t.isna() | (t >= start - pd.Timedelta(days=180)), t + pd.DateOffset(years=1))   # Dec -> Jan
+        t = lines.as_of.map(lambda a: _parse_asof(a, start))
         keep &= t.isna() | (t >= start)
     dropped = int((~keep).sum())
     if dropped:
@@ -377,6 +386,11 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             sharp.setdefault((_key(r.player), str(r.stat).strip()), []).append(
                 _market_mean(r.stat, float(r.line), _no_vig_over(r.over_odds, r.under_odds)))
     market = {}
+    if td_market is not None and len(td_market) and "as_of" in td_market and "gameday" in week_proj and len(week_proj):
+        # only this week's TD market prices (Nov 4, 2026 audit: a finished Monday game's prices blended into next week)
+        st_ = week_start(week_proj.gameday)
+        t_ = td_market.as_of.map(lambda a: _parse_asof(a, st_))
+        td_market = td_market[t_.notna() & (t_ >= st_)]
     if td_market is not None and len(td_market):
         market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
     from . import consensus as K

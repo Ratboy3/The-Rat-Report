@@ -147,13 +147,26 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
     pidx = {}
     if props is not None and len(props):
         pidx = {(r.player, r.stat): r for r in props.itertuples() if pd.notna(r.line)}
+    # the close comes from the book the bet was logged at (Nov 4, 2026 audit: 39 of 326 Week 8 prop closes came from
+    # the other book, e.g. Geno Smith bet at DraftKings 222.5, "closed" at FanDuel's 225.5)
+    bidx = {}
+    pbp = Path(path).resolve().parent / "prop_books.csv"
+    if pbp.exists():
+        from .props import _key
+        pb_ = pd.read_csv(pbp, comment="#")
+        pb_ = pb_[pb_.game.isin(set(gid)) & pb_.book.isin(["draftkings", "fanduel"])]
+        bidx = {(r.game, _key(r.player), r.stat, r.book): r for r in pb_.itertuples()}
     for i, row in log.iterrows():
         g = gid.get(row.game)
         if g is None or started.get(row.game):
             continue
         probs, cl, co, co2 = None, np.nan, np.nan, np.nan
         if row.market == "prop":
-            pr = pidx.get((row.player, row.stat))
+            from .props import _key
+            bk = {"DraftKings": "draftkings", "FanDuel": "fanduel"}.get(str(row.book), "draftkings")
+            pr = bidx.get((row.game, _key(row.player), row.stat, bk))
+            if pr is None and not bidx:
+                pr = pidx.get((row.player, row.stat))      # no all-books file: the priced row, as before
             if pr is not None:
                 probs = _prop_close_probs(row, pr)
                 cl, co, co2 = pr.line, pr.over_odds, pr.under_odds

@@ -233,7 +233,12 @@ def _scores_from_news(games, news_path):
     nb = pd.read_csv(news_path, comment="#").set_index("game")["note"].to_dict()
     games = games.copy()
     key = games.away_team + " @ " + games.home_team
-    for i in games.index[games.result.isna() & key.isin(nb.keys())]:
+    # only games already played in the last 6 days: a "Final:" note matched by "AWAY @ HOME" alone would give a
+    # future rematch (e.g. a Wild Card game vs the Week 18 opponent) the earlier game's score (Nov 4, 2026 audit)
+    gd = pd.to_datetime(games.gameday, errors="coerce")
+    today = pd.Timestamp.now(tz="America/Chicago").tz_localize(None).normalize()
+    recent = (gd <= today) & (gd >= today - pd.Timedelta(days=6))
+    for i in games.index[games.result.isna() & key.isin(nb.keys()) & recent]:
         f = _final_from_news(games.loc[i], nb[key[i]])
         if f is not None:
             games.loc[i, ["home_score", "away_score", "result", "total"]] = f[["home_score", "away_score", "result", "total"]].values
@@ -323,6 +328,13 @@ def cmd_report(a):
                 first = fh.readline()
             if first.startswith("# checked:"):
                 lines_checked = first.split(":", 1)[1].strip()
+            # show the newest actual sportsbook price, not the file header (the research sync re-stamps the header
+            # without new prices: Nov 4, 2026 audit)
+            from nflmodel.props import _parse_asof
+            api_t = plines[plines.source.astype(str).str.contains("Odds API")].as_of.map(
+                lambda x: _parse_asof(x, pd.Timestamp.now())).dropna()
+            if len(api_t):
+                lines_checked = api_t.max().strftime("%a %b %-d, %-I:%M %p CT")
         tdm = pd.read_csv(a.td_market, comment="#") if a.td_market and Path(a.td_market).exists() else None
         # started games keep the DraftKings props they had at kickoff (frozen), instead of going blank
         from nflmodel import market as _mk
@@ -346,7 +358,7 @@ def cmd_report(a):
     from nflmodel import market, pbp_extra
     _, tm = pbp_extra.load()
     mkt = dict(history=market.record_history(a.lines_history, proj), best_games=market.best_game_prices(a.game_lines),
-               best_props=market.best_prop_prices(a.prop_books), dk_used=getattr(a, "_dk_used", {}),
+               best_props=market.best_prop_prices(a.prop_books, {f"{g.away_team} @ {g.home_team}" for g in proj.itertuples()}), dk_used=getattr(a, "_dk_used", {}),
                tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None,
                qb=qb_info, qb_status=qb_status)
     prop_bt = pd.read_csv("prop_backtest.csv") if Path("prop_backtest.csv").exists() else None

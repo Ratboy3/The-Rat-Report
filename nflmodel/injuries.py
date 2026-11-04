@@ -65,14 +65,13 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
     inj = inj if inj is not None else pd.DataFrame()
     if snaps is None or roster is None:
         return out
-    rw = roster[roster.week == min(week, roster.week.max())]
+    from .player_proj import current_roster
+    rw = current_roster(roster, week)     # each team's latest week (bye teams included); old "INA" counts as active
     pfr_to = rw.dropna(subset=["pfr_id"]).set_index("pfr_id")
     status_by_gsis = dict(zip(rw.gsis_id, rw.status))
     # Nov 4, 2026 fix: before this week's roster posts, the latest roster is last week's, where "INA" means inactive
     # for LAST week's game only (Week 9: Mansoor Delane, A.J. Brown, Breece Hall and 175 others were counted out from
     # their Week 8 game-day status). That status says nothing about this week: the injury report and inactives.csv decide.
-    if rw.week.max() < week:
-        status_by_gsis = {g: ("ACT" if s_ == "INA" else s_) for g, s_ in status_by_gsis.items()}
     team_by_gsis = dict(zip(rw.gsis_id, rw.team))
     injw = inj[(inj.season == season) & (inj.week == week)] if len(inj) else inj
     rep = {r.gsis_id: r for r in injw.itertuples()} if len(injw) else {}
@@ -138,7 +137,10 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
                 pts = val * p_miss * played_frac
                 out[team][side] += pts
                 out[team]["players"].append((name, grp, -pts, note))
-            elif p_miss == 0 and status_by_gsis.get(gsis) == "ACT" and played_frac < 1 and len(played) >= 2:
+            elif (p_miss == 0 and status_by_gsis.get(gsis) == "ACT" and played_frac < 1 and len(played) >= 2
+                  and not (ps.week == team_weeks[-1]).any()):
+                # (active last game, even if only on special teams, means he didn't miss it: no "returning" credit;
+                # Nov 4, 2026 audit: Benjamin Morrison TB, Avieon Terrell ATL)
                 # a regular back after missing some of the recent games
                 missed = 1 - played_frac
                 pts = val * missed * RETURN_FACTOR
