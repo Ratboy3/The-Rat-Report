@@ -334,6 +334,11 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
+            # Bets need a live sportsbook price from The Odds API; prices copied from articles stay leans (Nov 3,
+            # 2026). Weeks 7-8 logged props: Odds API-priced bets CLV +2.1% (149), article-priced -10.4% (7), and
+            # leans +1.1% (373) vs -9.8% (9); article prices beat the close 14-22% of the time vs 33-39%.
+            if "Odds API" not in str(b.source):
+                row.update(flag=False)
             # line shopping: a FanDuel bet at a different line than DraftKings' must also be worth something at
             # DraftKings' own line and price (same side), or it stays a lean (LINE_SHOP_MIN_DK_EV, Nov 3, 2026)
             if bname == "FanDuel" and dk and p.stat != "anytime_td":

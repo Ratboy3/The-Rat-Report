@@ -18,7 +18,7 @@ import pandas as pd
 
 from nflmodel import config as C
 from nflmodel import epa as epa_mod
-from nflmodel.betting import fair_american, game_options, grade, shop
+from nflmodel.betting import fair_american, game_options, grade, pinnacle_check, shop
 from nflmodel.data import apply_overrides, load_games
 from nflmodel.model import fit_season_model, key_number_multipliers
 from nflmodel.props import price_props
@@ -90,7 +90,7 @@ def cmd_picks(a):
           f"  |  margin SD {sm.sd_margin:.1f}, total SD {sm.sd_total:.1f}\n")
     board, bets = [], []
     for _, g in proj.iterrows():
-        opts = shop(g, game_options(g, sm), sm, _fd_lines(a))
+        opts = pinnacle_check(g, shop(g, game_options(g, sm), sm, _fd_lines(a)), _dk_pin(a)[0], _dk_pin(a)[1])
         ph = sm.ml_probs(g.proj_margin)["home"]
         board.append(dict(
             game=f"{g.away_team} @ {g.home_team}", kickoff=f"{g.gameday} {g.gametime}",
@@ -255,6 +255,18 @@ def cmd_weekly_review(a):
     print(Path(f"review_{s}_wk{w}.md").read_text())
 
 
+_DKPIN = {}
+
+
+def _dk_pin(a) -> tuple[dict, dict]:
+    """DraftKings' and Pinnacle's game lines from the all-books pull (cached per run)."""
+    from nflmodel import market
+    path = getattr(a, "game_lines", None) or "game_lines.csv"
+    if path not in _DKPIN:
+        _DKPIN[path] = (market.book_game_lines(path, "draftkings"), market.book_game_lines(path, "pinnacle"))
+    return _DKPIN[path]
+
+
 def _fd_lines(a) -> dict:
     """FanDuel's game lines (second book Alex bets at), from the all-books pull."""
     from nflmodel import market
@@ -281,7 +293,7 @@ def cmd_report(a):
         raise SystemExit(f"No games found for {season} week {week}")
     games_out = []
     for _, g in proj.sort_values(["date", "gametime"]).iterrows():
-        opts = shop(g, game_options(g, sm), sm, _fd_lines(a))
+        opts = pinnacle_check(g, shop(g, game_options(g, sm), sm, _fd_lines(a)), _dk_pin(a)[0], _dk_pin(a)[1])
         ph = sm.ml_probs(g.proj_margin)["home"]
         games_out.append(dict(g=g, opts=opts, home_win=ph[0] + ph[1] / 2))
     cutoff = games[(games.season == season) & (games.week == week)].date.min()

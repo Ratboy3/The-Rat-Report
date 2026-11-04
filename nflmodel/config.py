@@ -29,6 +29,10 @@ MIN_EV = 0.03                  # flag bets with at least +3% expected value
 # 2012-19 (-6%, 21) and 2020-26 (-43%, 18). Spreads/totals mixed, no cap. Live Weeks 7-8: 8%+ edges -45% ROI (28).
 MAX_BET_EDGE = 0.15
 MAX_EDGE_MARKETS = {"moneyline", "prop"}
+# Game totals: leans only (Nov 3, 2026). Walk-forward 2012-26 at closing lines, total bets at 3%+ edge lost in
+# 11 of 15 seasons: 2012-16 -1.3% (775), 2017-21 -5.2% (533), 2022-26 -7.1% (215). A higher bar didn't fix it
+# (8%+: 2012-16 +2.4%, 2017-21 -5.7%, 2022-26 -56% on 31). Shown and tracked as leans; revisit if the total model changes.
+LEAN_ONLY_MARKETS = {"total"}
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0

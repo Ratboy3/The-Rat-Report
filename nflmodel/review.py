@@ -211,6 +211,7 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
                                    losses=int((g.result == "loss").sum()), units=round(float(g.pnl.astype(float).sum()), 2),
                                    clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
         _sizing(pd.read_csv(bets_log), season, week, out)
+        _recrush(pd.read_csv(bets_log), season, week, out)
     try:
         sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
         if sp:
@@ -255,6 +256,28 @@ def _sizing(log: pd.DataFrame, season: int, week: int, out: dict) -> None:
                             "retest sizing up with the edge")
 
 
+def _recrush(log: pd.DataFrame, season: int, week: int, out: dict) -> None:
+    """Receiving/rushing-yards prop bets since the 40% model weight (Nov 3, 2026): record, units and CLV by edge band.
+    Decision rule: by Week 10, if these bets' average CLV is below zero on 60+ bets, cap them at a 5% edge or go back
+    to 25% (props.PROP_MODEL_WEIGHT_BY_STAT); if 5%+ edges trail 3-5% edges, cap at 5%."""
+    l = log[(log.season == season) & (log.week >= 9) & (log.week <= week) & (log.market == "prop")
+            & log.stat.isin(["rec_yds", "rush_yds"]) & (log.tier.fillna("bet") == "bet")].copy()
+    if l.empty:
+        return
+    l["band"] = pd.cut(l.ev, [0, 0.05, 0.08, 10], labels=["3-5%", "5-8%", "8%+"])
+    g = l[l.result.isin(["win", "loss", "push"])]
+    out["recrush"] = []
+    for b, x in l.groupby("band", observed=True):
+        gx = g[g.band == b]
+        out["recrush"].append(dict(band=str(b), bets=len(x), graded=len(gx), wins=int((gx.result == "win").sum()),
+                                   units=round(float(gx.pnl.astype(float).sum()), 2),
+                                   clv=round(float(x.clv.mean()) * 100, 2) if x.clv.notna().any() else np.nan))
+    c = l.clv.dropna()
+    if len(c) >= 60 and c.mean() < 0:
+        out["flags"].append(f"rec/rush yds bets (40% model weight): average CLV {c.mean():+.2%} on {len(c)} bets: "
+                            "cap at 5% edge or return to 25% weight")
+
+
 def _write(out: dict, out_dir: str) -> None:
     now = datetime.now(CT).strftime("%a %b %-d, %-I:%M %p CT")
     md = [f"# Weekly review: {out['season']} week {out['week']} (run {now})", "", "## Props vs DraftKings lines"]
@@ -266,6 +289,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
+    if out.get("recrush"):
+        md += ["", "## Receiving/rushing yards bets since Week 9 (40% model weight)", pd.DataFrame(out["recrush"]).to_markdown(index=False)]
     if out.get("sizing"):
         md += ["", "## Bet size: flat 1u vs suggested size", pd.DataFrame(out["sizing"]).to_markdown(index=False)]
     if out.get("sharp"):
@@ -283,6 +308,8 @@ def _write(out: dict, out_dir: str) -> None:
         rows.append(dict(season=out["season"], week=out["week"], check="sharp", **out["sharp"]))
     if out.get("sharp_props"):
         rows.append(dict(season=out["season"], week=out["week"], check="sharp_props", **out["sharp_props"]))
+    for r in out.get("recrush", []):
+        rows.append(dict(season=out["season"], week=out["week"], check="recrush", **r))
     for r in out.get("sizing", []):
         rows.append(dict(season=out["season"], week=out["week"], check="sizing", **r))
     f = Path(out_dir, "reviews.csv")

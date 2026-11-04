@@ -1331,6 +1331,15 @@ SIZE_NOTE = (f'<p class="note size-note"><b>Size</b> is a suggestion in units (u
              f'(many bettors use 1% to 2%). Bigger edges haven\'t won more often in our testing, so the size doesn\'t grow with the edge.</p>')
 
 
+def _pin_note(o) -> list:
+    v = o.get("pinnacle")
+    if v == "agrees":
+        return [("Sharp book", "Pinnacle, the sharpest book, leans the same way as this bet.")]
+    if v == "same":
+        return [("Sharp book", "Pinnacle has the same line as DraftKings.")]
+    return []
+
+
 def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     """Every bet that clears the bar right now, one list: pick, book, price, edge, kickoff and how old the price is.
     Below it, bets logged earlier whose price has since moved so they no longer clear the bar."""
@@ -1343,7 +1352,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: W.game_why(g, o, sm, wctx) if sm is not None else [])))
+                                 mk=_mkt_key(o["market"]), extra="", why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _pin_note(o))))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
@@ -1375,7 +1384,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
                 f'<th class="n hide-sm">Win %</th><th class="n">Edge</th>{'<th class="n hide-sm">Size</th>' if SHOW_SIZE else ''}</tr></thead><tbody>{_rows_html(rows)}</tbody></table></div>'
                 f'<p class="empty gnone" hidden>No {title.lower()} match these filters.</p></div>')
     if rows:
-        table = (_group("game", "Game bets", game_rows, "No spread, total or moneyline clears the bar right now.")
+        table = (_group("game", "Game bets", game_rows, "No spread or moneyline clears the bar right now (totals are leans only).")
                  + _group("prop", "Player props", prop_rows, "No player prop clears the bar right now."))
     else:
         table = f'<p class="empty">No bet clears the {C.MIN_EV:.0%} bar right now. Leans are on the Leans tab.</p>'

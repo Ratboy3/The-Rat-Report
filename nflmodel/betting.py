@@ -32,6 +32,8 @@ def is_bet(market: str, e: float) -> bool:
     """Clears the bet bar: at least MIN_EV, and for props/moneylines no more than MAX_BET_EDGE (Nov 3, 2026)."""
     if e is None or e != e or e < C.MIN_EV:
         return False
+    if market in getattr(C, "LEAN_ONLY_MARKETS", ()):
+        return False
     return not (market in C.MAX_EDGE_MARKETS and e > C.MAX_BET_EDGE)
 
 
@@ -137,4 +139,35 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
         if e > o["ev"] + 1e-9:
             o.update(probs=probs, odds=float(odds), win_prob=probs[0], ev=e, stake=kelly_stake(probs, float(odds)),
                      pick=f"{pick} ({name})", book=name, line=sl, bet=is_bet(m, e))
+    return opts
+
+
+def pinnacle_check(g: pd.Series, opts: list[dict], dk: dict, pin: dict) -> list[dict]:
+    """Spread and moneyline bets need Pinnacle (the sharpest book) not to lean the other way (Nov 3, 2026).
+    Pinnacle disagrees on a spread when it gives our side more points than DraftKings; on a moneyline when its
+    no-vig chance for our side is lower than DraftKings'. Such bets become leans. Same line = no opinion.
+    Tested on 2025-26 closing lines (walk-forward model, DraftKings prices): moneyline bets Pinnacle agreed with
+    +5.6% (30) / +76% (14) vs disagreed -50% (11) / +0.6% (8); spread bets Pinnacle disagreed with -34% (15) /
+    -43% (7). Props showed no such pattern (disagreed did slightly better), so props are not filtered."""
+    key = f"{g.away_team} @ {g.home_team}"
+
+    def nv(a, b):
+        ia, ib = 1 / decimal(a), 1 / decimal(b)
+        return ia / (ia + ib)
+    for o in opts:
+        m, s = o["market"], o["side"]
+        verdict = None
+        if m == "spread":
+            d, p = dk.get((key, "spread", s)), pin.get((key, "spread", s))
+            if d and p and pd.notna(d[0]) and pd.notna(p[0]):
+                verdict = "agrees" if float(p[0]) < float(d[0]) else ("disagrees" if float(p[0]) > float(d[0]) else "same")
+        elif m == "moneyline":
+            other = "away" if s == "home" else "home"
+            dh, do, ph, po = dk.get((key, m, s)), dk.get((key, m, other)), pin.get((key, m, s)), pin.get((key, m, other))
+            if dh and do and ph and po:
+                verdict = "agrees" if nv(ph[1], po[1]) > nv(dh[1], do[1]) else "disagrees"
+        if verdict:
+            o["pinnacle"] = verdict
+            if verdict == "disagrees":
+                o["bet"] = False
     return opts
