@@ -97,12 +97,22 @@ def sources(season: int, week: int, proj: pd.DataFrame, prop_books: str = "prop_
     add("Prop prices (DraftKings, FanDuel)", _checked(prop_books), PROP_MAX_H, "props",
         ("behind for " + "; ".join(late)) if late else "every upcoming game current", ok=not late)
 
-    # game lines
+    # game lines: the file must be fresh AND every upcoming game must be in it at DraftKings (a game missing from the
+    # pull has no current line at any book: Nov 4, 2026 audit)
     t = _checked(game_lines)
     lim = LINES_MAX_H if 6 <= now.hour <= 23 else LINES_NIGHT_MAX_H
-    if not add("Game lines (all books)", t, lim, "game bets"):
-        for g in games:
+    gl = pd.read_csv(game_lines, comment="#") if Path(game_lines).exists() else pd.DataFrame()
+    have_dk = set(gl[gl.book == "draftkings"].game) if len(gl) else set()
+    no_line = [key(g) for g in games if key(g) not in have_dk]
+    fresh = _age(t, now) is not None and _age(t, now) <= lim
+    add("Game lines (all books)", t, lim, "game bets",
+        ("no DraftKings line in the latest pull for " + ", ".join(no_line)) if no_line else "every upcoming game listed",
+        ok=fresh and not no_line)
+    for g in games:
+        if not fresh:
             stale.setdefault(key(g), {}).setdefault("game", []).append(f"game lines last pulled {_fmt(t)}")
+        elif key(g) in no_line:
+            stale.setdefault(key(g), {}).setdefault("game", []).append("no DraftKings game line in the latest pull")
 
     # nflverse: injury reports this week, last week's stats and snaps
     from .player_proj import _load

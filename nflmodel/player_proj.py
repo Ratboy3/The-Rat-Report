@@ -233,7 +233,10 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     rz, tm = pbp_extra.load()
     tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
     role = _snap_roles(season, week, roster)
-    st_only = _st_only(season, week, refresh)
+    # the team's last game as the stats see it: snap-based checks use that same game, so stats and snap counts posting
+    # at different times can't mix two different games (Nov 4, 2026 audit)
+    team_last = stats[stats.season == season].groupby("team").week.max().to_dict()
+    st_only = _st_only(season, week, refresh, team_last)
     holds = {}
     hp = ROOT / "role_holds.csv"
     if hp.exists():
@@ -243,7 +246,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             holds = {(r.player, r.team): str(r.reason) for r in h_.itertuples()}
         except Exception as e:
             print(f"  role_holds.csv skipped ({e})")
-    snap_drop = _snap_drop(season, week, refresh)
+    snap_drop = _snap_drop(season, week, refresh, team_last)
     opp_f = _opponent_factors(stats, season, week)
     opp_tab = _opponent_table(stats, season, week)    # raw allowed per game + rank, for "Why this bet"
     man, splits, lg_man = ({}, {}, 0.3)
@@ -498,7 +501,7 @@ LEAD_BACK: dict = {}
 # with 0 offensive snaps and some special-teams snaps went 7 for 7 under their projection in 2025-26, at 3-45% of it
 # (all other players 102-105%). Too few to fit a multiplier, so their props are leans only (props.py) and "Why this
 # bet" says so.
-def _st_only(season: int, week: int, refresh: bool) -> set:
+def _st_only(season: int, week: int, refresh: bool, team_last: dict | None = None) -> set:
     """(player, team) pairs active in the team's last game with 0 offensive snaps and some special-teams snaps."""
     try:
         from . import injuries
@@ -508,8 +511,8 @@ def _st_only(season: int, week: int, refresh: bool) -> set:
     if sn is None or not len(sn):
         return set()
     sn = sn[(sn.game_type == "REG") & (sn.week < week)]
-    last = sn.groupby("team").week.max()
-    sn = sn[sn.week == sn.team.map(last)]
+    last = pd.Series(team_last) if team_last else sn.groupby("team").week.max()
+    sn = sn[sn.week == sn.team.map(last)]          # a team whose snaps for that game aren't posted gets no flags
     hit = sn[(sn.offense_snaps.fillna(0) == 0) & (sn.st_snaps.fillna(0) > 0)]
     return set(zip(hit.player, hit.team))
 
@@ -523,7 +526,7 @@ def _st_only(season: int, week: int, refresh: bool) -> set:
 SNAP_DROP = 0.5
 
 
-def _snap_drop(season: int, week: int, refresh: bool) -> dict:
+def _snap_drop(season: int, week: int, refresh: bool, team_last: dict | None = None) -> dict:
     """(player, team) -> last game's offensive snap share / usual share, for players below SNAP_DROP."""
     try:
         from . import injuries
@@ -537,7 +540,9 @@ def _snap_drop(season: int, week: int, refresh: bool) -> dict:
     sn["pct"] = sn.offense_pct.fillna(0)
     out = {}
     for (name, team), g in sn.groupby(["player", "team"]):
-        lw = last_wk.get(team)
+        lw = team_last.get(team) if team_last else last_wk.get(team)
+        if team_last and lw != last_wk.get(team):
+            continue                                   # snap counts for the stats' last game not posted yet
         cur = g[g.week == lw]
         if cur.empty:
             continue                                   # not active last game: handled by injuries/inactives

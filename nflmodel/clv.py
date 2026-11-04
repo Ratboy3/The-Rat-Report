@@ -237,6 +237,9 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                 teams = set(str(row.game).split(" @ "))
                 if len(sw) == 0 or not teams <= set(sw.team):
                     continue                                   # snap counts not posted yet
+                if len(stats) == 0 or not teams <= set(stats[stats.week == row.week].team):
+                    continue                                   # this game's stats not posted yet: don't grade from snaps
+                                                               # alone (Nov 4, 2026 audit)
                 me = sw[sw.player == row.player]
                 if me.empty or float(me[["offense_snaps", "defense_snaps", "st_snaps"]].fillna(0).sum(axis=1).max()) == 0:
                     log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0

@@ -95,5 +95,16 @@ props2 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Kenneth Walker
 v2 = H.integrity(2026, 9, [dict(g=G(), opts=[])], props2, {}, prop_books=str(tmp), bets_log="/nonexistent")
 check("FanDuel-only prop is held", not bool(props2.loc[0, "flag"]))
 
+# 6. a game the books took down (or that came back empty) loses its old prices; games not asked for keep theirs
+src = (Path(__file__).resolve().parent.parent / "nflmodel" / "odds_api.py").read_text()
+check("prop pull drops old prices for every game it asked for", "fetched = {_game(e) for e in events}" in src)
+check("game-line pull keeps old lines only for games that have started", "old = old[ko.notna() & (ko <= ref)" in src)
+
+# 7. snap-based checks use the stats' last game; grading from snaps alone needs that game's stats posted
+pp = (Path(__file__).resolve().parent.parent / "nflmodel" / "player_proj.py").read_text()
+check("snap checks follow the stats' last game", "team_last = stats[stats.season == season]" in pp)
+cl = (Path(__file__).resolve().parent.parent / "nflmodel" / "clv.py").read_text()
+check("no grading from snap counts before the game's stats post", "don't grade from snaps" in cl)
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)

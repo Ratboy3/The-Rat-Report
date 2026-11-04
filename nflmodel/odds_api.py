@@ -179,7 +179,9 @@ def fetch(path: str = "prop_lines.csv", hours: float | None = None, books_path: 
     bout = Path(books_path)
     if bout.exists():
         oldb = pd.read_csv(bout, comment="#")
-        fetched = set(books.game)
+        # every game this pull asked for, even if it came back empty: a game the books took down must not keep its old
+        # prices (Nov 4, 2026 audit); games not asked for (e.g. outside the near-kickoff window) keep theirs
+        fetched = {_game(e) for e in events}
         books = pd.concat([books, oldb[~oldb.game.isin(fetched)]], ignore_index=True)
 
     fresh = fresh.dropna(subset=["over_odds", "under_odds"], how="all").sort_values(["stat", "player"])
@@ -227,9 +229,16 @@ def fetch_games(path: str = "game_lines.csv") -> None:
     df = pd.DataFrame(rows, columns=GAME_COLS)
     _archive("game_lines_history.csv", df, now)
     out = Path(path)
-    if out.exists():   # keep the last pre-game lines for games that have started
+    if out.exists():   # keep the last pre-game lines for games that have started (their closing lines) only
         old = pd.read_csv(out, comment="#")
-        df = pd.concat([df, old[~old.game.isin(set(df.game))]], ignore_index=True)
+        old = old[~old.game.isin(set(df.game))]
+        # an upcoming game missing from this pull must not keep old lines at any book (Nov 4, 2026 audit: FanDuel and
+        # Pinnacle game lines had no age check)
+        from .props import _parse_asof
+        ref = pd.Timestamp(now.replace(tzinfo=None))
+        ko = old.kickoff.map(lambda k: _parse_asof(k, ref))
+        old = old[ko.notna() & (ko <= ref) & (ko >= ref - pd.Timedelta(days=7))]   # last week only: a rematch never reads it
+        df = pd.concat([df, old], ignore_index=True)
     _write(out, df, now)
     print(f"Wrote {len(df)} game lines from {df.book.nunique()} books"
           + (f"  (Odds API credits left: {r.headers.get('x-requests-remaining')})" if r.headers.get("x-requests-remaining") else ""))
