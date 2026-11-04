@@ -28,6 +28,13 @@ def ev(probs: tuple[float, float, float], american: float) -> float:
     return w * (decimal(american) - 1) - l
 
 
+def is_bet(market: str, e: float) -> bool:
+    """Clears the bet bar: at least MIN_EV, and for props/moneylines no more than MAX_BET_EDGE (Nov 3, 2026)."""
+    if e is None or e != e or e < C.MIN_EV:
+        return False
+    return not (market in C.MAX_EDGE_MARKETS and e > C.MAX_BET_EDGE)
+
+
 def kelly_stake(probs, american, bankroll=C.BANKROLL) -> float:
     w, _, l = probs
     b = decimal(american) - 1
@@ -79,6 +86,7 @@ def game_options(g: pd.Series, sm) -> list[dict]:
         o["win_prob"] = o["probs"][0]
         o["ev"] = ev(o["probs"], o["odds"])
         o["stake"] = kelly_stake(o["probs"], o["odds"])
+        o["bet"] = is_bet(o["market"], o["ev"])
     return opts
 
 
@@ -128,5 +136,5 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
         e = ev(probs, float(odds))
         if e > o["ev"] + 1e-9:
             o.update(probs=probs, odds=float(odds), win_prob=probs[0], ev=e, stake=kelly_stake(probs, float(odds)),
-                     pick=f"{pick} ({name})", book=name, line=sl)
+                     pick=f"{pick} ({name})", book=name, line=sl, bet=is_bet(m, e))
     return opts

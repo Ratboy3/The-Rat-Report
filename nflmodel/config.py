@@ -22,6 +22,13 @@ KEY_NUMBER_SMOOTHING = 2.5     # kernel width used to find key numbers (3, 7, 10
 # --- betting ---
 DEFAULT_ODDS = -110
 MIN_EV = 0.03                  # flag bets with at least +3% expected value
+# Edges above this are leans, not bets, for player props and moneylines (Nov 3, 2026): a huge edge usually means
+# the model is missing news (a role change, a returning teammate), not that the market is that wrong. Real closing
+# lines (DraftKings + FanDuel, current model): prop bets 2025 -7.2% ROI (155) / 2026 +38.2% (139) -> capped
+# +1.3% (142) / +38.8% (133); 2025 TD bets over 15% went 0-13. Moneylines walk-forward: over 15% lost in both
+# 2012-19 (-6%, 21) and 2020-26 (-43%, 18). Spreads/totals mixed, no cap. Live Weeks 7-8: 8%+ edges -45% ROI (28).
+MAX_BET_EDGE = 0.15
+MAX_EDGE_MARKETS = {"moneyline", "prop"}
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0

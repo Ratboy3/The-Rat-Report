@@ -63,7 +63,7 @@ def _bets_section(games) -> str:
     for item in games:
         g = item["g"]
         for o in item["opts"]:
-            if o["ev"] >= C.MIN_EV:
+            if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append((o["ev"], g, o))
     rows.sort(key=lambda r: -r[0])
     if not rows:
@@ -137,7 +137,7 @@ def _leans_section(live, props, log) -> str:
     for it in live:
         g = it["g"]
         for o in it["opts"]:
-            if 0 < o["ev"] < C.MIN_EV:
+            if o["ev"] > 0 and not o.get("bet", o["ev"] >= C.MIN_EV):
                 grows.append((o["ev"], g, o))
     grows.sort(key=lambda r: -r[0])
     games_html = ('<p class="empty">No game leans right now.</p>' if not grows else
@@ -187,7 +187,7 @@ def _leans_section(live, props, log) -> str:
     <tbody>{rows}</tbody></table></div></details>"""
 
     return f"""<section id="leans"><h2>Leans</h2>
-    <p class="lede">Positive edges below the {C.MIN_EV:.0%} betting bar. <b>These are not bets.</b> They're tracked to test whether the bar is set right:
+    <p class="lede">Positive edges below the {C.MIN_EV:.0%} betting bar, plus prop and moneyline edges over {C.MAX_BET_EDGE:.0%} (an edge that big usually means news the model hasn't caught). <b>These are not bets.</b> They're tracked to test whether the bar is set right:
     if leans keep beating the closing line, some of them should be bets; if they don't, the bar is doing its job.
     Their record is kept separate from the bet record.</p>
     {strip}
@@ -256,7 +256,7 @@ def _is_final(g) -> bool:
 
 def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) -> str:
     g, opts, hw = item["g"], item["opts"], item["home_win"]
-    flagged = [o for o in opts if o["ev"] >= C.MIN_EV]
+    flagged = [o for o in opts if o.get("bet", o["ev"] >= C.MIN_EV)]
     best = {}
     for o in opts:
         if o["market"] not in best or o["ev"] > best[o["market"]]["ev"]:
@@ -316,8 +316,8 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
         o = best.get(market)
         if not o:
             return ""
-        cls = "lean bet" if o["ev"] >= C.MIN_EV else ("lean" if o["ev"] > 0 else "lean pass")
-        word = "Bet" if o["ev"] >= C.MIN_EV else ("Lean" if o["ev"] > 0 else "No edge ·")
+        cls = "lean bet" if o.get("bet", o["ev"] >= C.MIN_EV) else ("lean" if o["ev"] > 0 else "lean pass")
+        word = "Bet" if o.get("bet", o["ev"] >= C.MIN_EV) else ("Lean" if o["ev"] > 0 else "No edge ·")
         bp = best_px.get((game_key, market, o["side"]))
         alt = ""
         if bp:
@@ -344,7 +344,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
     top_o = max(opts, key=lambda o: o["ev"]) if opts else None
     pick_html = ""
     if top_o is not None and top_o["ev"] > 0 and not done:
-        isbet = top_o["ev"] >= C.MIN_EV
+        isbet = top_o.get("bet", top_o["ev"] >= C.MIN_EV)
         pick_html = (f'<span class="sum-pick{" bet" if isbet else ""}">{"Bet" if isbet else "Lean"} {escape(top_o["pick"])} '
                      f'<span class="n">{_signed_pct(top_o["ev"])}</span></span>')
     sum_html = (f'<div class="card-sum n"><span>{_spread(g.home_team, -g.spread_line)}</span><span>O/U {g.total_line:.1f}</span>'
@@ -1132,7 +1132,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     started_keys = {f"{it['g'].away_team} @ {it['g'].home_team}" for it in games if _started(it["g"]) or _is_final(it["g"])}
     open_props = (auto_props[~auto_props.game.isin(started_keys)] if auto_props is not None and not auto_props.empty
                   else auto_props)
-    n_bets = sum(1 for it in upcoming for o in it["opts"] if o["ev"] >= C.MIN_EV)
+    n_bets = sum(1 for it in upcoming for o in it["opts"] if o.get("bet", o["ev"] >= C.MIN_EV))
     n_props = int(open_props.flag.sum()) if open_props is not None and not open_props.empty else 0
     news_by_game = {}
     if news is not None and not news.empty:
@@ -1340,7 +1340,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
         key = f"{g.away_team} @ {g.home_team}"
         asof = dk_used.get(key, "")
         for o in it["opts"]:
-            if o["ev"] >= C.MIN_EV:
+            if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
                                  mk=_mkt_key(o["market"]), extra="", why=_why(lambda: W.game_why(g, o, sm, wctx) if sm is not None else [])))
@@ -1410,7 +1410,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
                        else "model updated (same price)")
             else:
                 c = cur_game.get((r.game_id, r.market, r.side))
-                if c is None or c["ev"] >= C.MIN_EV:
+                if c is None or c.get("bet", c["ev"] >= C.MIN_EV):
                     continue
                 now_price, now_ev = c["odds"], c["ev"]
                 why = "price moved" if pd.isna(r.odds) or abs(float(now_price) - float(r.odds)) > 0.5 else "model updated (same price)"

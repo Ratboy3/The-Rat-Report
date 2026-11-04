@@ -321,7 +321,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             row.update(line=line, over_odds=oo if oo is not None else np.nan, under_odds=uo if uo is not None else np.nan,
                        source=str(b.source), as_of=str(b.as_of), p_over=round(over[0], 3), best_side=best,
                        ev=round(e_best, 4), stake=round(kelly_stake(probs, odds), 2),
-                       flag=e_best >= C.MIN_EV and p.stat not in LEAN_ONLY_STATS, book=bname)
+                       flag=e_best >= C.MIN_EV and e_best <= C.MAX_BET_EDGE and p.stat not in LEAN_ONLY_STATS, book=bname)
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it

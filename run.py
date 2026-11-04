@@ -103,7 +103,7 @@ def cmd_picks(a):
             home_win=round(ph[0] + ph[1] / 2, 3), fair_home_ml=round(fair_american(ph[0] + ph[1] / 2)),
         ))
         for o in opts:
-            if o["ev"] >= C.MIN_EV:
+            if o.get("bet", o["ev"] >= C.MIN_EV):
                 bets.append(dict(game=f"{g.away_team} @ {g.home_team}", market=o["market"], pick=o["pick"],
                                  odds=int(o["odds"]), win_prob=round(o["win_prob"], 3),
                                  ev=round(o["ev"], 4), stake=round(o["stake"], 2)))
