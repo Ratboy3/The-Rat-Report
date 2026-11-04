@@ -215,6 +215,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     rz, tm = pbp_extra.load()
     tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
     role = _snap_roles(season, week, roster)
+    st_only = _st_only(season, week, refresh)
     opp_f = _opponent_factors(stats, season, week)
     opp_tab = _opponent_table(stats, season, week)    # raw allowed per game + rank, for "Why this bet"
     man, splits, lg_man = ({}, {}, 0.3)
@@ -320,6 +321,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
             # back after missing the team's last game (but a regular before that)
             pw = set(rows[rows.season == season].week)
             returning = bool(team_weeks) and team_weeks[-1] not in pw and len(pw & set(team_weeks[-5:-1])) >= 2
+            benched = (name, team) in st_only      # active last game but special teams only (ST_ONLY_LEAN)
+            if benched:
+                returning = False                  # he didn't miss the game: he was healthy and not used on offense
             for st in BY_POS[pos]:
                 mean, wsum = _weighted(rows, st, season)
                 why = {}                                   # factors behind the projection, for "Why this bet"
@@ -385,6 +389,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     why.update(_why_td_detail(rows, pid, season, rz))
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
                                 projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning,
+                                **({"why_st_only": 1.0} if benched else {}),
                                 **{f"why_{k}": (v if isinstance(v, str) else round(float(v), 4)) for k, v in why.items()}))
     if not out:
         return pd.DataFrame()
@@ -457,6 +462,28 @@ NEXT_MAN = {("RB", "rush_yds"): 1.50, ("RB", "receptions"): 1.10, ("WR", "recept
 # way, 0.6913 -> 0.6691 the other; receptions likewise). Off until there are more cases; the tag (why_f_back) still
 # marks them and "Why this bet" warns that the regular is back.
 LEAD_BACK: dict = {}
+
+# Special-teams-only last game (Nov 4, 2026; Week 8 Emanuel Wilson: SEA's RB1 for most of October played 7 snaps, all
+# special teams, once Zach Charbonnet and Jadarian Price returned). nflverse has no stat line for such a game, so the
+# projection saw a "missed game" and tagged him as a returning regular. Players who were active in the team's last game
+# with 0 offensive snaps and some special-teams snaps went 7 for 7 under their projection in 2025-26, at 3-45% of it
+# (all other players 102-105%). Too few to fit a multiplier, so their props are leans only (props.py) and "Why this
+# bet" says so.
+def _st_only(season: int, week: int, refresh: bool) -> set:
+    """(player, team) pairs active in the team's last game with 0 offensive snaps and some special-teams snaps."""
+    try:
+        from . import injuries
+        sn = injuries._load_snaps(season, refresh)
+    except Exception:
+        return set()
+    if sn is None or not len(sn):
+        return set()
+    sn = sn[(sn.game_type == "REG") & (sn.week < week)]
+    last = sn.groupby("team").week.max()
+    sn = sn[sn.week == sn.team.map(last)]
+    hit = sn[(sn.offense_snaps.fillna(0) == 0) & (sn.st_snaps.fillna(0) > 0)]
+    return set(zip(hit.player, hit.team))
+
 
 # Depth-chart demotions (Nov 3, 2026). ESPN depth charts via nflverse (daily snapshots). A player whose best rank at
 # his position the day before the game is worse than his median rank 8-35 days earlier falls well short of his

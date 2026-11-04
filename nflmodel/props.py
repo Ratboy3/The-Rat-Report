@@ -354,6 +354,10 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             # leans +1.1% (373) vs -9.8% (9); article prices beat the close 14-22% of the time vs 33-39%.
             if "Odds API" not in str(b.source):
                 row.update(flag=False)
+            # played only special teams in his team's last game (player_proj._st_only, Nov 4, 2026): 7 for 7 under
+            # projection in 2025-26, so never a bet that week
+            if row.get("why_st_only") == 1.0:
+                row.update(flag=False)
             # line shopping: a FanDuel bet at a different line than DraftKings' must also be worth something at
             # DraftKings' own line and price (same side), or it stays a lean (LINE_SHOP_MIN_DK_EV, Nov 3, 2026)
             if bname == "FanDuel" and dk and p.stat != "anytime_td":

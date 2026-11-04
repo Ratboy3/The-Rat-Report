@@ -354,6 +354,9 @@ def prop_why(r) -> list[tuple[str, str]]:
     fd_ = g("why_f_depth")
     if pd.notna(fd_) and abs(fd_ - 1) >= 0.01:
         game.append(f"moved down the depth chart in the last week {fd_ - 1:+.0%}")
+    if g("why_st_only") == 1.0:
+        game.append("played only special teams in his team's last game (no offensive snaps), so this is a lean, "
+                    "not a bet: his recent numbers came in a bigger role")
     if pd.notna(g("why_f_back")):
         game.append("heads up: the regular at his position missed the last game and is back this week, "
                     "so his recent numbers may overstate his role")
