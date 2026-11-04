@@ -255,6 +255,61 @@ def _parse_asof(asof, year: int):
     return pd.to_datetime(f"{m.group(1)} {year} {m.group(2)}", errors="coerce") if m else pd.NaT
 
 
+# Market-move alarm (Nov 4, 2026). How far DraftKings' price for our side has moved since it first posted this week, as
+# change in DraftKings' own chance for our side at our line (TDs: Yes price x 0.92). Week 8 logged props (bets + leans,
+# 6+ h of history): DK moved 3+ points against us before we logged -> -16% ROI (62), CLV -0.5%; 6+ points -> -22% (37);
+# everything else +0.3% (206). One week only, so it FLAGS (shown in "Why this bet", checked first by the research role
+# check, tracked in the weekly review) and does not hold yet. MOVE_HOLD switches it to a hold once it repeats.
+MOVE_ALARM = -0.06
+MOVE_HOLD = False
+
+
+def add_market_moves(props: pd.DataFrame | None, history: str, week_proj: pd.DataFrame) -> pd.DataFrame | None:
+    """Adds mkt_move (DK's chance for our side now minus when first posted this week) and holds/flags big moves."""
+    from pathlib import Path
+    if props is None or not len(props) or not Path(history).exists():
+        return props
+    try:
+        h = pd.read_csv(history, comment="#", usecols=["game", "player", "stat", "book", "line", "over_odds", "under_odds",
+                                                        "fetched_at"])
+    except Exception:
+        return props
+    h = h[h.book == "draftkings"].copy()
+    h["t"] = pd.to_datetime(h.fetched_at, errors="coerce")
+    h = h[h.t >= week_start(week_proj.gameday)]
+    h["k"] = h.player.map(_key)
+    first = h.sort_values("t").groupby(["game", "k", "stat"]).first()
+    props = props.copy()
+    props["mkt_move"] = np.nan
+
+    def side_p(stat, line, oo, uo, at, side):
+        if stat == "anytime_td":
+            if pd.isna(oo):
+                return np.nan
+            d = (1 + oo / 100) if oo > 0 else (1 + 100 / abs(oo))
+            p = min(0.97, TD_BOOK_MARGIN / d)
+            return p if side == "Over" else 1 - p
+        if pd.isna(oo) or pd.isna(uo) or pd.isna(line):
+            return np.nan
+        pr = _probs(_dist(stat, _market_mean(stat, float(line), _no_vig_over(oo, uo))), at)
+        return pr[0] if side == "Over" else pr[2]
+
+    for i, r in props[props.best_side.isin(["Over", "Under"]) & props.line.notna()].iterrows():
+        k = (r.game, _key(r.player), r.stat)
+        if k not in first.index or pd.isna(r.get("dk_line", np.nan)):
+            continue
+        a = first.loc[k]
+        # DraftKings' current price for this prop (the DK row is what dk_line came from)
+        cur = h[(h.game == r.game) & (h.k == _key(r.player)) & (h.stat == r.stat)].sort_values("t").iloc[-1]
+        p0 = side_p(r.stat, a.line, a.over_odds, a.under_odds, r.line, r.best_side)
+        p1 = side_p(r.stat, cur.line, cur.over_odds, cur.under_odds, r.line, r.best_side)
+        if pd.notna(p0) and pd.notna(p1):
+            props.at[i, "mkt_move"] = round(float(p1 - p0), 4)
+            if MOVE_HOLD and p1 - p0 <= MOVE_ALARM and bool(r.flag):
+                props.at[i, "flag"] = False
+    return props
+
+
 def week_start(gamedays) -> pd.Timestamp:
     """00:00 on the Tuesday on or before the week's first game: an NFL week's prices start after last week's Monday game."""
     first = pd.to_datetime(pd.Series(gamedays)).min().normalize()

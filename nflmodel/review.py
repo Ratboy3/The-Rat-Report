@@ -214,6 +214,10 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
         _recrush(pd.read_csv(bets_log), season, week, out)
         _receptions_check(pd.read_csv(bets_log), season, out)
         _longshot_ml(pd.read_csv(bets_log), season, out)
+        try:
+            _market_move(pd.read_csv(bets_log), season, out)
+        except Exception as e:
+            print(f"  market-move check skipped ({e})")
     try:
         sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
         if sp:
@@ -306,6 +310,66 @@ def _longshot_ml(log: pd.DataFrame, season: int, out: dict) -> None:
                                        avg_odds=round(float(pd.to_numeric(x.odds).median()))))
 
 
+def _market_move(log: pd.DataFrame, season: int, out: dict, history: str = "prop_books_history.csv") -> None:
+    """Market-move alarm check (Nov 4, 2026; props.MOVE_ALARM / MOVE_HOLD): graded props (bets + leans) by how far
+    DraftKings' chance for our side had moved from its first price this week to when we logged it. Week 8: 3+ points
+    against -> -16% ROI on 62. Rule: once 3+ weeks show the 6+ point group losing with negative CLV on 100+ props,
+    switch props.MOVE_HOLD on (those bets become leans)."""
+    import re
+    from . import props as P
+    if not Path(history).exists():
+        return
+    L = log[(log.market == "prop") & (log.season == season) & log.result.isin(["win", "loss", "push"])].copy()
+    if L.empty:
+        return
+    h = pd.read_csv(history, comment="#", usecols=["game", "player", "stat", "book", "line", "over_odds", "under_odds", "fetched_at"])
+    h = h[h.book == "draftkings"].copy()
+    h["t"], h["k"] = pd.to_datetime(h.fetched_at, errors="coerce"), h.player.map(P._key)
+    grp = {k: v.sort_values("t") for k, v in h.groupby(["game", "k", "stat"])}
+
+    def lt(x):
+        m = re.match(r"\w+ (\w+ \d+), (.*) CT", str(x))
+        return pd.to_datetime(f"{m.group(1)} {season} {m.group(2)}", errors="coerce") if m else pd.NaT
+
+    def sp(stat, line, oo, uo, at, side):
+        if stat == "anytime_td":
+            if pd.isna(oo):
+                return np.nan
+            d = (1 + oo / 100) if oo > 0 else (1 + 100 / abs(oo))
+            q = min(0.97, P.TD_BOOK_MARGIN / d)
+            return q if side == "Over" else 1 - q
+        if pd.isna(oo) or pd.isna(uo):
+            return np.nan
+        pr = P._probs(P._dist(stat, P._market_mean(stat, float(line), P._no_vig_over(oo, uo))), at)
+        return pr[0] if side == "Over" else pr[2]
+
+    rows = []
+    for r in L.itertuples():
+        g = grp.get((r.game, P._key(r.player), r.stat))
+        t = lt(r.logged_at)
+        if g is None or pd.isna(t):
+            continue
+        g = g[g.t <= t]
+        if len(g) < 2 or (g.t.iloc[-1] - g.t.iloc[0]).total_seconds() < 6 * 3600:
+            continue
+        a, b = g.iloc[0], g.iloc[-1]
+        p0, p1 = sp(r.stat, a.line, a.over_odds, a.under_odds, r.line, r.side), sp(r.stat, b.line, b.over_odds, b.under_odds, r.line, r.side)
+        if pd.notna(p0) and pd.notna(p1):
+            rows.append(dict(week=r.week, d=p1 - p0, pnl=float(r.pnl), clv=r.clv))
+    if not rows:
+        return
+    b = pd.DataFrame(rows)
+    b["move"] = np.select([b.d <= -0.06, b.d <= -0.03], ["6+ pts against", "3-6 pts against"], "other")
+    out["market_move"] = [dict(move=m, n=len(x), weeks=int(x.week.nunique()), units=round(x.pnl.sum(), 1),
+                               roi=round(x.pnl.mean(), 3), clv=round(float(x.clv.mean()) * 100, 2))
+                          for m, x in b.groupby("move")]
+    big = b[b.d <= -0.06]
+    if not P.MOVE_HOLD and big.week.nunique() >= 3 and len(big) >= 100 and big.pnl.mean() < 0 and big.clv.mean() < 0:
+        out["flags"].append(f"market-move alarm: props logged after DraftKings moved 6+ points against us went "
+                            f"{big.pnl.mean():+.0%} ROI, CLV {big.clv.mean():+.2%} on {len(big)} over {big.week.nunique()} weeks: "
+                            "switch props.MOVE_HOLD on")
+
+
 def _write(out: dict, out_dir: str) -> None:
     now = datetime.now(CT).strftime("%a %b %-d, %-I:%M %p CT")
     md = [f"# Weekly review: {out['season']} week {out['week']} (run {now})", "", "## Props vs DraftKings lines"]
@@ -319,6 +383,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("longshot_ml"):
         md += ["", "## Moneylines: favorites and +300 or longer (season; favorites are leans only since Nov 3)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
+    if out.get("market_move"):
+        md += ["", "## Market-move alarm: props by DraftKings' move against our side before logging (season)", pd.DataFrame(out["market_move"]).to_markdown(index=False)]
     if out.get("recrush"):
         md += ["", "## Receiving/rushing yards bets since Week 9 (40% model weight)", pd.DataFrame(out["recrush"]).to_markdown(index=False)]
     if out.get("sizing"):

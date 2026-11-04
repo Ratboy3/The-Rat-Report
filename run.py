@@ -337,6 +337,8 @@ def cmd_report(a):
                 plines = base
         pbooks = pd.read_csv(a.prop_books, comment="#") if a.prop_books and Path(a.prop_books).exists() else None
         auto_props = price_auto(players, proj, team_ppg, plines, tdm, pbooks)
+        from nflmodel.props import add_market_moves
+        auto_props = add_market_moves(auto_props, "prop_books_history.csv", proj)
         auto_props = _freeze_closing_props(auto_props, proj, a.closing_props)
         auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
     except Exception as e:  # props are an extra; never block the main report

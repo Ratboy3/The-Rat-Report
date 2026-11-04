@@ -357,6 +357,10 @@ def prop_why(r) -> list[tuple[str, str]]:
     if g("why_st_only") == 1.0:
         game.append("played only special teams in his team's last game (no offensive snaps), so this is a lean, "
                     "not a bet: his recent numbers came in a bigger role")
+    mv_ = g("mkt_move")
+    if pd.notna(mv_) and mv_ <= -0.06:
+        game.append(f"heads up: DraftKings has moved {abs(mv_) * 100:.0f} points of win chance against this side since "
+                    "it first posted this week; that has often meant news, so check before betting")
     st_ = g("why_stale", "")
     if isinstance(st_, str) and st_:
         game.append(f"{st_}, so this is a lean until the data updates")
