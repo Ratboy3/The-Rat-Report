@@ -165,7 +165,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     active, injury = None, {}
     if roster is not None and len(roster):
         rw = roster[roster.week == min(week, roster.week.max())]
-        active = set(rw.loc[rw.status == "ACT", "gsis_id"])
+        # last week's game-day inactives ("INA") aren't out this week until this week's roster says so (Nov 4, 2026)
+        ok = ("ACT", "INA") if rw.week.max() < week else ("ACT",)
+        active = set(rw.loc[rw.status.isin(ok), "gsis_id"])
     if inj is not None and len(inj):
         iw = inj[(inj.season == season) & (inj.week == week)]
         for r in iw.itertuples():
@@ -268,7 +270,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         on_team = list(recent[(recent.team == team)].player_id.unique())
         # players back from injury who haven't played this season yet (e.g. a starter coming off IR)
         if roster is not None and len(roster):
-            rw_t = roster[(roster.week == min(week, roster.week.max())) & (roster.team == team) & (roster.status == "ACT")
+            rw_t = roster[(roster.week == min(week, roster.week.max())) & (roster.team == team)
+                          & roster.status.isin(("ACT", "INA") if roster.week.max() < week else ("ACT",))
                           & roster.position.isin(BY_POS)]
             prior = stats[(stats.season == season - 1) & stats.player_id.isin(set(rw_t.gsis_id))]
             back = prior.groupby("player_id").size()

@@ -123,6 +123,8 @@ def status(df: pd.DataFrame, season: int, week: int) -> dict:
     ros_w = None
     if ros is not None and len(ros) and "week" in ros:
         ros_w = ros[ros.week == min(week, ros.week.max())]
+        if ros.week.max() < week:      # last week's game-day "INA" isn't this week's status (Nov 4, 2026)
+            ros_w = ros_w.assign(status=ros_w.status.replace("INA", "ACT"))
     for g in df.itertuples():
         for side in ("home", "away"):
             team, name = getattr(g, f"{side}_team"), getattr(g, f"{side}_qb_name")

@@ -68,9 +68,15 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
     rw = roster[roster.week == min(week, roster.week.max())]
     pfr_to = rw.dropna(subset=["pfr_id"]).set_index("pfr_id")
     status_by_gsis = dict(zip(rw.gsis_id, rw.status))
+    # Nov 4, 2026 fix: before this week's roster posts, the latest roster is last week's, where "INA" means inactive
+    # for LAST week's game only (Week 9: Mansoor Delane, A.J. Brown, Breece Hall and 175 others were counted out from
+    # their Week 8 game-day status). That status says nothing about this week: the injury report and inactives.csv decide.
+    if rw.week.max() < week:
+        status_by_gsis = {g: ("ACT" if s_ == "INA" else s_) for g, s_ in status_by_gsis.items()}
     team_by_gsis = dict(zip(rw.gsis_id, rw.team))
     injw = inj[(inj.season == season) & (inj.week == week)] if len(inj) else inj
     rep = {r.gsis_id: r for r in injw.itertuples()} if len(injw) else {}
+    rep_teams = set(injw.team) if len(injw) and "team" in injw else set()
     # ruled out after the final injury report, or inactive on game day (inactives.csv, Nov 1, 2026)
     ruled_out = {}
     ip = Path(__file__).resolve().parent.parent / "inactives.csv"
@@ -117,7 +123,7 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
             if gsis in ruled_out:
                 p_miss, note = 1.0, "Out"
             elif status_by_gsis.get(gsis) not in (None, "ACT"):
-                p_miss, note = 1.0, "Inactive / IR"
+                p_miss, note = 1.0, ("Inactive" if status_by_gsis.get(gsis) == "INA" else "IR / reserve")
             elif r is not None and isinstance(r.report_status, str) and r.report_status in P_MISS:
                 p_miss, note = P_MISS[r.report_status], r.report_status
             elif r is not None and isinstance(r.practice_status, str):
@@ -138,7 +144,10 @@ def team_impacts(season: int, week: int, teams: list[str], refresh: bool = False
                 pts = val * missed * RETURN_FACTOR
                 if pts >= 0.05:
                     out[team][side] -= pts
-                    out[team]["players"].append((name, grp, pts, "Returning"))
+                    # say only what's known: before this week's injury report posts, he's assumed to play
+                    lbl = ("Returning" if (r is not None or team in rep_teams)
+                           else "missed recent games; no injury report yet, assumed to play")
+                    out[team]["players"].append((name, grp, pts, lbl))
         for side in ("off", "def"):
             out[team][side] = float(np.clip(out[team][side], -UNIT_CAP, UNIT_CAP))
         out[team]["players"].sort(key=lambda x: -abs(x[2]))
