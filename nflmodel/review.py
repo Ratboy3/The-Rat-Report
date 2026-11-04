@@ -292,10 +292,11 @@ def _receptions_check(log: pd.DataFrame, season: int, out: dict) -> None:
 
 def _longshot_ml(log: pd.DataFrame, season: int, out: dict) -> None:
     """Moneylines at +300 or longer (Alex asked Nov 3 to keep reviewing them): bets and leans, season to date."""
-    l = log[(log.season == season) & (log.market == "moneyline") & (pd.to_numeric(log.odds, errors="coerce") >= 300)].copy()
+    odds = pd.to_numeric(log.odds, errors="coerce")
+    l = log[(log.season == season) & (log.market == "moneyline") & ((odds >= 300) | (odds < 0))].copy()
+    l["tier"] = np.where(pd.to_numeric(l.odds) < 0, "favorite " + l.tier.fillna("bet"), "+300 " + l.tier.fillna("bet"))
     if l.empty:
         return
-    l["tier"] = l.tier.fillna("bet")
     out["longshot_ml"] = []
     for t, x in l.groupby("tier"):
         g = x[x.result.isin(["win", "loss", "push"])]
@@ -317,7 +318,7 @@ def _write(out: dict, out_dir: str) -> None:
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("longshot_ml"):
-        md += ["", "## Moneylines at +300 or longer (season)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
+        md += ["", "## Moneylines: favorites and +300 or longer (season; favorites are leans only since Nov 3)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
     if out.get("recrush"):
         md += ["", "## Receiving/rushing yards bets since Week 9 (40% model weight)", pd.DataFrame(out["recrush"]).to_markdown(index=False)]
     if out.get("sizing"):

@@ -38,6 +38,10 @@ LEAN_ONLY_MARKETS = {"total"}
 # thin either way: 2012-26 big-dog MLs where the model agrees with the spread paid (+44% on 60, +20% on 44), live
 # +300 MLs 0-2 (leans 0-3), FanDuel-only ML edges 2025-26 too few to read. Reviewed every Tuesday.
 LONGSHOT_ML_ODDS = 300
+# Moneyline favorites are leans only (Nov 3, 2026, after Week 9's DEN -142, which only matched the 2.5-pt spread).
+# Walk-forward 2012-26, favorite ML bets at 3%+: 2012-19 -0.6% (239), 2020-26 -3.9% (131); -150 to -200 -10.6% (57).
+# A favorite's moneyline is mostly the spread at a worse price; take the spread when the model likes the side.
+ML_FAVORITES_LEAN_ONLY = True
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0
