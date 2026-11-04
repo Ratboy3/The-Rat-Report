@@ -348,6 +348,21 @@ def cmd_report(a):
                tendencies=pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None,
                qb=qb_info, qb_status=qb_status)
     prop_bt = pd.read_csv("prop_backtest.csv") if Path("prop_backtest.csv").exists() else None
+    # data health + integrity checks (Nov 4, 2026): stale inputs and failed checks turn bets into leans before logging
+    from nflmodel import health as H
+    try:
+        hs = H.sources(season, week, proj, a.prop_books or "prop_books.csv", getattr(a, "game_lines", None) or "game_lines.csv",
+                       a.news or "news.csv", getattr(a, "weather", None) or "weather.csv")
+        held = H.hold_stale(games_out, auto_props, hs)
+        viol = H.integrity(season, week, games_out, auto_props, inj, a.prop_books or "prop_books.csv", a.bets_log or "bets_log.csv")
+        mkt["health"] = H.write(hs, viol, held, season, week)
+        if auto_props is not None and len(auto_props):
+            auto_props.to_csv(OUT / f"props_{season}_wk{week}.csv", index=False)
+        print(f"  data health: {sum(not r['ok'] for r in hs['rows'])} source(s) behind, {held} bet(s) held, "
+              f"{len(viol)} integrity problem(s)")
+    except Exception as e:
+        print(f"  data health check failed: {e}")
+        mkt["health"] = dict(error=str(e), sources=[], violations=[], held_stale=0)
     clv_log = None
     if a.bets_log:
         try:
@@ -372,6 +387,26 @@ def cmd_report(a):
     path = OUT / f"report_{season}_wk{week}.html"
     path.write_text(html, encoding="utf-8")
     print(f"Wrote {path}  (open it in any browser)")
+
+
+def cmd_integrity_check(a):
+    """Exit 1 if the last report build found integrity problems (output/health.json), so the GitHub run shows red."""
+    import json
+    p = OUT / "health.json"
+    if not p.exists():
+        raise SystemExit("No output/health.json: run the report first")
+    h = json.loads(p.read_text())
+    if h.get("error"):
+        print(f"Data health check failed to run: {h['error']}")
+        raise SystemExit(1)
+    for r in h.get("sources", []):
+        print(f"{'ok ' if r['ok'] else 'OLD'}  {r['source']}: {r['updated']}  {r['detail']}")
+    v = h.get("violations", [])
+    for x in v:
+        print(f"PROBLEM [{x['kind']}] {x['bet']}: {'; '.join(map(str, x['problems']))}")
+    print(f"{h.get('held_stale', 0)} bet(s) held as leans for stale data; {len(v)} integrity problem(s)")
+    if v:
+        raise SystemExit(1)
 
 
 def cmd_consensus_test(a):
@@ -516,6 +551,7 @@ def main():
                     "writes agg_test.csv, which switches it on only if better overall and this season")
     pb.add_argument("--agg-out", default="agg_test.csv")
     sub.add_parser("consensus-test", help="other books' consensus vs DraftKings on graded props -> consensus_test.csv")
+    sub.add_parser("integrity-check", help="exit 1 if the last report build found data integrity problems (output/health.json)")
     sub.add_parser("timing-test", help="do line moves continue to the close? -> timing_test.csv")
     wr = sub.add_parser("weekly-review", help="last week vs real DraftKings lines and results -> review_S_wkW.md, reviews.csv")
     wr.add_argument("--season", type=int)
@@ -528,7 +564,7 @@ def main():
     for s in (pk, bt, rp, sub.choices["ratings"], sub.choices["build-epa"]):
         s.add_argument("--refresh", action="store_true", help="re-download data from nflverse")
     a = p.parse_args()
-    {"picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
+    {"integrity-check": cmd_integrity_check, "picks": cmd_picks, "backtest": cmd_backtest, "ratings": cmd_ratings, "report": cmd_report,
      "stamp-news": cmd_stamp_news,
      "merge-logs": lambda a: __import__("nflmodel.logs", fromlist=["merge_all"]).merge_all(a.extra, a.save_bot), "props-backtest": cmd_props_backtest,
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),

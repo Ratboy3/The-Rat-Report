@@ -255,12 +255,18 @@ def _parse_asof(asof, year: int):
     return pd.to_datetime(f"{m.group(1)} {year} {m.group(2)}", errors="coerce") if m else pd.NaT
 
 
+def week_start(gamedays) -> pd.Timestamp:
+    """00:00 on the Tuesday on or before the week's first game: an NFL week's prices start after last week's Monday game."""
+    first = pd.to_datetime(pd.Series(gamedays)).min().normalize()
+    return first - pd.Timedelta(days=(first.weekday() - 1) % 7)
+
+
 def _this_week_lines(lines: pd.DataFrame, week_proj: pd.DataFrame, books: pd.DataFrame | None) -> pd.DataFrame:
     """Only this week's prices (Nov 4, 2026 fix). prop_lines.csv is keyed by player and stat with no game, and the
     fetcher kept a player's old line when DraftKings didn't list him in a new pull, so last week's line was priced as
     this week's: 16 of 34 Week 9 prop bets (and both Emanuel Wilson bets) used Week 8 lines. Now a DraftKings Odds API
     row counts only if DraftKings lists that player and stat for this week's game in the latest all-books pull, and any
-    other row only if it was found after this week's slate opened (two days before the first game)."""
+    other row only if it was found after this week's slate opened (the Tuesday before the first game)."""
     keep = pd.Series(True, index=lines.index)
     api = lines.source.astype(str).str.contains("Odds API")
     if books is not None and len(books) and "game" in books:
@@ -269,7 +275,7 @@ def _this_week_lines(lines: pd.DataFrame, week_proj: pd.DataFrame, books: pd.Dat
         keep &= ~api | pd.Series([(_key(p), str(s_).strip()) in listed for p, s_ in zip(lines.player, lines.stat)],
                                  index=lines.index)
     if "gameday" in week_proj and len(week_proj):
-        start = pd.to_datetime(week_proj.gameday).min() - pd.Timedelta(days=2)
+        start = week_start(week_proj.gameday)
         t = lines.as_of.map(lambda a: _parse_asof(a, start.year))
         t = t.where(t.isna() | (t >= start - pd.Timedelta(days=180)), t + pd.DateOffset(years=1))   # Dec -> Jan
         keep &= t.isna() | (t >= start)

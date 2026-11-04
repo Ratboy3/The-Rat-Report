@@ -357,6 +357,9 @@ def prop_why(r) -> list[tuple[str, str]]:
     if g("why_st_only") == 1.0:
         game.append("played only special teams in his team's last game (no offensive snaps), so this is a lean, "
                     "not a bet: his recent numbers came in a bigger role")
+    st_ = g("why_stale", "")
+    if isinstance(st_, str) and st_:
+        game.append(f"{st_}, so this is a lean until the data updates")
     hold_ = g("why_hold", "")
     if isinstance(hold_, str) and hold_:
         game.append(f"role check: {hold_}, so this is a lean, not a bet")

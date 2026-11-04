@@ -1103,6 +1103,16 @@ table.props td{vertical-align:middle}
 @media (max-width:520px){#leans .hide-sm{display:none}}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin:0;color:var(--muted);font-size:14px}
 .updated{font-size:13px;color:var(--muted);margin:0 0 14px}
+details.health{margin:10px 0 0;font-size:13px}
+details.health summary{cursor:pointer;font-weight:600;padding:4px 0;color:var(--muted)}
+details.health summary .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#2e9d5b;vertical-align:middle}
+details.health.behind summary .dot{background:#c98a12}
+details.health.problem summary .dot{background:#c0392b}
+details.health table{width:100%;border-collapse:collapse;margin-top:6px}
+details.health td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+details.health td.st{white-space:nowrap;font-weight:600}
+details.health .ok{color:#2e9d5b}
+details.health .old{color:#c98a12}
 details.more{margin-top:4px}
 details.more summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;padding:6px 0}
 details.more summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -1226,6 +1236,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
   <p class="beta-note"><b>Beta.</b> The model is still being tested: every flagged bet is tracked against the closing line under Track record, and features are kept only when they test better on past games. Treat picks as experimental.</p>
   {_now_section(upcoming, open_props, clv_log, (market_info or {}).get('dk_used', {}), now, sm, _why_ctx(ratings, play, injuries, market_info))}
     {checked_line}
+    {_health_section((market_info or {}).get("health"))}
     <p class="note">Prop prices are DraftKings' or FanDuel's (DK/FD), whichever pays more for the same bet. Prop projections adjust for the opponent's defense and expected pace, and blend with the DraftKings line; their replay on past weeks is under Track record.{(' Prop lines last checked ' + escape(lines_checked) + '.') if lines_checked else ''}</p>
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
@@ -1329,6 +1340,37 @@ def _why(make) -> str:
     items = "".join((f"<li><b>{escape(t[0])}.</b> {escape(t[1])}</li>" if isinstance(t, tuple) else f"<li>{escape(t)}</li>")
                     for t in lines)
     return f'<details class="why"><summary>Why this bet</summary><ul>{items}</ul></details>'
+
+
+def _health_section(h: dict | None) -> str:
+    """Data health (Nov 4, 2026): when each input last updated, and any bet held because an input is behind."""
+    if not h:
+        return ""
+    if h.get("error"):
+        return (f'<details class="health problem"><summary><span class="dot"></span>Data health: check failed to run '
+                f'({escape(str(h["error"]))[:120]})</summary></details>')
+    rows = h.get("sources", [])
+    viol = h.get("violations", [])
+    behind = [r for r in rows if not r["ok"]]
+    held = int(h.get("held_stale", 0) or 0)
+    cls = "problem" if viol else ("behind" if behind else "")
+    if viol:
+        head = f"Data health: {len(viol)} problem{'s' if len(viol) != 1 else ''} found and held as leans"
+    elif behind:
+        head = (f"Data health: {len(behind)} source{'s' if len(behind) != 1 else ''} behind"
+                + (f", {held} bet{'s' if held != 1 else ''} held as leans until it updates" if held else ""))
+    else:
+        head = "Data health: every source current"
+    trs = "".join(
+        f'<tr><td class="st {"ok" if r["ok"] else "old"}">{"Current" if r["ok"] else "Behind"}</td>'
+        f'<td><b>{escape(r["source"])}</b><br><span class="muted">{escape(r["updated"]) if r["updated"] != "never" else ""}'
+        f'{" · " if r["updated"] != "never" and r["detail"] else ""}{escape(r["detail"])}</span></td></tr>' for r in rows)
+    vs = "".join(f'<li>{escape(x["bet"])}: {escape("; ".join(map(str, x["problems"])))}</li>' for x in viol)
+    return (f'<details class="health {cls}"><summary><span class="dot"></span>{escape(head)}</summary>'
+            f'<p class="note">Checked {escape(str(h.get("checked", "")))}. A bet that depends on an input that should '
+            f'have updated by now and hasn\'t is shown as a lean until it does.</p>'
+            + (f'<p class="note"><b>Held by the integrity check:</b></p><ul class="note">{vs}</ul>' if vs else "")
+            + f'<table>{trs}</table></details>')
 
 
 def _why_ctx(ratings, play, injuries, market_info) -> dict:
