@@ -155,7 +155,7 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
             continue
         nv = P._no_vig_over(r.over_odds, r.under_odds)
         mm = P._market_mean(r.stat, r.line, nv)
-        w = P._trust(P.PROP_MODEL_WEIGHT, r.model, mm)
+        w = P._trust(P.model_weight(r.stat), r.model, mm)
         d = P._dist(r.stat, w * r.model + (1 - w) * mm)
         o = P._probs(d, r.line)
         eo, eu = ev(o, r.over_odds), ev((o[2], o[1], o[0]), r.under_odds)

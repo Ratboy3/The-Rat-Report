@@ -127,6 +127,15 @@ def _key(name) -> str:
 
 
 PROP_MODEL_WEIGHT = 0.25  # yards/receptions/pass TDs: 25% model + 75% the DraftKings line (the market knows roles and injuries)
+# Per stat (Nov 3, 2026), real DraftKings closing lines with replayed projections, 2025 wk5-18 (4,995 lines) and
+# 2026 wk3-8 (2,641), fit on one season and checked on the other: receiving and rushing yards are more accurate at
+# 40% model in both seasons (rec 0.6916 -> 0.6911 / 0.6910 -> 0.6902; rush 0.6915 -> 0.6913 / 0.6919 -> 0.6917).
+# Pass TDs and receptions were mixed between seasons (stay 25%); passing yards were best at 0% (leans only).
+PROP_MODEL_WEIGHT_BY_STAT = {"rec_yds": 0.40, "rush_yds": 0.40}
+
+
+def model_weight(stat: str) -> float:
+    return PROP_MODEL_WEIGHT_BY_STAT.get(stat, PROP_MODEL_WEIGHT)
 
 
 def _no_vig_over(oo, uo) -> float | None:
@@ -292,7 +301,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                 if anchor_cons and c is not None and pd.notna(c["all_mean"]):
                     market_p = round(c["all_mean"], 3)
                 model_p = round(adj, 3)
-                w = _trust(PROP_MODEL_WEIGHT, adj, market_p)
+                w = _trust(model_weight(p.stat), adj, market_p)
                 adj = w * adj + (1 - w) * market_p
         d = _dist(p.stat, adj)
         row = dict(game=p.game, team=p.team, opp=p.opp, player=p.player, position=p.position, stat=p.stat,
