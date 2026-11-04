@@ -21,13 +21,22 @@ def espn_finals(days_back: int = 10, timeout: int = 20) -> dict:
     """{(away, home): (away_score, home_score)} for completed NFL games in the last `days_back` days."""
     end = datetime.now(timezone.utc) + timedelta(days=1)
     start = end - timedelta(days=days_back + 1)
-    url = URL.format(start=start.strftime("%Y%m%d"), end=end.strftime("%Y%m%d"))
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "rat-report-site-bot"})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            data = json.load(r)
-    except Exception as e:
-        print(f"  ESPN scores unavailable ({e})")
+    urls = [URL.format(start=start.strftime("%Y%m%d"), end=end.strftime("%Y%m%d")),
+            "https://site.web.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates={}-{}&limit=100".format(
+                start.strftime("%Y%m%d"), end.strftime("%Y%m%d")),
+            "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"]
+    headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+               "Accept": "application/json", "Referer": "https://www.espn.com/nfl/scoreboard"}
+    data, err = None, None
+    for url in urls:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=timeout) as r:
+                data = json.load(r)
+            break
+        except Exception as e:
+            err = e
+    if data is None:
+        print(f"  ESPN scores unavailable ({err})")
         return {}
     out = {}
     for ev in data.get("events", []):
