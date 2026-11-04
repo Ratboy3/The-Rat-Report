@@ -25,6 +25,7 @@ URLS = {
     "stats": REL + "/stats_player/stats_player_week_{season}.csv",
     "roster": REL + "/weekly_rosters/roster_weekly_{season}.csv",
     "injuries": REL + "/injuries/injuries_{season}.csv",
+    "depth": REL + "/depth_charts/depth_charts_{season}.csv",
 }
 
 # stat -> (column(s) in the weekly stats file, distribution)
@@ -160,6 +161,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
 
     roster = _load("roster", season, refresh)
     inj = _load("injuries", season, refresh)
+    depth = _depth_table(season, refresh)
     active, injury = None, {}
     if roster is not None and len(roster):
         rw = roster[roster.week == min(week, roster.week.max())]
@@ -292,6 +294,7 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
         qb_chg = bool(getattr(g, f"{side}_qb_change_t", getattr(g, f"{side}_qb_change", 0)) or 0)   # backup QB starting (a returning starter is not one)
         lead_out = _leads_out(recent, team, set(eligible)) if USE["nextman"] else set()
         lead_back = _leads_back(stats, team, set(eligible), season)      # {pos: returning regular's player_id}
+        demoted = _demoted(depth, team, str(g.gameday)) if depth is not None else set()
         for pid in on_team:
             rows = stats[stats.player_id == pid]
             last = rows.sort_values(["season", "week"]).iloc[-1]
@@ -361,6 +364,9 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                     if pos in lead_out:
                         why["f_next"] = NEXT_MAN.get((pos, st), 1.0)
                         est *= why["f_next"]
+                    if pid in demoted and (pos, st) in DEMOTED:
+                        why["f_depth"] = DEMOTED[(pos, st)]
+                        est *= why["f_depth"]
                     if pos in lead_back and lead_back[pos] != pid and team_weeks and team_weeks[-1] in pw:
                         why["f_back"] = LEAD_BACK.get((pos, st), 1.0) if USE["leadback"] else 1.0
                         est *= why["f_back"]
@@ -451,6 +457,41 @@ NEXT_MAN = {("RB", "rush_yds"): 1.50, ("RB", "receptions"): 1.10, ("WR", "recept
 # way, 0.6913 -> 0.6691 the other; receptions likewise). Off until there are more cases; the tag (why_f_back) still
 # marks them and "Why this bet" warns that the regular is back.
 LEAD_BACK: dict = {}
+
+# Depth-chart demotions (Nov 3, 2026). ESPN depth charts via nflverse (daily snapshots). A player whose best rank at
+# his position the day before the game is worse than his median rank 8-35 days earlier falls well short of his
+# projection: WRs 0.78 (2025, 131 player-games) / 0.69 (2026, 34); RBs 0.61 (53) / 0.35 (16). Out of sample (log
+# loss at the projection's median line): WR rec yds 0.6902 -> 0.5862 (2025 fit, 2026 test) and 0.6903 -> 0.6366
+# (2026 fit, 2025 test); WR receptions 0.6941 -> 0.6513 and 0.6736 -> 0.6121; RB rush yds 0.6927 -> 0.3741 with the
+# 2025 fit (x0.63); the 2026 fit (x0.40 on 11 games) overshot, so RBs use a moderate 0.65. Promotions and TEs were
+# mixed between seasons: no change.
+DEMOTED = {("WR", "rec_yds"): 0.75, ("WR", "receptions"): 0.75, ("RB", "rush_yds"): 0.65}
+
+
+def _depth_table(season: int, refresh: bool) -> pd.DataFrame | None:
+    """Best depth-chart rank per player, team and day (RB/WR/TE), from nflverse's daily ESPN snapshots."""
+    try:
+        d = _load("depth", season, refresh)
+    except Exception:
+        return None
+    if d is None or d.empty or "pos_rank" not in d:
+        return None
+    d = d[d.pos_abb.isin(["RB", "WR", "TE"])].copy()
+    d["d"] = pd.to_datetime(d.dt, utc=True, errors="coerce").dt.tz_localize(None).dt.normalize()
+    return d.groupby(["gsis_id", "team", "d"]).pos_rank.min().reset_index()
+
+
+def _demoted(depth: pd.DataFrame, team: str, gameday: str) -> set:
+    """gsis ids whose depth rank the day before the game is worse than their median rank 8-35 days earlier."""
+    try:
+        day = pd.Timestamp(gameday).normalize()
+    except Exception:
+        return set()
+    t = depth[depth.team == team]
+    now = t[t.d <= day - pd.Timedelta(days=1)].sort_values("d").groupby("gsis_id").pos_rank.last()
+    prev = t[(t.d <= day - pd.Timedelta(days=8)) & (t.d > day - pd.Timedelta(days=36))].groupby("gsis_id").pos_rank.median()
+    both = pd.concat([now.rename("now"), prev.rename("prev")], axis=1).dropna()
+    return set(both.index[both.now - both.prev >= 1])
 
 
 def _leads_back(stats: pd.DataFrame, team: str, eligible: set, season: int) -> dict:
