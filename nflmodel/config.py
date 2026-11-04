@@ -33,6 +33,11 @@ MAX_EDGE_MARKETS = {"moneyline", "prop"}
 # 11 of 15 seasons: 2012-16 -1.3% (775), 2017-21 -5.2% (533), 2022-26 -7.1% (215). A higher bar didn't fix it
 # (8%+: 2012-16 +2.4%, 2017-21 -5.7%, 2022-26 -56% on 31). Shown and tracked as leans; revisit if the total model changes.
 LEAN_ONLY_MARKETS = {"total"}
+# Longshot moneylines (+300 or longer) must also clear the bar at DraftKings' own price; an edge that exists only at
+# FanDuel's longer price is a lean (Alex's call, Nov 3, 2026, after Week 9's NYJ +420 at FD / +380 at DK). Evidence was
+# thin either way: 2012-26 big-dog MLs where the model agrees with the spread paid (+44% on 60, +20% on 44), live
+# +300 MLs 0-2 (leans 0-3), FanDuel-only ML edges 2025-26 too few to read. Reviewed every Tuesday.
+LONGSHOT_ML_ODDS = 300
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0

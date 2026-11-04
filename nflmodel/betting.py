@@ -114,6 +114,7 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
     key = f"{g.away_team} @ {g.home_team}"
     for o in opts:
         o.setdefault("book", "DraftKings")
+        o.setdefault("dk_ev", o["ev"])          # the edge at DraftKings' own line and price
         a = alt.get((key, o["market"], o["side"]))
         if not a or pd.isna(a[1]):
             continue
@@ -139,6 +140,11 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
         if e > o["ev"] + 1e-9:
             o.update(probs=probs, odds=float(odds), win_prob=probs[0], ev=e, stake=kelly_stake(probs, float(odds)),
                      pick=f"{pick} ({name})", book=name, line=sl, bet=is_bet(m, e))
+    for o in opts:   # longshot moneylines need the edge at DraftKings too (config.LONGSHOT_ML_ODDS, Nov 3, 2026)
+        if (o["market"] == "moneyline" and o.get("bet") and float(o["odds"]) >= C.LONGSHOT_ML_ODDS
+                and o.get("dk_ev", o["ev"]) < C.MIN_EV):
+            o["bet"] = False
+            o["held"] = "longshot ML: no edge at DraftKings' price"
     return opts
 
 

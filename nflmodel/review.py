@@ -213,6 +213,7 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
         _sizing(pd.read_csv(bets_log), season, week, out)
         _recrush(pd.read_csv(bets_log), season, week, out)
         _receptions_check(pd.read_csv(bets_log), season, out)
+        _longshot_ml(pd.read_csv(bets_log), season, out)
     try:
         sp = _sharp_props(_pregame_lines(history, games, season, week, book=None), by_name)
         if sp:
@@ -289,6 +290,21 @@ def _receptions_check(log: pd.DataFrame, season: int, out: dict) -> None:
                             f"{(b.clv > 0).mean():.0%}): make receptions leans only")
 
 
+def _longshot_ml(log: pd.DataFrame, season: int, out: dict) -> None:
+    """Moneylines at +300 or longer (Alex asked Nov 3 to keep reviewing them): bets and leans, season to date."""
+    l = log[(log.season == season) & (log.market == "moneyline") & (pd.to_numeric(log.odds, errors="coerce") >= 300)].copy()
+    if l.empty:
+        return
+    l["tier"] = l.tier.fillna("bet")
+    out["longshot_ml"] = []
+    for t, x in l.groupby("tier"):
+        g = x[x.result.isin(["win", "loss", "push"])]
+        out["longshot_ml"].append(dict(tier=t, n=len(x), wins=int((g.result == "win").sum()), losses=int((g.result == "loss").sum()),
+                                       units=round(float(g.pnl.astype(float).sum()), 2),
+                                       clv=round(float(x.clv.mean()) * 100, 2) if x.clv.notna().any() else np.nan,
+                                       avg_odds=round(float(pd.to_numeric(x.odds).median()))))
+
+
 def _write(out: dict, out_dir: str) -> None:
     now = datetime.now(CT).strftime("%a %b %-d, %-I:%M %p CT")
     md = [f"# Weekly review: {out['season']} week {out['week']} (run {now})", "", "## Props vs DraftKings lines"]
@@ -300,6 +316,8 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
+    if out.get("longshot_ml"):
+        md += ["", "## Moneylines at +300 or longer (season)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
     if out.get("recrush"):
         md += ["", "## Receiving/rushing yards bets since Week 9 (40% model weight)", pd.DataFrame(out["recrush"]).to_markdown(index=False)]
     if out.get("sizing"):
