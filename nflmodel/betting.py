@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pandas as pd
 
 from . import config as C
@@ -149,6 +150,14 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
                 and o.get("dk_ev", o["ev"]) < C.MIN_EV):
             o["bet"] = False
             o["held"] = "longshot ML: no edge at DraftKings' price"
+    for o in opts:   # price-only longshot moneylines are leans (config.LONGSHOT_ML_PRICE_ONLY_LEAN, Nov 4, 2026)
+        if (o["market"] == "moneyline" and o.get("bet") and float(o["odds"]) >= C.LONGSHOT_ML_ODDS
+                and getattr(C, "LONGSHOT_ML_PRICE_ONLY_LEAN", False)
+                and pd.notna(getattr(g, "proj_margin", np.nan)) and pd.notna(getattr(g, "spread_line", np.nan))):
+            gap = (g.proj_margin - g.spread_line) * (1 if o["side"] == "home" else -1)
+            if gap < C.LONGSHOT_ML_MIN_GAP:
+                o["bet"] = False
+                o["held"] = "longshot ML: price only (the model agrees with the spread)"
     return opts
 
 

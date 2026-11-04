@@ -38,6 +38,13 @@ LEAN_ONLY_MARKETS = {"total"}
 # thin either way: 2012-26 big-dog MLs where the model agrees with the spread paid (+44% on 60, +20% on 44), live
 # +300 MLs 0-2 (leans 0-3), FanDuel-only ML edges 2025-26 too few to read. Reviewed every Tuesday.
 LONGSHOT_ML_ODDS = 300
+# Price-only longshot moneylines are leans (Alex's call, Nov 4, 2026: "a lazy bet that a sharp book wouldn't have";
+# Week 9 NYJ +440, model KC by 9.7 vs spread 10). At +300 or longer, a moneyline is a bet only when the model's margin
+# is at least LONGSHOT_ML_MIN_GAP points better for that team than the spread, i.e. a real view on the game, not just
+# the moneyline paying more than the spread implies. History argued the other way on thin samples (price-only big dogs
+# 2012-19 +44% on ~60, 2020-26 +20% on ~44; live +300 MLs 0-2), so the weekly review keeps tracking them as leans.
+LONGSHOT_ML_PRICE_ONLY_LEAN = True
+LONGSHOT_ML_MIN_GAP = 0.5
 # Moneyline favorites are leans only (Nov 3, 2026, after Week 9's DEN -142, which only matched the 2.5-pt spread).
 # Walk-forward 2012-26, favorite ML bets at 3%+: 2012-19 -0.6% (239), 2020-26 -3.9% (131); -150 to -200 -10.6% (57).
 # A favorite's moneyline is mostly the spread at a worse price; take the spread when the model likes the side.

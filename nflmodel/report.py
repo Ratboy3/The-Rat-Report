@@ -1425,8 +1425,11 @@ def _ml_note(g, o) -> list:
     fav = g.home_team if g.proj_margin > 0 else g.away_team
     view = f"Our numbers have {fav} by {abs(g.proj_margin):.1f}; the spread is {abs(g.spread_line):g}."
     if abs(gap) < 0.5:
-        tail = (" Big-underdog moneylines like this have paid off over time (2012-26: +20% to +44% on about 100 bets), "
-                "but they lose most weeks, so keep the size small." if float(o.get("odds", 0)) >= 200 else "")
+        odds_ = float(o.get("odds", 0))
+        tail = (" Since Nov 4, price-only moneylines at +300 or longer are leans, not bets: a sharp model should have "
+                "a view on the game, not just a better price." if odds_ >= C.LONGSHOT_ML_ODDS else
+                " Big-underdog moneylines like this have paid off over time (2012-26: +20% to +44% on about 100 bets), "
+                "but they lose most weeks, so keep the size small." if odds_ >= 200 else "")
         return [("What kind of bet", view + f" We agree with the spread, so this isn't a call that {team} plays better than "
                  f"expected: the moneyline simply pays more than a {abs(g.spread_line):g}-point line implies." + tail)]
     side_word = "better" if gap > 0 else "worse"
