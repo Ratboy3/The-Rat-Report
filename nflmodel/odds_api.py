@@ -233,6 +233,64 @@ PROP_FULL_DAYS = (1, 2, 3, 4, 5)   # Tue-Sat (Mon = 0). Tuesday added Oct 28 at 
 PROP_FULL_HOURS = (9, 16, 21)   # Tue-Sat full-week prop pulls (CT): morning, after the ~3-4 PM injury reports, evening
 LINES_FROM, LINES_TO = 6, 23    # game lines every hour in this window (CT), 3 credits each
 NEAR_KICKOFF_H = 3              # every hour: props for games kicking off within this many hours
+# Alternate prop lines and sportsbook team totals (Nov 3, 2026): collected to test (a) pricing props off the market's
+# own ladder of lines instead of an assumed curve and (b) the books' team totals instead of ones derived from the spread
+# and total. Collected only with the Wednesday 9 AM and Sunday 7 AM full pulls (~150 credits/week) to stay inside the
+# monthly budget. Archived to prop_alt_history.csv and team_totals_history.csv; nothing uses them for bets until tested.
+ALT_MARKETS = {
+    "player_pass_yds_alternate": "pass_yds",
+    "player_rush_yds_alternate": "rush_yds",
+    "player_reception_yds_alternate": "rec_yds",
+    "player_receptions_alternate": "receptions",
+}
+ALT_BOOKS = ["draftkings", "fanduel", "pinnacle"]
+ALT_COLS = ["game", "player", "stat", "book", "line", "over_odds", "under_odds", "as_of"]
+TT_COLS = ["game", "team", "book", "line", "over_odds", "under_odds", "as_of"]
+
+
+def fetch_extras(hours: float | None = None) -> tuple[int, int]:
+    """Alternate player lines + team totals for this week's games -> prop_alt_history.csv, team_totals_history.csv."""
+    key = api_key()
+    now = datetime.now(CT)
+    events = week_events(key, now)
+    if hours is not None:
+        events = [e for e in events if _ct(e["commence_time"]) <= now + timedelta(hours=hours)]
+    alt, tt, left = [], [], None
+    for e in events:
+        try:
+            r = requests.get(f"{BASE}/events/{e['id']}/odds", timeout=30, params={
+                "apiKey": key, "bookmakers": ",".join(ALT_BOOKS), "oddsFormat": "american",
+                "markets": ",".join(list(ALT_MARKETS) + ["team_totals"])})
+            r.raise_for_status()
+        except Exception as ex:
+            print(f"  extras skipped for {_game(e)} ({ex})")
+            continue
+        left = r.headers.get("x-requests-remaining")
+        for bm in r.json().get("bookmakers", []):
+            for m in bm.get("markets", []):
+                as_of = _stamp(_ct(m.get("last_update") or bm["last_update"]))
+                rows = {}
+                for o in m.get("outcomes", []):
+                    side = o.get("name", "").lower()
+                    who = (o.get("description") or "").strip()
+                    if m["key"] == "team_totals":
+                        who = TEAM_ABBR.get(who, who)
+                    k = (who, o.get("point"))
+                    row = rows.setdefault(k, dict(over_odds=None, under_odds=None))
+                    row["over_odds" if side == "over" else "under_odds"] = o.get("price")
+                for (who, point), v in rows.items():
+                    if m["key"] == "team_totals":
+                        tt.append(dict(game=_game(e), team=who, book=bm["key"], line=point, as_of=as_of, **v))
+                    elif m["key"] in ALT_MARKETS:
+                        alt.append(dict(game=_game(e), player=who, stat=ALT_MARKETS[m["key"]], book=bm["key"], line=point,
+                                        as_of=as_of, **v))
+    _archive("prop_alt_history.csv", pd.DataFrame(alt, columns=ALT_COLS), now)
+    _archive("team_totals_history.csv", pd.DataFrame(tt, columns=TT_COLS), now)
+    print(f"Extras: {len(alt)} alternate lines, {len(tt)} team-total lines from {len(events)} games"
+          + (f"  (Odds API credits left: {left})" if left else ""))
+    return len(alt), len(tt)
+
+
 CREDIT_FLOOR = 1500             # below this many credits left, keep only the near-kickoff pulls
 
 
@@ -262,12 +320,22 @@ def fetch_plan(now: datetime | None = None) -> None:
     slot = _due_slot(now, wd, hr)
     if not low and slot is not None and slot[0] == "week":
         fetch()
+        if wd == 2 and slot[1] == 9:          # Wednesday morning: early-week alternate lines + team totals
+            _extras()
         _mark_full_pull(now)
     elif not low and slot is not None and slot[0] == "sunday":
         fetch(hours=14)
+        _extras(hours=14)
         _mark_full_pull(now)
     elif LINES_FROM <= hr <= LINES_TO:
         fetch(hours=NEAR_KICKOFF_H)
+
+
+def _extras(hours: float | None = None) -> None:
+    try:
+        fetch_extras(hours)
+    except Exception as e:                       # never let the extras stop the regular pulls
+        print(f"  extras failed ({e})")
 
 
 FULL_PULL_FILE = Path(__file__).resolve().parent.parent / "props_full_pull.txt"
