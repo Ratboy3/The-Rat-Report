@@ -1,0 +1,4 @@
+# Players whose role shrank in a way the stats can't see yet (regular back from injury taking his job, benched,
+# demoted, limited snap plan, traded). Written by the research runs from current reporting. One row per player:
+# his props are leans only that week and "Why this bet" gives the reason. Never used to add a bet.
+season,week,team,player,reason,source

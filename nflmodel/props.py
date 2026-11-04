@@ -208,6 +208,7 @@ LINE_SHOP_MIN_DK_EV = 0.015
 # right. Such bets are leans. Not applied to TDs (one-sided prices) or when neither book has the prop.
 SHARP_PROP_BOOKS = ("pinnacle", "betonlineag")
 SHARP_PROP_FILTER = True
+SNAP_DROP_LEAN = True     # Overs on players whose last-game snap share fell below half their usual are leans
 BET_BOOK_SOURCES = tuple(BET_BOOKS.values())
 
 
@@ -248,6 +249,36 @@ def _td_market(player: str, book_row, market: dict) -> float | None:
     return float(np.mean(vals)) if vals else None
 
 
+def _parse_asof(asof, year: int):
+    import re
+    m = re.match(r"\w+ (\w+ \d+), (.*?) CT", str(asof))
+    return pd.to_datetime(f"{m.group(1)} {year} {m.group(2)}", errors="coerce") if m else pd.NaT
+
+
+def _this_week_lines(lines: pd.DataFrame, week_proj: pd.DataFrame, books: pd.DataFrame | None) -> pd.DataFrame:
+    """Only this week's prices (Nov 4, 2026 fix). prop_lines.csv is keyed by player and stat with no game, and the
+    fetcher kept a player's old line when DraftKings didn't list him in a new pull, so last week's line was priced as
+    this week's: 16 of 34 Week 9 prop bets (and both Emanuel Wilson bets) used Week 8 lines. Now a DraftKings Odds API
+    row counts only if DraftKings lists that player and stat for this week's game in the latest all-books pull, and any
+    other row only if it was found after this week's slate opened (two days before the first game)."""
+    keep = pd.Series(True, index=lines.index)
+    api = lines.source.astype(str).str.contains("Odds API")
+    if books is not None and len(books) and "game" in books:
+        dk = books[books.book == "draftkings"]
+        listed = set(zip(dk.player.map(_key), dk.stat.astype(str).str.strip()))
+        keep &= ~api | pd.Series([(_key(p), str(s_).strip()) in listed for p, s_ in zip(lines.player, lines.stat)],
+                                 index=lines.index)
+    if "gameday" in week_proj and len(week_proj):
+        start = pd.to_datetime(week_proj.gameday).min() - pd.Timedelta(days=2)
+        t = lines.as_of.map(lambda a: _parse_asof(a, start.year))
+        t = t.where(t.isna() | (t >= start - pd.Timedelta(days=180)), t + pd.DateOffset(years=1))   # Dec -> Jan
+        keep &= t.isna() | (t >= start)
+    dropped = int((~keep).sum())
+    if dropped:
+        print(f"  props: ignored {dropped} prop price(s) from before this week (book hasn't posted them this week)")
+    return lines[keep]
+
+
 def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                lines: pd.DataFrame | None, td_market: pd.DataFrame | None = None,
                books: pd.DataFrame | None = None) -> pd.DataFrame:
@@ -265,6 +296,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         books = books[books.game.isin(wk_games)]
     book = {}
     if lines is not None and len(lines):
+        lines = _this_week_lines(lines, week_proj, books)
         for r in lines.itertuples():
             book[(_key(r.player), str(r.stat).strip())] = r
     # FanDuel's prices from the all-books pull, as rows shaped like prop_lines (source names the book)
@@ -357,6 +389,17 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             # played only special teams in his team's last game (player_proj._st_only, Nov 4, 2026): 7 for 7 under
             # projection in 2025-26, so never a bet that week
             if row.get("why_st_only") == 1.0:
+                row.update(flag=False)
+            # role hold from the research runs (role_holds.csv, Nov 4, 2026): the role shrank in a way stats don't show
+            if isinstance(row.get("why_hold"), str) and row.get("why_hold"):
+                row.update(flag=False)
+            # DraftKings (the anchor book) must list the prop this week: a book pulling a player's props is usually
+            # news (inactive, demoted, late scratch), so a FanDuel-only price stays a lean (Nov 4, 2026)
+            if bname == "FanDuel" and not dk:
+                row.update(flag=False)
+            # snap share last game under half his usual (player_proj._snap_drop, Nov 4, 2026): Overs lost -26% / -22%
+            sd_ = row.get("why_snap_drop")
+            if SNAP_DROP_LEAN and best == "Over" and sd_ is not None and pd.notna(sd_):
                 row.update(flag=False)
             # line shopping: a FanDuel bet at a different line than DraftKings' must also be worth something at
             # DraftKings' own line and price (same side), or it stays a lean (LINE_SHOP_MIN_DK_EV, Nov 3, 2026)

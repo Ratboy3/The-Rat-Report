@@ -216,6 +216,16 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
     tend = pbp_extra.tendencies(tm, season, week).set_index("team") if tm is not None else None
     role = _snap_roles(season, week, roster)
     st_only = _st_only(season, week, refresh)
+    holds = {}
+    hp = ROOT / "role_holds.csv"
+    if hp.exists():
+        try:
+            h_ = pd.read_csv(hp, comment="#")
+            h_ = h_[(h_.season == season) & (h_.week == week)]
+            holds = {(r.player, r.team): str(r.reason) for r in h_.itertuples()}
+        except Exception as e:
+            print(f"  role_holds.csv skipped ({e})")
+    snap_drop = _snap_drop(season, week, refresh)
     opp_f = _opponent_factors(stats, season, week)
     opp_tab = _opponent_table(stats, season, week)    # raw allowed per game + rank, for "Why this bet"
     man, splits, lg_man = ({}, {}, 0.3)
@@ -390,6 +400,8 @@ def project(season: int, week: int, proj: pd.DataFrame, refresh: bool = False, g
                 out.append(dict(game=game, team=team, opp=opp, player=name, position=pos, stat=st,
                                 projection=round(est, 3), injury=note, games=int(len(rows)), returning=returning,
                                 **({"why_st_only": 1.0} if benched else {}),
+                                **({"why_hold": holds[(name, team)]} if (name, team) in holds else {}),
+                                **({"why_snap_drop": round(snap_drop[(name, team)], 3)} if (name, team) in snap_drop else {}),
                                 **{f"why_{k}": (v if isinstance(v, str) else round(float(v), 4)) for k, v in why.items()}))
     if not out:
         return pd.DataFrame()
@@ -483,6 +495,42 @@ def _st_only(season: int, week: int, refresh: bool) -> set:
     sn = sn[sn.week == sn.team.map(last)]
     hit = sn[(sn.offense_snaps.fillna(0) == 0) & (sn.st_snaps.fillna(0) > 0)]
     return set(zip(hit.player, hit.team))
+
+
+# Snap-share drop (Nov 4, 2026). Offensive snap share in the team's last game vs the player's average over his previous
+# 6 games with offensive snaps. Prop bets (DraftKings closing lines, 2025 wk5-18 / 2026 wk3-8, current model) on players
+# below half their usual share: -26% ROI (18) / -22% (17), all Overs, mostly RBs; every cutoff from 30% to 60% lost in
+# both seasons (60%: -12% / -6%; 65%+ mixed). As a projection factor it was mixed (Round 13), so it is a bet gate:
+# Overs on these players are leans (props.SNAP_DROP_LEAN). Depth-chart rank alone (RB3+, WR4+, TE3+) was tested as a
+# gate and removed winning bets (+13% / +7%), so not used.
+SNAP_DROP = 0.5
+
+
+def _snap_drop(season: int, week: int, refresh: bool) -> dict:
+    """(player, team) -> last game's offensive snap share / usual share, for players below SNAP_DROP."""
+    try:
+        from . import injuries
+        sn = injuries._load_snaps(season, refresh)
+    except Exception:
+        return {}
+    if sn is None or not len(sn):
+        return {}
+    sn = sn[(sn.game_type == "REG") & (sn.week < week) & sn.position.isin(["RB", "WR", "TE", "FB"])].copy()
+    last_wk = sn.groupby("team").week.max()
+    sn["pct"] = sn.offense_pct.fillna(0)
+    out = {}
+    for (name, team), g in sn.groupby(["player", "team"]):
+        lw = last_wk.get(team)
+        cur = g[g.week == lw]
+        if cur.empty:
+            continue                                   # not active last game: handled by injuries/inactives
+        prev = g[(g.week < lw) & (g.pct > 0)].sort_values("week").tail(6)
+        if len(prev) < 2 or prev.pct.mean() <= 0:
+            continue
+        r = float(cur.pct.iloc[0]) / float(prev.pct.mean())
+        if r < SNAP_DROP:
+            out[(name, team)] = r
+    return out
 
 
 # Depth-chart demotions (Nov 3, 2026). ESPN depth charts via nflverse (daily snapshots). A player whose best rank at

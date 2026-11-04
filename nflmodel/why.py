@@ -357,6 +357,12 @@ def prop_why(r) -> list[tuple[str, str]]:
     if g("why_st_only") == 1.0:
         game.append("played only special teams in his team's last game (no offensive snaps), so this is a lean, "
                     "not a bet: his recent numbers came in a bigger role")
+    hold_ = g("why_hold", "")
+    if isinstance(hold_, str) and hold_:
+        game.append(f"role check: {hold_}, so this is a lean, not a bet")
+    sd_ = g("why_snap_drop")
+    if pd.notna(sd_) and g("why_st_only") != 1.0:
+        game.append(f"his snap share last game was {sd_:.0%} of his usual, so an Over is a lean, not a bet")
     if pd.notna(g("why_f_back")):
         game.append("heads up: the regular at his position missed the last game and is back this week, "
                     "so his recent numbers may overstate his role")

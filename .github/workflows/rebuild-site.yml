@@ -23,6 +23,7 @@ on:
       - "td_market.csv"
       - "bets_log.csv"
       - "inactives.csv"
+      - "role_holds.csv"
       - "run.py"
       - "nflmodel/**"
       - "assets/**"
