@@ -1,9 +1,9 @@
-# checked: Sun Nov 8, 7:03 PM CT
+# checked: Sun Nov 8, 7:48 PM CT
 game_id,game,kickoff,wind_mph,temp_f,precip_mm,fetched_at
-2026_09_TB_CHI,TB @ CHI,"Sun Nov 8, 7:20 PM CT",7.1,46.3,0.0,"Sun Nov 8, 7:03 PM CT"
-2026_10_WAS_NYG,WAS @ NYG,"Thu Nov 12, 7:15 PM CT",11.1,54.1,10.9,"Sun Nov 8, 7:03 PM CT"
-2026_10_HOU_CLE,HOU @ CLE,"Sun Nov 15, 12:00 PM CT",17.7,41.8,0.0,"Sun Nov 8, 7:03 PM CT"
-2026_10_MIN_GB,MIN @ GB,"Sun Nov 15, 12:00 PM CT",5.6,42.9,0.0,"Sun Nov 8, 7:03 PM CT"
-2026_10_BUF_NYJ,BUF @ NYJ,"Sun Nov 15, 12:00 PM CT",15.3,48.4,0.0,"Sun Nov 8, 7:03 PM CT"
-2026_10_JAX_TEN,JAX @ TEN,"Sun Nov 15, 12:00 PM CT",4.3,57.9,0.0,"Sun Nov 8, 7:03 PM CT"
-2026_10_PIT_CIN,PIT @ CIN,"Sun Nov 15, 7:20 PM CT",2.7,40.3,0.0,"Sun Nov 8, 7:03 PM CT"
+2026_10_WAS_NYG,WAS @ NYG,"Thu Nov 12, 7:15 PM CT",11.1,54.1,10.9,"Sun Nov 8, 7:48 PM CT"
+2026_10_HOU_CLE,HOU @ CLE,"Sun Nov 15, 12:00 PM CT",17.7,41.8,0.0,"Sun Nov 8, 7:48 PM CT"
+2026_10_MIN_GB,MIN @ GB,"Sun Nov 15, 12:00 PM CT",5.6,42.9,0.0,"Sun Nov 8, 7:48 PM CT"
+2026_10_BUF_NYJ,BUF @ NYJ,"Sun Nov 15, 12:00 PM CT",15.3,48.4,0.0,"Sun Nov 8, 7:48 PM CT"
+2026_10_JAX_TEN,JAX @ TEN,"Sun Nov 15, 12:00 PM CT",4.3,57.9,0.0,"Sun Nov 8, 7:48 PM CT"
+2026_10_PIT_CIN,PIT @ CIN,"Sun Nov 15, 7:20 PM CT",2.7,40.3,0.0,"Sun Nov 8, 7:48 PM CT"
+2026_10_LAC_BAL,LAC @ BAL,"Mon Nov 16, 7:15 PM CT",9.0,46.6,0.0,"Sun Nov 8, 7:48 PM CT"
