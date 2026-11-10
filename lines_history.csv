@@ -707,3 +707,7 @@ at,game_id,spread_line,total_line,home_moneyline,away_moneyline
 "Tue Nov 10, 4:00 PM CT",2026_10_MIA_IND,3.5,38.5,-192.0,160.0
 "Tue Nov 10, 4:00 PM CT",2026_10_PIT_CIN,3.5,49.5,-180.0,150.0
 "Tue Nov 10, 4:00 PM CT",2026_10_LAC_BAL,4.5,38.5,-225.0,185.0
+"Tue Nov 10, 5:00 PM CT",2026_10_CAR_NO,2.5,48.5,-135.0,114.0
+"Tue Nov 10, 5:00 PM CT",2026_10_SEA_LV,-6.5,40.5,230.0,-285.0
+"Tue Nov 10, 5:00 PM CT",2026_10_SF_DAL,-4.5,55.5,170.0,-205.0
+"Tue Nov 10, 5:00 PM CT",2026_10_LAC_BAL,4.5,38.5,-218.0,180.0
