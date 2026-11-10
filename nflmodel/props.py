@@ -174,7 +174,17 @@ def _trust(base: float, model: float, market: float) -> float:
     return base / (1 + (r / 0.4) ** 2)
 
 
-TD_MODEL_WEIGHT = 0.4      # touchdown chance = 40% model + 60% betting market, when market prices exist
+TD_MODEL_WEIGHT = 0.2      # touchdown chance = 20% model + 80% betting market, when market prices exist
+# Was 0.4 until Nov 10, 2026. Real DraftKings closing TD lines with replayed projections (current code, x0.92 market),
+# blend log loss by model weight 0 / 0.1 / 0.2 / 0.3 / 0.4:
+#   2025 wk1-18 (3,250 lines): 0.54435 / 0.54428 / 0.54428 / 0.54435 / 0.54449
+#   2026 wk1-7  (1,310)      : 0.53715 / 0.53702 / 0.53697 / 0.53699 / 0.53708
+#   2026 wk8-9  (373, live)  : 0.54425 / 0.54437 / 0.54456 / 0.54481 / 0.54512
+# Fit on 2025 (0.1-0.2) beats 0.4 on 2026; fit on 2026 (0.2) beats 0.4 on 2025. Week 9 live board: 0.5364 -> 0.5355.
+# The model alone runs high at long odds (+601-1000: 12.9% vs 10.7% scored; +1001 up: 11.9% vs 6.2%), so less weight
+# mostly trims longshot TD "edges". Bets at closing DK/FD prices: 2025 -1.3% (173) -> -4.6% (106), 2026 wk1-7 +52% (82)
+# -> +26% (35), wk8-9 -100% (12) -> +492% (6): noisy, fewer bets. Not changed: odds-dependent margin (fit one season,
+# worse on the other: 0.53886 -> 0.53937, 0.54449 -> 0.54567).
 TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; scale their implied chance down
 
 
@@ -194,7 +204,12 @@ BET_BOOKS = {"draftkings": "DraftKings", "fanduel": "FanDuel"}
 # on Week 7's lines (0.7061 vs 0.6935), and passing-yds bets went 9 at -15.7% at the close. Every other prop stat
 # beat DraftKings on those lines. Re-enable once out-of-sample real-line tests (e.g. fit on 2025 historical props,
 # checked on 2026) show passing yards beating the market. The weekly review checks it every Tuesday.
-LEAN_ONLY_STATS = {"pass_yds"}
+# Receptions (Nov 10, 2026): leans only. The Nov 3 rule (50+ receptions bets with average CLV below zero) triggered
+# after Week 9: 66 bets, CLV -0.53%, beat the close 26%. Closing-line test (DK + FD close, current model, line-shop and
+# sharp-book filters, 3-15% edge): receptions bets 2025 -15.0% ROI (103), 2026 wk1-7 +20.1% (30), wk8-9 -16.4% (16);
+# -12.1u on 149. Every receptions bet at the close was a FanDuel price (none clear 3% at DraftKings' own line).
+# Live record: Week 8 6-17 (-10.5u), Week 9 20-21 (+1.9u). Turn back on only if leans beat the close on 100+.
+LEAN_ONLY_STATS = {"pass_yds", "receptions"}
 # FanDuel line-shop props (FanDuel's line differs from DraftKings'): a bet only if the same side is also worth at
 # least this much at DraftKings' own line and price; otherwise a lean (Nov 3, 2026). Tested on real closing lines
 # (DraftKings + FanDuel, 2025 wk1-6 and 2026 wk1-7, current model): line-shop bets 2025 -7.4% ROI (212) / 2026

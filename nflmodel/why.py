@@ -8,6 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from . import props as P
 from .betting import implied
 from .model import _design, margin_features, total_features
 
@@ -274,7 +275,7 @@ def prop_why(r) -> list[tuple[str, str]]:
             out.append(("The number", s))
         mp = g("market_prob")
         if pd.notna(mp):
-            s = (f"The market says {mp:.0%} after the book's margin; blended 40% model / 60% market = {r.adj_projection:.1%}. "
+            s = (f"The market says {mp:.0%} after the book's margin; blended {P.TD_MODEL_WEIGHT:.0%} model / {1 - P.TD_MODEL_WEIGHT:.0%} market = {r.adj_projection:.1%}. "
                  f"At {book} {_odds(price)} the break-even is {implied(price):.1%}.")
             if pd.notna(price) and price >= 600:
                 s += " Long-odds touchdown: small chance differences make big edges, so the Tuesday review is watching these."

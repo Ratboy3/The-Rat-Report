@@ -10,7 +10,7 @@ tested on the multi-season backtest and kept only if they do better there.
 Checks
   1. Props, by stat: how often Overs hit vs DraftKings lines, how often our pricing picked the Over,
      log loss of our blended chance vs DraftKings' no-vig chance (lower = sharper), and leans' return.
-  2. Anytime TDs: log loss of the model alone, the market alone, and the live 40/60 blend.
+  2. Anytime TDs: log loss of the model alone, the market alone, and the live model/market blend (props.TD_MODEL_WEIGHT: 0.2 since Nov 10, 2026).
   3. Bets and leans: record, units and average CLV by market and stat.
   4. DraftKings vs Pinnacle on game lines (once Pinnacle is in game_lines_history.csv): moneyline log loss and the
      record of the side Pinnacle preferred at DraftKings' spread. Tracked weekly; used only once it's proven.
@@ -289,7 +289,8 @@ def _receptions_check(log: pd.DataFrame, season: int, out: dict) -> None:
     tests were mixed (2025 -12% ROI on 50, 2026 +15% on 34). Rule (Nov 3, 2026): at 50+ receptions bets with a
     closing price this season, if average CLV is below zero, make receptions leans only (props.LEAN_ONLY_STATS)."""
     b = log[(log.season == season) & (log.stat == "receptions") & (log.tier.fillna("bet") == "bet") & log.clv.notna()]
-    if len(b) >= 50 and b.clv.mean() < 0:
+    from . import props as P
+    if len(b) >= 50 and b.clv.mean() < 0 and "receptions" not in P.LEAN_ONLY_STATS:
         out["flags"].append(f"receptions bets: average CLV {b.clv.mean():+.2%} on {len(b)} bets (beat the close "
                             f"{(b.clv > 0).mean():.0%}): make receptions leans only")
 
