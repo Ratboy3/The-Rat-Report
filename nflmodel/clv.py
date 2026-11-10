@@ -222,7 +222,11 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                     stats = PP._load("stats", int(row.season), True)
                 except Exception:
                     stats = pd.DataFrame()
-            s = stats[(stats.week == row.week) & (stats.player_display_name == row.player)] if len(stats) else stats
+            gteams = str(row.game).split(" @ ")
+            tcol = "team" if "team" in stats else "recent_team"
+            # the player on one of THIS game's teams (Nov 9, 2026: same-name players on other teams)
+            s = (stats[(stats.week == row.week) & (stats.player_display_name == row.player) & stats[tcol].isin(gteams)]
+                 if len(stats) else stats)
             col = {"pass_yds": "passing_yards", "pass_tds": "passing_tds", "rush_yds": "rushing_yards",
                    "rec_yds": "receiving_yards", "receptions": "receptions"}.get(row.stat)
             if s.empty:
@@ -241,7 +245,7 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
                 if len(stats) == 0 or not teams <= set(stats[stats.week == row.week].team):
                     continue                                   # this game's stats not posted yet: don't grade from snaps
                                                                # alone (Nov 4, 2026 audit)
-                me = sw[sw.player == row.player]
+                me = sw[(sw.player == row.player) & sw.team.isin(teams)]
                 if me.empty or float(me[["offense_snaps", "defense_snaps", "st_snaps"]].fillna(0).sum(axis=1).max()) == 0:
                     log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0
                     continue

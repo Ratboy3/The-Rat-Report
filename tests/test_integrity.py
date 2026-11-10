@@ -108,5 +108,18 @@ check("no grading from snap counts before the game's stats post", "don't grade f
 
 check("inactive voids match the player's team, not just his name", "for t in str(row.game).split(\" @ \")" in cl)
 
+# 8. same-name players on different teams never share a price, a grade or a status (Nov 9, 2026: CLE LB and MIN WR
+#    Justin Jefferson)
+pr = (Path(__file__).resolve().parent.parent / "nflmodel" / "props.py").read_text()
+check("prop prices are matched by game + player + stat", "book[(r.game, _key(r.player)" in pr and "alt[(r.game, _key(r.player)" in pr
+      and "r_ = bk_get(src, p)" in pr and "cons[(gm, k_, st_)]" in pr and "sharp.setdefault((r.game," in pr)
+check("TD market prices skip names shared by two players this week", "_key(r.player) not in dup" in pr)
+check("grading matches the player on one of the game's teams", "stats[tcol].isin(gteams)" in cl and "sw.team.isin(teams)" in cl)
+props3 = pd.DataFrame([dict(game="ARI @ SEA", team="CLE", player="Justin Jefferson", stat="rec_yds", line=60.5,
+                            best_side="Under", over_odds=-110, under_odds=-110, source="DraftKings (The Odds API)",
+                            as_of="Wed Nov 4, 9:11 AM CT", book="DraftKings", dk_line=60.5, flag=True)])
+H.integrity(2026, 9, [dict(g=G(), opts=[])], props3, {}, prop_books=str(tmp), bets_log="/nonexistent")
+check("a bet on a player whose team isn't in that game is held", not bool(props3.loc[0, "flag"]))
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)

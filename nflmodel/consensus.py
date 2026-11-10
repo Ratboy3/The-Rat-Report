@@ -122,7 +122,8 @@ def run_test(games: pd.DataFrame) -> pd.DataFrame | None:
         dk = grp[grp.book == DK]
         for r in dk.itertuples():
             c = cons.get((P._key(r.player), r.stat))
-            a = s[s.player_display_name == r.player]
+            tcol = "team" if "team" in s else "recent_team"
+            a = s[(s.player_display_name == r.player) & s[tcol].isin(str(r.game).split(" @ "))]
             if c is None or a.empty:
                 continue
             a = a.iloc[0]

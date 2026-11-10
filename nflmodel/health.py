@@ -268,6 +268,8 @@ def integrity(season: int, week: int, games_out: list, props: pd.DataFrame | Non
             if r.book == "FanDuel" and pd.isna(r.get("dk_line", np.nan)):
                 bad.append("DraftKings doesn't list this prop")
             from .props import _key as _k
+            if str(r.team) not in str(r.game).split(" @ "):
+                bad.append(f"player's team {r.team} isn't in {r.game}")
             if (r.player, r.team) in holds or (_k(r.player), r.team) in {(_k(a), b) for a, b in holds}:
                 bad.append("player ruled out or on a role hold")
             if r.get("why_st_only", np.nan) == 1.0:

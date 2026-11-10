@@ -364,17 +364,31 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         # lines were being matched by player name to Week 8 props)
         wk_games = {f"{g.away_team} @ {g.home_team}" for g in week_proj.itertuples()}
         books = books[books.game.isin(wk_games)]
+    # Every price is matched by GAME + player + stat (Nov 9, 2026: same-name players on different teams, e.g.
+    # MIN WR Justin Jefferson and CLE LB Justin Jefferson, must never share a price, a grade or a status).
     book = {}
+    if books is not None and len(books):
+        # DraftKings from the all-books pull, which records the game (same pull that writes prop_lines.csv)
+        for r in books[books.book == "draftkings"].itertuples():
+            book[(r.game, _key(r.player), str(r.stat).strip())] = pd.Series(dict(
+                player=r.player, stat=r.stat, line=r.line, over_odds=r.over_odds, under_odds=r.under_odds,
+                source="DraftKings (The Odds API)", as_of=r.as_of))
     if lines is not None and len(lines):
         lines = _this_week_lines(lines, week_proj, books)
+        # rows without a game (article prices, or no all-books file): only for names unique among this week's players
+        names = players.drop_duplicates(["player", "team"]).player.map(_key).value_counts()
         for r in lines.itertuples():
-            book[(_key(r.player), str(r.stat).strip())] = r
+            k_, st_ = _key(r.player), str(r.stat).strip()
+            if "Odds API" in str(r.source) and books is not None and len(books):
+                continue                                   # already taken from the all-books pull, with its game
+            if names.get(k_, 0) == 1:
+                book[(None, k_, st_)] = r
     # FanDuel's prices from the all-books pull, as rows shaped like prop_lines (source names the book)
     alt = {}
     if books is not None and len(books):
         fb = books[books.book == "fanduel"]
         for r in fb.itertuples():
-            alt[(_key(r.player), str(r.stat).strip())] = pd.Series(dict(
+            alt[(r.game, _key(r.player), str(r.stat).strip())] = pd.Series(dict(
                 player=r.player, stat=r.stat, line=r.line, over_odds=r.over_odds, under_odds=r.under_odds,
                 source="FanDuel (The Odds API)", as_of=r.as_of))
     # the sharper offshore books' view of each prop (Pinnacle, BetOnline): mean implied by their own line and prices
@@ -383,8 +397,9 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         sb = books[books.book.isin(SHARP_PROP_BOOKS) & books.line.notna() & books.over_odds.notna() & books.under_odds.notna()
                    & (books.stat != "anytime_td")]
         for r in sb.itertuples():
-            sharp.setdefault((_key(r.player), str(r.stat).strip()), []).append(
+            sharp.setdefault((r.game, _key(r.player), str(r.stat).strip()), []).append(
                 _market_mean(r.stat, float(r.line), _no_vig_over(r.over_odds, r.under_odds)))
+    bk_get = lambda d, p_: d.get((p_.game, _key(p_.player), p_.stat), d.get((None, _key(p_.player), p_.stat)))
     market = {}
     if td_market is not None and len(td_market) and "as_of" in td_market and "gameday" in week_proj and len(week_proj):
         # only this week's TD market prices (Nov 4, 2026 audit: a finished Monday game's prices blended into next week)
@@ -392,20 +407,26 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         t_ = td_market.as_of.map(lambda a: _parse_asof(a, st_))
         td_market = td_market[t_.notna() & (t_ >= st_)]
     if td_market is not None and len(td_market):
-        market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob)}
+        # td_market.csv has no team: a name shared by two players this week is ambiguous, so neither gets it
+        dup = set(players.drop_duplicates(["player", "team"]).player.map(_key).value_counts().loc[lambda x: x > 1].index)
+        market = {_key(r.player): float(r.prob) for r in td_market.itertuples() if pd.notna(r.prob) and _key(r.player) not in dup}
     from . import consensus as K
-    cons = K.table(books)
+    cons = {}
+    if books is not None and len(books):
+        for gm, gb in books.groupby("game"):
+            for (k_, st_), v_ in K.table(gb).items():
+                cons[(gm, k_, st_)] = v_
     anchor_cons = K.use_consensus()   # other books' consensus as the market anchor, once it has tested better
     rows = []
     for p in players.itertuples():
         f = _script_factor(p.team, team_pts, team_ppg, p.stat)
-        c = cons.get((_key(p.player), p.stat))
+        c = cons.get((p.game, _key(p.player), p.stat))
         model_p, market_p = None, None
         if p.stat == "anytime_td":
             f = 1.0                     # already built from the team's projected points
             model_p = min(0.95, max(0.01, p.projection))
-            b_td = book.get((_key(p.player), p.stat))
-            market_p = _td_market(p.player, b_td if b_td is not None else alt.get((_key(p.player), p.stat)), market)
+            b_td = bk_get(book, p)
+            market_p = _td_market(p.player, b_td if b_td is not None else bk_get(alt, p), market)
             if anchor_cons and c is not None and pd.notna(c["all_td"]):
                 market_p = c["all_td"] if market_p is None else (market_p + c["all_td"]) / 2
             if market_p is None:
@@ -415,9 +436,9 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                 adj = w * model_p + (1 - w) * market_p
         else:
             adj = p.projection * f
-            b0 = book.get((_key(p.player), p.stat))
+            b0 = bk_get(book, p)
             if b0 is None:
-                b0 = alt.get((_key(p.player), p.stat))     # no DraftKings line: FanDuel's is the market
+                b0 = bk_get(alt, p)                         # no DraftKings line: FanDuel's is the market
             if b0 is not None and pd.notna(b0.line):
                 market_p = round(_market_mean(p.stat, float(b0.line), _no_vig_over(b0.over_odds, b0.under_odds)), 3)
                 if anchor_cons and c is not None and pd.notna(c["all_mean"]):
@@ -439,7 +460,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
         # price the bet at each book Alex uses and keep the better one
         cands = []
         for name, src in (("DraftKings", book), ("FanDuel", alt)):
-            r_ = src.get((_key(p.player), p.stat))
+            r_ = bk_get(src, p)
             pr_ = _side_prices(d, p.stat, r_) if r_ is not None else None
             if pr_ is not None:
                 cands.append((pr_, name, r_))
@@ -490,7 +511,7 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                         row.update(flag=False)
             # DraftKings is the sharper book on props: when Pinnacle/BetOnline like our side MORE than DraftKings does,
             # DraftKings has usually been right, so the bet is a lean (SHARP_PROP_FILTER, Nov 3, 2026)
-            sm_ = sharp.get((_key(p.player), p.stat))
+            sm_ = sharp.get((p.game, _key(p.player), p.stat))
             if sm_ and p.stat != "anytime_td" and dk and pd.notna(dk[0][2].line):
                 r_dk = dk[0][2]
                 dk_mean = _market_mean(p.stat, float(r_dk.line), _no_vig_over(r_dk.over_odds, r_dk.under_odds))
