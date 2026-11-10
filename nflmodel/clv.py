@@ -205,9 +205,10 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
     ip = Path(path).resolve().parent / "inactives.csv"
     if ip.exists():
         d = pd.read_csv(ip, comment="#")
-        ina = set(zip(d.season, d.week, d.player))
+        ina = set(zip(d.season, d.week, d.player, d.team))   # with team: a same-name player elsewhere doesn't void
+                                                              # (Nov 9, 2026: CLE LB Justin Jefferson voided MIN WR's bets)
     for i, row in log[log.result.isna() | (log.result == "")].iterrows():
-        if row.market == "prop" and (row.season, row.week, row.player) in ina:
+        if row.market == "prop" and any((row.season, row.week, row.player, t) in ina for t in str(row.game).split(" @ ")):
             log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0
             continue
         gg = games[games.game_id == row.game_id]

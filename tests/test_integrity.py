@@ -106,5 +106,7 @@ check("snap checks follow the stats' last game", "team_last = stats[stats.season
 cl = (Path(__file__).resolve().parent.parent / "nflmodel" / "clv.py").read_text()
 check("no grading from snap counts before the game's stats post", "don't grade from snaps" in cl)
 
+check("inactive voids match the player's team, not just his name", "for t in str(row.game).split(\" @ \")" in cl)
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)
