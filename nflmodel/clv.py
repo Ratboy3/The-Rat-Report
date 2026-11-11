@@ -207,6 +207,32 @@ def update(path: str | Path, season: int, week: int, proj: pd.DataFrame, game_op
         d = pd.read_csv(ip, comment="#")
         ina = set(zip(d.season, d.week, d.player, d.team))   # with team: a same-name player elsewhere doesn't void
                                                               # (Nov 9, 2026: CLE LB Justin Jefferson voided MIN WR's bets)
+    # an inactives row that turned out wrong (he played: a stat line or snaps in that game) is graded, not void
+    # (Nov 8, 2026: Brian Robinson Jr. was listed "ruled out" from a Friday report, played and scored)
+    vo = log[(log.result == "void") & (log.market == "prop")]
+    vo = vo[[any((r.season, r.week, r.player, t) in ina for t in str(r.game).split(" @ ")) for r in vo.itertuples()]]
+    played_ = set()
+    if len(vo):
+        try:
+            from . import player_proj as PP
+            from .injuries import _load_snaps
+            for season_ in set(vo.season.astype(int)):
+                st_ = PP._load("stats", season_, False)
+                sn_ = _load_snaps(season_, False)
+                tc_ = "team" if "team" in st_ else "recent_team"
+                for i, r in vo[vo.season == season_].iterrows():
+                    tm = str(r.game).split(" @ ")
+                    has = ((st_.week == r.week) & (st_.player_display_name == r.player) & st_[tc_].isin(tm)).any()
+                    if not has and sn_ is not None and len(sn_):
+                        s_ = sn_[(sn_.week == r.week) & (sn_.player == r.player) & sn_.team.isin(tm)]
+                        has = len(s_) > 0 and float(s_[["offense_snaps", "defense_snaps", "st_snaps"]].fillna(0).sum(axis=1).max()) > 0
+                    if has:
+                        log.at[i, "result"], log.at[i, "pnl"] = np.nan, np.nan
+                        played_.update((r.season, r.week, r.player, t) for t in tm)
+                        print(f"  {r.player} was listed inactive but played: graded instead of void")
+        except Exception as e:
+            print(f"  inactive re-check skipped ({e})")
+    ina -= played_
     for i, row in log[log.result.isna() | (log.result == "")].iterrows():
         if row.market == "prop" and any((row.season, row.week, row.player, t) in ina for t in str(row.game).split(" @ ")):
             log.at[i, "result"], log.at[i, "pnl"] = "void", 0.0

@@ -160,6 +160,20 @@ def status(df: pd.DataFrame, season: int, week: int) -> dict:
                            "CUT": "released", "RET": "retired", "NON": "non-football injury list"}.get(str(r.status.iloc[0]), str(r.status.iloc[0]))
                 elif len(r) == 0 or r.team.iloc[0] != team:
                     why = "no longer on the roster"
+            if why is None:
+                # ruled out, inactive or traded per inactives.csv (Nov 10, 2026: Kirk Cousins traded LV -> MIN on
+                # deadline day, before the roster file caught up)
+                try:
+                    from pathlib import Path as _P
+                    ip = _P(__file__).resolve().parent.parent / "inactives.csv"
+                    if ip.exists():
+                        ia = pd.read_csv(ip, comment="#")
+                        hit = ia[(ia.season == season) & (ia.week == week) & (ia.team == team)
+                                 & (ia.player.astype(str).str.split().str[-1] == str(usual_name).replace(".", " ").split()[-1])]
+                        if len(hit):
+                            why = str(hit.reason.iloc[0])
+                except Exception:
+                    pass
             if why:
                 out[team] = dict(kind="backup", qb=name, other=usual_name, text=f"{name} starts for {usual_name} ({why})")
             else:

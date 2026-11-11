@@ -164,6 +164,18 @@ def current_roster(roster: pd.DataFrame, week: int) -> pd.DataFrame:
     r = r.sort_values("week").drop_duplicates("gsis_id", keep="last")
     old = r.week < week
     r.loc[old & (r.status == "INA"), "status"] = "ACT"
+    # IR/reserve on an old roster but listed on THIS week's injury report: designated to return or activated, so
+    # the report decides (Nov 10, 2026; Myles Garrett). 2026 Weeks 2-9: such players listed Questionable played 39 of
+    # 79 games, no status 7 of 16; Out 0 of 49 and Doubtful 0 of 4 (the report keeps those out). Reserve players not
+    # on the report played 6 of 2,036, so they stay out.
+    if old.any() and "gsis_id" in r:
+        try:
+            inj = _load("injuries", int(r.season.max()), False)
+            if inj is not None and len(inj):
+                listed = set(inj[inj.week == week].gsis_id.dropna())
+                r.loc[old & (r.status == "RES") & r.gsis_id.isin(listed), "status"] = "ACT"
+        except Exception:
+            pass
     return r
 
 
