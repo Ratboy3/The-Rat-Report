@@ -1325,7 +1325,7 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 
 SHOW_SIZE = True   # suggested bet size on Best bets (approved by Alex Oct 28, 2026)
 SHOW_WHY = True    # "Why this bet" panels on Best bets (approved by Alex Oct 28, 2026)
-WHY_V2 = False     # Nov 10, 2026: precise notes (factor sizes, what has to happen, against it, bet type); on once Alex approves
+WHY_V2 = True      # Nov 10, 2026: precise notes (factor sizes, what has to happen, against it, bet type); approved by Alex Nov 10
 
 
 def _why(make) -> str:
