@@ -393,3 +393,273 @@ def prop_why(r) -> list[tuple[str, str]]:
         out.append(("Other books", f"{cs:.0%} for the {side} across the other books "
                                    f"({'above' if cs > implied(price) else 'below'} the {implied(price):.1%} break-even)."))
     return out
+
+
+# ------------------------------------------------------------------ v2 notes (Nov 10, 2026; behind report.WHY_V2)
+# Alex: "precise reasons, not generic." Each note says: what the bet is, which of the model's factors moved the
+# number and by how much (in yards / TDs, biggest first), what has to happen for it to win, what in the data points
+# the other way, and whether it's a model edge or only a price at one book. Lines that would be true of every bet
+# (blend weights, how the baseline is built) are left out.
+_V_SIDE = {"Over": "over", "Under": "under"}
+
+
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
+def _qb_text(r, ctx) -> str | None:
+    c = (ctx or {}).get(r.team, {})
+    qs, q = c.get("qb_status"), c.get("qb")
+    if q and q.get("new") and q.get("usual"):
+        return f"{q['new']} starting for {q['usual']}"
+    if qs and qs.get("kind") not in (None, "starter"):
+        return qs.get("text")
+    return None
+
+
+def _factors(r, ctx) -> list[tuple[str, float, str]]:
+    """(key, factor, words) for each multiplier that moved this projection by 1% or more."""
+    g = lambda k, d=np.nan: getattr(r, k, d)
+    short = STAT_SHORT.get(r.stat, r.stat)
+    grp = "QBs" if r.position == "QB" else POS_WORD.get(r.position, r.position)
+    out = []
+    fo = g("why_f_opp")
+    if pd.notna(fo) and pd.notna(g("why_opp_pg")):
+        rk = _rank_word(int(g("why_opp_rank")), int(g("why_opp_n")), "most", "fewest")
+        out.append(("opp", fo, f"{r.opp} allows {g('why_opp_pg'):.1f} {short} a game to {grp} ({rk})"))
+    sf, tp, ppg = g("script_factor"), g("why_team_pts"), g("why_team_ppg")
+    if pd.notna(sf) and pd.notna(tp) and pd.notna(ppg):
+        out.append(("script", sf, f"{r.team} projected for {tp:.1f} points vs its {ppg:.1f} average"))
+    fv = g("why_f_vol")
+    if pd.notna(fv):
+        kind = "runs" if r.stat == "rush_yds" else "passes"
+        out.append(("vol", fv, f"{r.team} expected to call {'more' if fv > 1 else 'fewer'} {kind} than usual"))
+    fb = g("why_f_bqb")
+    if pd.notna(fb):
+        qt = _qb_text(r, ctx)
+        out.append(("bqb", fb, f"QB change: {qt}" if qt else "backup QB starting"))
+    fn = g("why_f_next")
+    if pd.notna(fn):
+        out.append(("next", fn, "top teammate at his position is out, more work for him"))
+    fd_ = g("why_f_depth")
+    if pd.notna(fd_):
+        out.append(("depth", fd_, "moved down the depth chart this week"))
+    return [x for x in out if abs(x[1] - 1) >= 0.01]
+
+
+def _hits(log, line, side):
+    """(games on our side of the line, games, lowest, highest) from the recent log."""
+    vals = [v for v, _ in log[:6]]
+    if not vals:
+        return None
+    k = sum((v > line) if side == "Over" else (v < line) for v in vals)
+    return k, len(vals), min(vals), max(vals)
+
+
+def _dk_price(r, side, win):
+    """DraftKings price implied by dk_ev when DraftKings has the same line (else None)."""
+    dke, dkl = getattr(r, "dk_ev", np.nan), getattr(r, "dk_line", np.nan)
+    if pd.isna(dke) or pd.isna(dkl) or abs(float(dkl) - float(r.line)) > 0.01 or not win:
+        return None
+    dec = (1 + dke) / win
+    if dec <= 1.01:
+        return None
+    return round((dec - 1) * 100) if dec >= 2 else round(-100 / (dec - 1))
+
+
+def prop_brief(r, ctx=None) -> list[tuple[str, str]]:
+    g = lambda k, d=np.nan: getattr(r, k, d)
+    stat, side = r.stat, r.best_side
+    book = "FanDuel" if str(g("book", "")) == "FanDuel" else "DraftKings"
+    price = r.over_odds if side == "Over" else r.under_odds
+    win = r.p_over if side == "Over" else 1 - r.p_over
+    need = implied(price)
+    mo, mp = g("model_prob"), g("market_prob")
+    out, against, watch = [], [], []
+    is_td = stat == "anytime_td"
+    line = float(r.line)
+
+    # 1. the bet in one line
+    if is_td:
+        out.append(("The bet", f"{r.player} to score at {book} {_odds(price)}: we have {win:.1%}, the price needs {need:.1%} "
+                               f"(edge {r.ev:+.1%}). Model alone {mo:.1%}, market {mp:.1%}."))
+    else:
+        unit, d0 = STAT_SHORT.get(stat, stat), (2 if stat == "pass_tds" else 1)
+        out.append(("The bet", f"{side} {line:g} {STAT_WORD.get(stat, stat)} at {book} {_odds(price)}. Our model has him at "
+                               f"{mo:.{d0}f} {unit}, the market {mp:.{d0}f}; blended that's {r.adj_projection:.{d0}f}, which goes "
+                               f"{_V_SIDE[side]} {line:g} {win:.1%} of the time vs {need:.1%} needed (edge {r.ev:+.1%})."))
+
+    # 2. what moved the number / 3. what has to be true
+    true_ = []
+    if is_td:
+        share, ttd, tp, ppg = g("why_share"), g("why_team_tds"), g("why_team_pts"), g("why_team_ppg")
+        bits = []
+        if pd.notna(share) and pd.notna(ttd):
+            bits.append(f"{r.team} projects {ttd:.1f} TDs and he gets about {share:.0%} of them")
+            if pd.notna(tp) and pd.notna(ppg) and abs(tp / ppg - 1) >= 0.05:
+                usual = 1 - np.exp(-ttd * ppg / tp * share)
+                bits.append(f"at {r.team}'s usual {ppg:.1f} points he'd be {usual:.0%}; the {tp:.1f} projected moves it to {mo:.0%}")
+        tds, gp = g("why_td_scored"), g("why_td_games")
+        if pd.notna(gp) and gp > 0:
+            how = []
+            if pd.notna(g("why_rush_td")) and g("why_rush_td") > 0:
+                how.append(f"{int(g('why_rush_td'))} rushing")
+            if pd.notna(g("why_rec_td")) and g("why_rec_td") > 0:
+                how.append(f"{int(g('why_rec_td'))} receiving")
+            bits.append(f"scored in {int(tds)} of {int(gp)} games" + (f" ({', '.join(how)})" if how else ""))
+        if pd.notna(g("why_gl_pg")):
+            bits.append(f"{g('why_rz_pg'):.2f} red-zone and {g('why_gl_pg'):.2f} inside-the-10 touches a game")
+        if bits:
+            out.append(("Why the model likes him", "; ".join(bits) + "."))
+        if pd.notna(mp) and pd.notna(mo):
+            if mo > mp:
+                true_.append(f"his scoring role has to be real: the model's {mo:.0%} is above the market's {mp:.0%}, "
+                             f"and the blend only gets to {win:.1%} because touchdowns lean mostly on the market")
+            else:
+                against.append(f"our model alone is lower than the market ({mo:.0%} vs {mp:.0%}), so the edge is only "
+                               f"this book's price, not a read on him")
+        if pd.notna(g("why_gl_pg")) and g("why_gl_pg") < 0.15:
+            against.append(f"he barely gets touches near the goal line ({g('why_gl_pg'):.2f} a game inside the 10)")
+        if pd.notna(gp) and gp >= 4 and tds == 0:
+            against.append(f"no touchdowns in {int(gp)} games this season")
+    else:
+        base = g("why_base")
+        fs = _factors(r, ctx)
+        if pd.notna(base) and pd.notna(mo):
+            tot = float(mo) - float(base)
+            logs = [np.log(f) for _, f, _ in fs]
+            sl = sum(logs)
+            contrib = [(k, (tot * lg / sl) if abs(sl) > 1e-9 else 0.0, w) for (k, f, w), lg in zip(fs, logs)]
+            contrib = [c for c in contrib if abs(c[1]) >= 0.3 or (stat == "pass_tds" and abs(c[1]) >= 0.02)]
+            contrib.sort(key=lambda c: -abs(c[1]))
+            nd = 2 if stat == "pass_tds" else 1
+            s = f"Starts at {base:.{nd}f} (his recent-weighted average)"
+            if contrib:
+                s += "; then " + "; ".join(f"{w} ({v:+.{nd}f})" for _, v, w in contrib)
+            s += f"; = {mo:.{nd}f}."
+            out.append(("How the model gets there", s))
+            # what has to be true: the biggest factors pointing our way, as conditions
+            sign = -1 if side == "Under" else 1
+            fmap = {k: f for k, f, _ in fs}
+            mine = [c for c in contrib if np.sign(c[1]) == sign and abs(fmap[c[0]] - 1) >= 0.05][:2]
+            tp, ppg = g("why_team_pts"), g("why_team_ppg")
+            for k, v, _ in mine:
+                if k == "script":
+                    true_.append(f"{r.team} has to score like a {tp:.0f}-point team" + (f" (they average {ppg:.0f})" if side == "Under" else ""))
+                elif k == "opp":
+                    true_.append(f"{r.opp} has to keep doing what it's done against {('QBs' if r.position == 'QB' else POS_WORD.get(r.position))} "
+                                 f"({g('why_opp_pg'):.1f} a game)")
+                elif k == "vol":
+                    true_.append(f"{r.team} has to {'lean on the run' if (stat == 'rush_yds') == (side == 'Over') else 'throw more and run less'} as projected")
+                elif k == "bqb":
+                    qt = _qb_text(r, ctx)
+                    true_.append(f"the QB change has to hurt him" + (f" ({qt})" if qt else ""))
+                elif k == "next":
+                    true_.append("he has to soak up the missing teammate's work")
+            if (side == "Under" and base < line) or (side == "Over" and base > line):
+                true_.append(f"he just has to play to his normal: his baseline {base:.{nd}f} is already {_V_SIDE[side]} {line:g}")
+            # model far from the market
+            if pd.notna(mp) and mp and abs(mo - mp) / abs(mp) >= 0.25:
+                against.append(f"the market's {mp:.{nd}f} is far from our {mo:.{nd}f}; gaps that big are often news we "
+                               f"don't have, which is why the blend sits much closer to the market")
+        h = _hits(_log_vals(g("why_log")), line, side)
+        if h:
+            k, n, lo, hi = h
+            rng = f" (range {_num(lo)}–{_num(hi)})" if n > 1 else ""
+            if k * 2 < n:
+                opp_ = "topped" if side == "Under" else "stayed under"
+                against.append(f"he's {opp_} {line:g} in {n - k} of his last {n}{rng}")
+            elif k * 2 == n:
+                true_.append(f"recent form is a coin flip: {_V_SIDE[side]} {line:g} in {k} of his last {n}{rng}")
+            else:
+                true_.append(f"recent form helps: {_V_SIDE[side]} {line:g} in {k} of his last {n}{rng}")
+        l3, sa = g("why_l3"), g("why_season_avg")
+        if pd.notna(l3) and pd.notna(sa) and sa > 0 and abs(l3 / sa - 1) >= 0.25 and g("why_gp", 0) >= 5:
+            up = l3 > sa
+            s = f"trending {'up' if up else 'down'}: {_num(l3)} a game over his last 3 vs {_num(sa)} for the season"
+            (true_ if up == (side == "Over") else against).append(s)
+        if pd.notna(g("why_gp")) and g("why_gp") < 4:
+            against.append(f"only {int(g('why_gp'))} games of data this season")
+    if true_:
+        out.append(("What has to happen", "; ".join(t[0].upper() + t[1:] if i == 0 else t for i, t in enumerate(true_)) + "."))
+
+    # 4. against it, from other books
+    cp = g("cons_p_over")
+    if pd.notna(cp):
+        cs = cp if side == "Over" else 1 - cp
+        if cs < need:
+            nb = g("n_books")
+            against.append(f"the other books{f' ({int(nb)})' if pd.notna(nb) else ''} put the {side.lower() if not is_td else 'TD'} at "
+                           f"{cs:.1%}, under the {need:.1%} this price needs")
+    sp = g("sharp_side_p")
+    if pd.notna(sp) and sp < need:
+        against.append(f"the sharpest book has it at {sp:.1%}, also under {need:.1%}")
+    mv_ = g("mkt_move")
+    if pd.notna(mv_) and mv_ <= -0.03:
+        against.append(f"DraftKings has moved {abs(mv_) * 100:.0f} points of win chance against this side this week")
+    out.append(("Against it", (against[0][0].upper() + against[0][1:] + ("; " + "; ".join(against[1:]) if len(against) > 1 else "") + ".")
+                if against else "Nothing in the data we have points the other way."))
+
+    # 5. news / watch
+    if g("why_st_only") == 1.0:
+        watch.append("played only special teams last game; lean, not a bet")
+    hold_ = g("why_hold", "")
+    if isinstance(hold_, str) and hold_:
+        watch.append(f"role check: {hold_}; lean, not a bet")
+    sd_ = g("why_snap_drop")
+    if pd.notna(sd_) and g("why_st_only") != 1.0:
+        watch.append(f"snap share last game was {sd_:.0%} of his usual")
+    if pd.notna(g("why_f_back")):
+        watch.append("the regular at his position is back this week, so recent numbers may overstate his role")
+    st_ = g("why_stale", "")
+    if isinstance(st_, str) and st_:
+        watch.append(st_)
+    if str(g("injury", "") or "") not in ("", "nan"):
+        watch.append(f"injury report: {g('injury')}")
+    if watch:
+        out.append(("Watch", _cap("; ".join(watch)) + "."))
+
+    # 6. what kind of bet this is
+    dke, dkl = g("dk_ev"), g("dk_line")
+    if book == "FanDuel" and pd.notna(dke):
+        dkp = _dk_price(r, side, win)
+        better = pd.notna(dkl) and ((side == "Over" and line < dkl) or (side == "Under" and line > dkl))
+        if dke <= 0:
+            at = f" ({_odds(dkp)})" if dkp is not None else (f" at {dkl:g}" if pd.notna(dkl) else "")
+            out.append(("Type", f"Price bet. At DraftKings{at} it's {dke:+.1%}, no edge; it only works at FanDuel "
+                                f"{_odds(price)}{'' if is_td else f' on {line:g}'}. Skip it at a worse price."))
+        elif better:
+            out.append(("Type", f"Model edge plus a better number: FanDuel {line:g} vs DraftKings {dkl:g}. Still {dke:+.1%} "
+                                f"at DraftKings."))
+        else:
+            out.append(("Type", f"Model edge: also {dke:+.1%} at DraftKings."))
+    elif book == "DraftKings":
+        out.append(("Type", "Model edge at DraftKings."))
+    return out
+
+
+def game_brief(g: pd.Series, o: dict, sm, ctx: dict | None = None) -> list[tuple[str, str]]:
+    """v2 game note: drops the generic ratings line, adds what has to happen and what points the other way."""
+    base = [x for x in game_why(g, o, sm, ctx) if x[0] != "Matchup"]
+    home, away = g.home_team, g.away_team
+    true_, against = [], []
+    if o["market"] in ("spread", "moneyline"):
+        team = home if o["side"] == "home" else away
+        gap = abs(g.model_margin - g.spread_line)
+        if o["market"] == "spread":
+            line = -g.spread_line if o["side"] == "home" else g.spread_line
+            true_.append(f"{team} {line:+g}: the game has to land closer to our {_line(home if g.proj_margin >= 0 else away, g.proj_margin)} "
+                         f"than the market's {_line(home if g.spread_line >= 0 else away, g.spread_line)}")
+        else:
+            true_.append(f"{team} has to win outright")
+        if gap >= 3:
+            against.append(f"our model alone is {gap:.1f} pts off the market; gaps that size often mean news the model doesn't have")
+    else:
+        side = "Over" if o["side"] == "over" else "Under"
+        true_.append(f"the teams have to combine for {'more' if side == 'Over' else 'fewer'} than {g.total_line:g}; we project {g.proj_total:.1f}")
+        gap = abs(g.model_total - g.total_line)
+        if gap >= 4:
+            against.append(f"our model alone is {gap:.1f} pts off the market total; gaps that size often mean news the model doesn't have")
+    base.insert(min(len(base), 2), ("What has to happen", _cap("; ".join(true_)) + "."))
+    base.append(("Against it", (_cap("; ".join(against)) + ".") if against else "Nothing in the data we have points the other way."))
+    return base

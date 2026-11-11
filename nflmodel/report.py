@@ -1325,6 +1325,7 @@ FILTER_BAR = """<div class="fbar" role="group" aria-label="Filter bets">
 
 SHOW_SIZE = True   # suggested bet size on Best bets (approved by Alex Oct 28, 2026)
 SHOW_WHY = True    # "Why this bet" panels on Best bets (approved by Alex Oct 28, 2026)
+WHY_V2 = False     # Nov 10, 2026: precise notes (factor sizes, what has to happen, against it, bet type); on once Alex approves
 
 
 def _why(make) -> str:
@@ -1468,7 +1469,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             if o.get("bet", o["ev"] >= C.MIN_EV):
                 rows.append(dict(ev=o["ev"], pick=o["pick"].replace(" (FanDuel)", ""), game=key, when=_kickoff(g),
                                  book=o.get("book", "DraftKings"), odds=o["odds"], win=o["win_prob"], asof=asof,
-                                 mk=_mkt_key(o["market"]), extra=_price_bet_tag(g, o), why=_why(lambda: (W.game_why(g, o, sm, wctx) if sm is not None else []) + _ml_note(g, o) + _pin_note(o))))
+                                 mk=_mkt_key(o["market"]), extra=_price_bet_tag(g, o), why=_why(lambda: ((W.game_brief if WHY_V2 else W.game_why)(g, o, sm, wctx) if sm is not None else []) + _ml_note(g, o) + _pin_note(o))))
     if props is not None and not props.empty and "flag" in props:
         for r in props[props.flag.astype(bool) & props.line.notna()].itertuples():
             what = "Anytime TD" if r.stat == "anytime_td" else f"{r.best_side} {r.line:g} {STAT_LABEL.get(r.stat, r.stat).lower()}"
@@ -1476,7 +1477,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             win = r.p_over if r.best_side == "Over" else 1 - r.p_over
             rows.append(dict(ev=r.ev, pick=f"{r.player} {what}", game=r.game, when="", book=str(getattr(r, "book", "") or "DraftKings"),
                              odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r),
-                             why=_why(lambda: W.prop_why(r))))
+                             why=_why(lambda: W.prop_brief(r, wctx) if WHY_V2 else W.prop_why(r))))
     rows.sort(key=lambda x: -x["ev"])
     game_rows = [x for x in rows if x["mk"] not in ("prop", "td")]
     prop_rows = [x for x in rows if x["mk"] in ("prop", "td")]
