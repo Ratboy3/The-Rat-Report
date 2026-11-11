@@ -3,8 +3,9 @@
 # Lines: DraftKings only, and only when two sources published in the last 12 hours agree (check article dates;
 # many odds pages show days-old DraftKings numbers). spread_line > 0 means the HOME team is favored.
 game_id,home_qb_name,home_qb_change,away_qb_name,away_qb_change,spread_line,home_spread_odds,away_spread_odds,total_line,over_odds,under_odds,home_moneyline,away_moneyline
-2026_09_JAX_BAL,Joe Fagnano,1,,,,,,,,,,
-2026_09_CLE_NO,,,Shedeur Sanders,1,,,,,,,,
-2026_09_NYG_PHI,Joe Milton III,1,J.J. McCarthy,1,,,,,,,,
-2026_09_ARI_SEA,Drew Lock,1,Gardner Minshew,1,,,,,,,,
-2026_09_BUF_MIN,Carson Wentz,1,,,,,,,,,,
+2026_10_WAS_NYG,J.J. McCarthy,1,,,,,,,,,,
+2026_10_HOU_CLE,Deshaun Watson,0,,,,,,,,,,
+2026_10_LA_ARI,Carson Beck,1,,,,,,,,,,
+2026_10_SEA_LV,,,Drew Lock,1,,,,,,,,
+2026_10_MIN_GB,,,Carson Wentz,1,,,,,,,,
+2026_10_LAC_BAL,Jacoby Brissett,1,,,,,,,,,,
