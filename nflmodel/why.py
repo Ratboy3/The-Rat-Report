@@ -510,12 +510,22 @@ def prop_brief(r, ctx=None) -> list[tuple[str, str]]:
         if pd.notna(g("why_gl_pg")):
             bits.append(f"{g('why_rz_pg'):.2f} red-zone and {g('why_gl_pg'):.2f} inside-the-10 touches a game")
         if bits:
-            out.append(("Why the model likes him", "; ".join(bits) + "."))
+            likes = pd.notna(mo) and mo >= need
+            out.append(("Why the model likes him" if likes else "What the model sees", "; ".join(bits) + "."))
+        if pd.notna(mo) and mo < need:
+            cp_ = g("cons_p_over")
+            why_ = (f"Only the price. Our model alone has him at {mo:.1%}, below the {need:.1%} that {_odds(price)} needs, "
+                    f"so the model does not like this bet. It shows up because touchdown chances are 80% market: the "
+                    f"market says {mp:.1%}")
+            if pd.notna(cp_):
+                why_ += f" (other books {cp_:.1%})"
+            why_ += f", and FanDuel's {_odds(price)} pays more than that."
+            out.append(("Why it's flagged", why_))
         if pd.notna(mp) and pd.notna(mo):
             if mo > mp:
                 true_.append(f"his scoring role has to be real: the model's {mo:.0%} is above the market's {mp:.0%}, "
                              f"and the blend only gets to {win:.1%} because touchdowns lean mostly on the market")
-            else:
+            elif mo >= need:
                 against.append(f"our model alone is lower than the market ({mo:.0%} vs {mp:.0%}), so the edge is only "
                                f"this book's price, not a read on him")
         if pd.notna(g("why_gl_pg")) and g("why_gl_pg") < 0.15:
