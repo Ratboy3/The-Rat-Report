@@ -200,6 +200,16 @@ LONGSHOT_TD_ODDS = 600
 # model alone above break-even 13-44 +11.4u CLV +3.8% (57); below 0-16 -16.0u CLV -0.2% (16). Leans: +4.1% vs +0.7%
 # CLV. Below the break-even it stays a lean. Watched in the Tuesday review (small sample).
 TD_MODEL_MUST_CLEAR = True
+# Closing lines, current model and filters (Nov 10, 2026): TD bets with our model alone below the break-even went
+# 0-8 in 2025 wk5-18 and 0-3 in 2026 wk3-7 too. TD bets where the model clears the break-even but DraftKings shows no
+# edge (FanDuel price only) won: +12.1% (70) / +80% (23), so those stay bets. Same for yardage props: FanDuel
+# price-only bets +21% (15) / +41% (6); requiring 3% at DraftKings was mixed (2025 worse, 2026 better). No rule.
+
+# Rushing-yards Overs: leans only (Nov 10, 2026). Bets at DK/FD closing lines with every current filter:
+# 2025 wk5-18 Overs -3.8% (61) vs Unders +7.2% (53); 2026 wk3-8 Overs -17.1% (55) vs Unders +20.7% (14).
+# Live log: Over bets 9-14 (-6.1u), Under bets 16-7 (+7.1u); Over leans 20-28 (-10.2u). Bets back on only if
+# rushing Over leans beat the close on 100+.
+LEAN_ONLY_SIDES = {("rush_yds", "Over")}
 
 # Books Alex can bet at. DraftKings stays the market anchor (its own price tested more accurate than the other
 # books' consensus); each bet is priced at whichever of these books pays more for it (line shopping, Oct 27, 2026).
@@ -498,6 +508,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
+            if (p.stat, best) in LEAN_ONLY_SIDES:
+                row.update(flag=False)
             if (TD_MODEL_MUST_CLEAR and p.stat == "anytime_td" and best == "Over" and oo is not None
                     and pd.notna(oo) and model_p < implied(oo)):
                 row.update(flag=False, why_td_model_short=1.0)   # model alone below break-even: a price, not a read

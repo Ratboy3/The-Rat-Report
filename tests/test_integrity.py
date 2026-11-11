@@ -132,6 +132,7 @@ props4 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Sione Vaki", s
 H.integrity(2026, 9, [dict(g=G(), opts=[])], props4, {}, prop_books=str(tmp), bets_log="/nonexistent")
 check("TD bet with our model alone below break-even is held", not bool(props4.loc[0, "flag"]))
 check("prop pricing makes those TDs leans", "model_p < implied(oo)" in pr)
+check("rushing Overs are leans only", '("rush_yds", "Over")' in pr and "(p.stat, best) in LEAN_ONLY_SIDES" in pr)
 
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)
