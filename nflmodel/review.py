@@ -197,6 +197,17 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
         # longshot TD "edges" look bigger than they are. Track scored vs implied by price band across weeks.
         tt["band"] = pd.cut(tt.odds, [-10000, 100, 300, 600, 1000, 100000],
                             labels=["fav to +100", "+101 to +300", "+301 to +600", "+601 to +1000", "+1001 and up"])
+        # TD_MODEL_MUST_CLEAR watch (Nov 10, 2026): TDs the blend would bet (3%+ at the price) but our model alone
+        # is below the break-even, so they are leans. If these keep scoring at or above the price over 60+ lines,
+        # the rule is costing money: retest it.
+        tt["edge"] = tt.blend / tt.raw - 1
+        po = tt[(tt.edge >= 0.03) & (tt.model < tt.raw)]
+        ok = tt[(tt.edge >= 0.03) & (tt.model >= tt.raw)]
+        dec = lambda g: (1 / g.raw - 1)
+        out["td_model_clear"] = [dict(group=nm, lines=len(g), scored=int(g.y.sum()), implied=round(g.raw.mean(), 3),
+                                      units=round(float(np.where(g.y == 1, dec(g), -1.0).sum()), 2))
+                                 for nm, g in (("model alone below break-even (leans)", po),
+                                               ("model alone above break-even (bets)", ok)) if len(g)]
         out["td_bands"] = [dict(band=str(b), lines=len(g), scored=int(g.y.sum()), dk_implied=round(g.raw.mean(), 3),
                                 market_x092=round(g.market.mean(), 3), model=round(g.model.mean(), 3),
                                 blend=round(g.blend.mean(), 3)) for b, g in tt.groupby("band", observed=True)]
@@ -378,6 +389,10 @@ def _write(out: dict, out_dir: str) -> None:
         md.append(pd.DataFrame(out["props"]).to_markdown(index=False))
     if out["td"]:
         md += ["", "## Anytime TDs", pd.DataFrame([out["td"]]).to_markdown(index=False)]
+    if out.get("td_model_clear"):
+        md += ["", "## TD rule check: does our model alone clear the price? (TD_MODEL_MUST_CLEAR, Nov 10)",
+               pd.DataFrame(out["td_model_clear"]).to_markdown(index=False),
+               "Retest the rule if the 'below' group is up on 60+ lines across weeks (reviews.csv check=td_clear)."]
     if out.get("td_bands"):
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
     if out["log"]:
@@ -399,6 +414,8 @@ def _write(out: dict, out_dir: str) -> None:
     rows = [dict(season=out["season"], week=out["week"], check="prop", **r) for r in out["props"]]
     if out["td"]:
         rows.append(dict(season=out["season"], week=out["week"], check="td", **out["td"]))
+    for r in out.get("td_model_clear", []):
+        rows.append(dict(season=out["season"], week=out["week"], check="td_clear", **r))
     for b in out.get("td_bands", []):
         rows.append(dict(season=out["season"], week=out["week"], check="td_band", **b))
     if out.get("sharp"):
