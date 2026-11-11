@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.stats import gamma as gamma_d, nbinom, norm, poisson
 
 from . import config as C
-from .betting import ev, kelly_stake
+from .betting import ev, implied, kelly_stake
 
 
 def price_props(props: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict[str, float]) -> pd.DataFrame:
@@ -194,6 +194,12 @@ TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; sc
 # (a lean, not a bet). With the rule: 0 bets instead of 0-2 and a void. 13 of 14 longshot TD bets/leans that
 # week were priced off-API. Below +600 the rule doesn't apply. (Oct 27, 2026)
 LONGSHOT_TD_ODDS = 600
+
+# TD bets need our model alone to clear the price's break-even (Nov 10, 2026, Alex). The 80%-market blend can flag a
+# TD the model itself doesn't like, purely because one book's price beats the market. Weeks 8-9 logged TD bets:
+# model alone above break-even 13-44 +11.4u CLV +3.8% (57); below 0-16 -16.0u CLV -0.2% (16). Leans: +4.1% vs +0.7%
+# CLV. Below the break-even it stays a lean. Watched in the Tuesday review (small sample).
+TD_MODEL_MUST_CLEAR = True
 
 # Books Alex can bet at. DraftKings stays the market anchor (its own price tested more accurate than the other
 # books' consensus); each bet is priced at whichever of these books pays more for it (line shopping, Oct 27, 2026).
@@ -492,6 +498,9 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
             if (p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_ODDS
                     and not _same_day_api(b)):
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
+            if (TD_MODEL_MUST_CLEAR and p.stat == "anytime_td" and best == "Over" and oo is not None
+                    and pd.notna(oo) and model_p < implied(oo)):
+                row.update(flag=False, why_td_model_short=1.0)   # model alone below break-even: a price, not a read
             # Bets need a live sportsbook price from The Odds API; prices copied from articles stay leans (Nov 3,
             # 2026). Weeks 7-8 logged props: Odds API-priced bets CLV +2.1% (149), article-priced -10.4% (7), and
             # leans +1.1% (373) vs -9.8% (9); article prices beat the close 14-22% of the time vs 33-39%.

@@ -121,5 +121,17 @@ props3 = pd.DataFrame([dict(game="ARI @ SEA", team="CLE", player="Justin Jeffers
 H.integrity(2026, 9, [dict(g=G(), opts=[])], props3, {}, prop_books=str(tmp), bets_log="/nonexistent")
 check("a bet on a player whose team isn't in that game is held", not bool(props3.loc[0, "flag"]))
 
+# 9. a TD bet needs our model alone to clear the break-even (Nov 10, 2026: Sione Vaki +550, model 8.4% vs 15.4%)
+books_td = pd.concat([books, pd.DataFrame([dict(game="ARI @ SEA", player="Sione Vaki", stat="anytime_td", book="draftkings",
+                                                line=0.5, over_odds=550, under_odds=float("nan"),
+                                                as_of="Wed Nov 4, 9:11 AM CT")])])
+books_td.to_csv(tmp, index=False)
+props4 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Sione Vaki", stat="anytime_td", line=0.5, best_side="Over",
+                            over_odds=550, under_odds=float("nan"), source="DraftKings (The Odds API)",
+                            as_of="Wed Nov 4, 9:11 AM CT", book="DraftKings", dk_line=0.5, model_prob=0.084, flag=True)])
+H.integrity(2026, 9, [dict(g=G(), opts=[])], props4, {}, prop_books=str(tmp), bets_log="/nonexistent")
+check("TD bet with our model alone below break-even is held", not bool(props4.loc[0, "flag"]))
+check("prop pricing makes those TDs leans", "model_p < implied(oo)" in pr)
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)

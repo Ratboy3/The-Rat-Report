@@ -274,6 +274,11 @@ def integrity(season: int, week: int, games_out: list, props: pd.DataFrame | Non
                 bad.append("player ruled out or on a role hold")
             if r.get("why_st_only", np.nan) == 1.0:
                 bad.append("played only special teams last game")
+            if r.stat == "anytime_td" and pd.notna(r.get("model_prob", np.nan)) and pd.notna(r.over_odds):
+                from .betting import implied as _imp
+                from .props import TD_MODEL_MUST_CLEAR as _tdm
+                if _tdm and r.model_prob < _imp(r.over_odds):
+                    bad.append("TD bet where our model alone is below the break-even")
             if bad:
                 props.at[i, "flag"] = False
                 props.at[i, "why_stale"] = "data check: " + "; ".join(bad)
