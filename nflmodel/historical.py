@@ -94,6 +94,78 @@ def run(games: pd.DataFrame, spec: str, max_credits: int = 4500, test: bool = Fa
     print(f"Done: {spent} credits spent")
 
 
+# ------------------------------------------------------------------ early-week game lines (Nov 17, 2026)
+# Alex wants more game bets. Live game bets have beaten the close by 5-6% because they're placed early in the week,
+# but every game backtest so far graded the model against CLOSING lines. One snapshot per week, Wednesday 10:00 AM
+# CT (or the Wednesday before the week's first game), keeping every game of that week, to test the model against
+# the lines we actually bet. ~30 credits per snapshot.
+EARLY_OUT = ROOT / "data" / "hist_early_lines.csv"
+EARLY_LOG = ROOT / "data" / "hist_early_log.csv"
+CT = ZoneInfo("America/Chicago")
+
+
+def early_snapshots(games: pd.DataFrame, weeks: list[tuple[int, int]]) -> list[tuple[int, int, datetime, datetime]]:
+    out = []
+    for s, w in weeks:
+        g = games[(games.season == s) & (games.week == w) & games.gametime.notna()]
+        if g.empty:
+            continue
+        ko = sorted(datetime.strptime(f"{d} {t}", "%Y-%m-%d %H:%M").replace(tzinfo=ET) for d, t in zip(g.gameday, g.gametime))
+        first, last = ko[0], ko[-1]
+        d = first.astimezone(CT).date()
+        wed = d - timedelta(days=(d.weekday() - 2) % 7)
+        snap = datetime(wed.year, wed.month, wed.day, 10, 0, tzinfo=CT)
+        if snap >= first:
+            snap -= timedelta(days=7)
+        out.append((s, w, snap, last))
+    return out
+
+
+def run_early(games: pd.DataFrame, spec: str, max_credits: int = 1500, test: bool = False, floor: int | None = None) -> None:
+    key = O.api_key()
+    floor = KEEP_FLOOR if floor is None else floor
+    snaps = early_snapshots(games, parse_weeks(spec))
+    done = set(pd.read_csv(EARLY_LOG).snapshot) if EARLY_LOG.exists() else set()
+    todo = [x for x in snaps if x[2].astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") not in done]
+    print(f"{len(snaps)} early-week snapshots, {len(todo)} still to fetch")
+    spent = 0
+    for s, w, snap, last in (todo[:1] if test else todo):
+        iso = snap.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        r = requests.get(URL, timeout=60, params={"apiKey": key, "bookmakers": ",".join(O.GAME_BOOKS),
+                                                   "markets": "h2h,spreads,totals", "oddsFormat": "american", "date": iso})
+        if r.status_code != 200:
+            print(f"  {iso}: HTTP {r.status_code} {r.text[:300].replace(key, '***')}")
+            break
+        cost = int(float(r.headers.get("x-requests-last", 0) or 0))
+        left = int(float(r.headers.get("x-requests-remaining", 0) or 0))
+        spent += cost
+        body = r.json()
+        rows = []
+        for e in body.get("data", []):
+            ko = datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00"))
+            if not (snap < ko <= last + timedelta(minutes=5)):
+                continue                       # only this week's games
+            home, away = O.TEAM_ABBR.get(e["home_team"]), O.TEAM_ABBR.get(e["away_team"])
+            for bm in e.get("bookmakers", []):
+                for m in bm.get("markets", []):
+                    for o in m.get("outcomes", []):
+                        name = o.get("name", "")
+                        side = ("home" if O.TEAM_ABBR.get(name) == home else "away") if m["key"] != "totals" else name.lower()
+                        rows.append(dict(season=s, week=w, snapshot=iso, kickoff=e["commence_time"], game=f"{away} @ {home}",
+                                         book=bm["key"], market={"h2h": "moneyline", "spreads": "spread", "totals": "total"}[m["key"]],
+                                         side=side, line=o.get("point"), odds=o.get("price")))
+        if rows:
+            pd.DataFrame(rows).to_csv(EARLY_OUT, mode="a", header=not EARLY_OUT.exists(), index=False)
+        pd.DataFrame([dict(snapshot=iso, season=s, week=w, data_time=body.get("timestamp"),
+                           games=len({r["game"] for r in rows}), rows=len(rows), cost=cost, left=left)]).to_csv(
+            EARLY_LOG, mode="a", header=not EARLY_LOG.exists(), index=False)
+        print(f"  {s} wk{w} {iso}: {len({r['game'] for r in rows})} games, cost {cost}, {left} left")
+        if spent + cost > max_credits or left - cost < floor:
+            print(f"Stopping: spent {spent} (cap {max_credits}), {left} left (floor {floor})")
+            break
+    print(f"Done: {spent} credits spent")
+
+
 # ------------------------------------------------------------------ historical player props
 PROPS_OUT = ROOT / "data" / "hist_prop_lines.csv"
 PROPS_LOG = ROOT / "data" / "hist_props_log.csv"

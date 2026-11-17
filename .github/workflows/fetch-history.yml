@@ -22,6 +22,10 @@ on:
         description: "Player props instead of game lines (~60 credits per game)"
         type: boolean
         default: false
+      early:
+        description: "Early-week game lines (Wednesday 10 AM CT, one snapshot per week)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -42,7 +46,7 @@ jobs:
       - name: Historical pull
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python run.py fetch-history --weeks "${{ inputs.weeks }}" --max-credits "${{ inputs.max_credits }}" ${{ inputs.test && '--test' || '' }} ${{ inputs.props && '--props' || '' }} --floor "${{ inputs.floor }}"
+        run: python run.py fetch-history --weeks "${{ inputs.weeks }}" --max-credits "${{ inputs.max_credits }}" ${{ inputs.test && '--test' || '' }} ${{ inputs.props && '--props' || '' }} ${{ inputs.early && '--early' || '' }} --floor "${{ inputs.floor }}"
       - name: Commit
         run: |
           git config user.name "Rat Report data bot"
