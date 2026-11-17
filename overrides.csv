@@ -3,10 +3,10 @@
 # Lines: DraftKings only, and only when two sources published in the last 12 hours agree (check article dates;
 # many odds pages show days-old DraftKings numbers). spread_line > 0 means the HOME team is favored.
 game_id,home_qb_name,home_qb_change,away_qb_name,away_qb_change,spread_line,home_spread_odds,away_spread_odds,total_line,over_odds,under_odds,home_moneyline,away_moneyline
-2026_10_WAS_NYG,J.J. McCarthy,1,,,,,,,,,,
-2026_10_HOU_CLE,Deshaun Watson,0,,,,,,,,,,
-2026_10_LA_ARI,Carson Beck,1,,,,,,,,,,
-2026_10_SEA_LV,Fernando Mendoza,1,Drew Lock,1,,,,,,,,
-2026_10_MIN_GB,,,Kirk Cousins,1,,,,,,,,
-2026_10_LAC_BAL,Jacoby Brissett,1,,,,,,,,,,
-2026_10_MIA_IND,,,Kyle McCord,1,,,,,,,,
+2026_11_BAL_CAR,,,Jacoby Brissett,1,,,,,,,,
+2026_11_MIA_BUF,,,Kyle McCord,1,,,,,,,,
+2026_11_JAX_NYG,J.J. McCarthy,1,,,,,,,,,,
+2026_11_ARI_KC,,,Carson Beck,1,,,,,,,,
+2026_11_LV_DEN,,,Fernando Mendoza,1,,,,,,,,
+2026_11_MIN_SF,,,Kirk Cousins,1,,,,,,,,
+2026_11_PIT_PHI,Joe Milton III,1,,,,,,,,,,
