@@ -132,6 +132,7 @@ props4 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Sione Vaki", s
 H.integrity(2026, 9, [dict(g=G(), opts=[])], props4, {}, prop_books=str(tmp), bets_log="/nonexistent")
 check("TD bet with our model alone below break-even is held", not bool(props4.loc[0, "flag"]))
 check("prop pricing makes those TDs leans", "model_p < implied(oo)" in pr)
+check("Pinnacle spread filter only near kickoff", "PIN_SPREAD_HOURS" in open(__import__("pathlib").Path(__file__).resolve().parent.parent / "nflmodel" / "betting.py").read())
 check("rushing Overs are leans only", '("rush_yds", "Over")' in pr and "(p.stat, best) in LEAN_ONLY_SIDES" in pr)
 
 # 10. TD bets longer than +600 are leans (Nov 17, 2026: Weeks 7-10 bets 1-32; e.g. Jonnu Smith +1500, Goff +1300)

@@ -187,6 +187,25 @@ def pinnacle_check(g: pd.Series, opts: list[dict], dk: dict, pin: dict) -> list[
                 verdict = "agrees" if nv(ph[1], po[1]) > nv(dh[1], do[1]) else "disagrees"
         if verdict:
             o["pinnacle"] = verdict
-            if verdict == "disagrees":
+            if verdict == "disagrees" and not (m == "spread" and _hours_to_kickoff(g) > PIN_SPREAD_HOURS):
                 o["bet"] = False
     return opts
+
+
+# Early-week spreads: Pinnacle disagreeing is not a reason to pass (Nov 17, 2026). Model vs DraftKings' Wednesday
+# 10 AM lines (historical pull, 2024 / 2025 / 2026 wk1-10), spread bets at 3-15% edge where Pinnacle's early line
+# gave our side more points: +2.6u (9) / +4.4u (15) / +2.0u (2), and without QB-change games +2.6u (7) / +1.6u (12)
+# / +1.0u (1), i.e. better in every season. The Nov 3 closing-line test (-34% / -43% on 15 / 7) still applies near
+# kickoff, so the filter stays on within PIN_SPREAD_HOURS of the game. Moneylines keep the filter at all times:
+# without QB-change games, early dog MLs Pinnacle disagreed with lost in all three seasons (-1.2u / -0.8u / -1.2u).
+PIN_SPREAD_HOURS = 24
+
+
+def _hours_to_kickoff(g: pd.Series) -> float:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    try:
+        ko = datetime.strptime(f"{g.gameday} {g.gametime}", "%Y-%m-%d %H:%M").replace(tzinfo=ZoneInfo("America/New_York"))
+    except (TypeError, ValueError, AttributeError):
+        return 0.0
+    return (ko - datetime.now(ZoneInfo("America/New_York"))).total_seconds() / 3600
