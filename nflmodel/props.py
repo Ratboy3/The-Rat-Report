@@ -195,6 +195,15 @@ TD_BOOK_MARGIN = 0.92      # sportsbook "Yes" prices carry the book's margin; sc
 # week were priced off-API. Below +600 the rule doesn't apply. (Oct 27, 2026)
 LONGSHOT_TD_ODDS = 600
 
+# Longshot TDs are leans only (Nov 17, 2026, Week 10 review). Anytime TD bets at longer than +600 kept losing:
+# live log Weeks 7-10 bets 1-32 (-14u; Week 10 0-10) and leans 3-53, while our model alone runs well above what
+# these players score (closing DK lines, +601 and longer: 2025 model 13.4% vs 7.1% scored, 2026 13.9%/10.9% vs
+# 10.9%/9.3%; market x0.92 9.5%). Simulated bets at DK/FD closing prices with every current rule: 2025 -5.9u on 50
+# -> +7.1u on 25 without the +601 bets; 2026 wk1-10 +10.2u on 36 -> +15.2u on 22 (better in both seasons).
+# Lowering the model weight only for these lines didn't help log loss (0.54805 -> 0.54812, 0.53724 -> 0.53739,
+# 0.52977 -> 0.52967), so the price stays and only the bet flag goes. Shown and tracked as leans.
+LONGSHOT_TD_LEAN_ODDS = 600
+
 # TD bets need our model alone to clear the price's break-even (Nov 10, 2026, Alex). The 80%-market blend can flag a
 # TD the model itself doesn't like, purely because one book's price beats the market. Weeks 8-9 logged TD bets:
 # model alone above break-even 13-44 +11.4u CLV +3.8% (57); below 0-16 -16.0u CLV -0.2% (16). Leans: +4.1% vs +0.7%
@@ -510,6 +519,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
             if (p.stat, best) in LEAN_ONLY_SIDES:
                 row.update(flag=False)
+            if p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_LEAN_ODDS:
+                row.update(flag=False, why_td_longshot=1.0)   # longer than +600: leans only (Nov 17, 2026)
             if (TD_MODEL_MUST_CLEAR and p.stat == "anytime_td" and best == "Over" and oo is not None
                     and pd.notna(oo) and model_p < implied(oo)):
                 row.update(flag=False, why_td_model_short=1.0)   # model alone below break-even: a price, not a read

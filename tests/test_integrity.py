@@ -134,5 +134,13 @@ check("TD bet with our model alone below break-even is held", not bool(props4.lo
 check("prop pricing makes those TDs leans", "model_p < implied(oo)" in pr)
 check("rushing Overs are leans only", '("rush_yds", "Over")' in pr and "(p.stat, best) in LEAN_ONLY_SIDES" in pr)
 
+# 10. TD bets longer than +600 are leans (Nov 17, 2026: Weeks 7-10 bets 1-32; e.g. Jonnu Smith +1500, Goff +1300)
+props5 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Sione Vaki", stat="anytime_td", line=0.5, best_side="Over",
+                            over_odds=1300, under_odds=float("nan"), source="DraftKings (The Odds API)",
+                            as_of="Wed Nov 4, 9:11 AM CT", book="DraftKings", dk_line=0.5, model_prob=0.12, flag=True)])
+H.integrity(2026, 9, [dict(g=G(), opts=[])], props5, {}, prop_books=str(tmp), bets_log="/nonexistent")
+check("TD bet longer than +600 is held", not bool(props5.loc[0, "flag"]))
+check("prop pricing makes longshot TDs leans", "odds > LONGSHOT_TD_LEAN_ODDS" in pr)
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)

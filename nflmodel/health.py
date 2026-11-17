@@ -279,6 +279,10 @@ def integrity(season: int, week: int, games_out: list, props: pd.DataFrame | Non
                 from .props import TD_MODEL_MUST_CLEAR as _tdm
                 if _tdm and r.model_prob < _imp(r.over_odds):
                     bad.append("TD bet where our model alone is below the break-even")
+            if r.stat == "anytime_td" and r.get("best_side") == "Over" and pd.notna(r.over_odds):
+                from .props import LONGSHOT_TD_LEAN_ODDS as _lt
+                if float(r.over_odds) > _lt:
+                    bad.append(f"TD bet longer than +{_lt} (leans only since Nov 17, 2026)")
             if bad:
                 props.at[i, "flag"] = False
                 props.at[i, "why_stale"] = "data check: " + "; ".join(bad)

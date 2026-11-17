@@ -626,6 +626,8 @@ def prop_brief(r, ctx=None) -> list[tuple[str, str]]:
         watch.append(st_)
     if (stat, side) in getattr(P, "LEAN_ONLY_SIDES", set()):
         watch.append("rushing Overs are leans only (they have lost at closing prices in 2025, 2026 and live)")
+    if g("why_td_longshot") == 1.0:
+        watch.append("TDs longer than +600 are leans only (bets went 1-32 live; our model runs high at long odds)")
     if str(g("injury", "") or "") not in ("", "nan"):
         watch.append(f"injury report: {g('injury')}")
     if watch:
