@@ -141,10 +141,14 @@ def shop(g: pd.Series, opts: list[dict], sm, alt: dict, name: str = "FanDuel") -
         if e > o["ev"] + 1e-9:
             o.update(probs=probs, odds=float(odds), win_prob=probs[0], ev=e, stake=kelly_stake(probs, float(odds)),
                      pick=f"{pick} ({name})", book=name, line=sl, bet=is_bet(m, e))
-    for o in opts:   # moneyline favorites: leans only (config.ML_FAVORITES_LEAN_ONLY, Nov 3, 2026)
+    for o in opts:   # moneyline favorites: leans only (config.ML_FAVORITES_LEAN_ONLY, Nov 3, 2026), except the early-week
+        # trial (config.ML_FAV_EARLY_TRIAL, Nov 17, 2026): 2+ days before kickoff they can be bets
         if o["market"] == "moneyline" and o.get("bet") and float(o["odds"]) < 0 and getattr(C, "ML_FAVORITES_LEAN_ONLY", False):
+            if getattr(C, "ML_FAV_EARLY_TRIAL", False) and _hours_to_kickoff(g) >= C.ML_FAV_EARLY_HOURS:
+                o["fav_trial"] = True
+                continue
             o["bet"] = False
-            o["held"] = "moneyline favorite: leans only"
+            o["held"] = "moneyline favorite: leans only (bets only 2+ days before kickoff)"
     for o in opts:   # longshot moneylines need the edge at DraftKings too (config.LONGSHOT_ML_ODDS, Nov 3, 2026)
         if (o["market"] == "moneyline" and o.get("bet") and float(o["odds"]) >= C.LONGSHOT_ML_ODDS
                 and o.get("dk_ev", o["ev"]) < C.MIN_EV):
@@ -189,6 +193,12 @@ def pinnacle_check(g: pd.Series, opts: list[dict], dk: dict, pin: dict) -> list[
             o["pinnacle"] = verdict
             if verdict == "disagrees" and not (m == "spread" and _hours_to_kickoff(g) > PIN_SPREAD_HOURS):
                 o["bet"] = False
+    # favorite-ML trial: no doubling up. If we already bet that team's spread, the moneyline stays a lean.
+    spread_bets = {o["side"] for o in opts if o["market"] == "spread" and o.get("bet")}
+    for o in opts:
+        if o.get("fav_trial") and o.get("bet") and o["side"] in spread_bets:
+            o["bet"] = False
+            o["held"] = "moneyline favorite: already a spread bet on this team"
     return opts
 
 

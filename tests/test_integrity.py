@@ -132,6 +132,8 @@ props4 = pd.DataFrame([dict(game="ARI @ SEA", team="SEA", player="Sione Vaki", s
 H.integrity(2026, 9, [dict(g=G(), opts=[])], props4, {}, prop_books=str(tmp), bets_log="/nonexistent")
 check("TD bet with our model alone below break-even is held", not bool(props4.loc[0, "flag"]))
 check("prop pricing makes those TDs leans", "model_p < implied(oo)" in pr)
+_bt = open(__import__("pathlib").Path(__file__).resolve().parent.parent / "nflmodel" / "betting.py").read()
+check("favorite-ML trial: early only and no doubling up with the spread", "ML_FAV_EARLY_HOURS" in _bt and "already a spread bet on this team" in _bt)
 check("Pinnacle spread filter only near kickoff", "PIN_SPREAD_HOURS" in open(__import__("pathlib").Path(__file__).resolve().parent.parent / "nflmodel" / "betting.py").read())
 check("rushing Overs are leans only", '("rush_yds", "Over")' in pr and "(p.stat, best) in LEAN_ONLY_SIDES" in pr)
 

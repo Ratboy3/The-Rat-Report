@@ -320,6 +320,20 @@ def _longshot_ml(log: pd.DataFrame, season: int, out: dict) -> None:
                                        units=round(float(g.pnl.astype(float).sum()), 2),
                                        clv=round(float(x.clv.mean()) * 100, 2) if x.clv.notna().any() else np.nan,
                                        avg_odds=round(float(pd.to_numeric(x.odds).median()))))
+    # early-week favorite-ML trial (config.ML_FAV_EARLY_TRIAL, Nov 17, 2026): bets logged since the trial began
+    from .props import _parse_asof
+    ref = pd.Timestamp(f"{season}-11-15")
+    lt = l.logged_at.map(lambda a: _parse_asof(a, ref))
+    t = l[(l.tier == "favorite bet") & lt.notna() & (lt >= pd.Timestamp("2026-11-17 12:00"))]
+    if len(t):
+        g = t[t.result.isin(["win", "loss", "push"])]
+        beat = float((t.clv.dropna() > 0).mean()) if t.clv.notna().any() else np.nan
+        out["fav_trial"] = dict(bets=len(t), graded=len(g), wins=int((g.result == "win").sum()),
+                                units=round(float(g.pnl.astype(float).sum()), 2), beat_close=round(beat, 2) if beat == beat else np.nan)
+        from . import config as C
+        if getattr(C, "ML_FAV_EARLY_TRIAL", False) and len(g) >= 25 and (g.pnl.astype(float).sum() < 0 or (beat == beat and beat < 0.5)):
+            out["flags"].append(f"favorite-ML trial: {len(g)} graded, {g.pnl.astype(float).sum():+.1f}u, beat the close "
+                                f"{beat:.0%}: end the trial (config.ML_FAV_EARLY_TRIAL = False)")
 
 
 def _market_move(log: pd.DataFrame, season: int, out: dict, history: str = "prop_books_history.csv") -> None:
@@ -399,6 +413,9 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("longshot_ml"):
         md += ["", "## Moneylines: favorites and +300 or longer (season; favorites are leans only since Nov 3)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
+    if out.get("fav_trial"):
+        md += ["", "## Favorite-ML trial (bets 2+ days before kickoff, since Nov 17; ends if losing after 25 or beating the close <50%)",
+               pd.DataFrame([out["fav_trial"]]).to_markdown(index=False)]
     if out.get("market_move"):
         md += ["", "## Market-move alarm: props by DraftKings' move against our side before logging (season)", pd.DataFrame(out["market_move"]).to_markdown(index=False)]
     if out.get("recrush"):

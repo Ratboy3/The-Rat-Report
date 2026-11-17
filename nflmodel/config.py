@@ -53,6 +53,14 @@ LONGSHOT_ML_MIN_GAP = 0.5
 # Walk-forward 2012-26, favorite ML bets at 3%+: 2012-19 -0.6% (239), 2020-26 -3.9% (131); -150 to -200 -10.6% (57).
 # A favorite's moneyline is mostly the spread at a worse price; take the spread when the model likes the side.
 ML_FAVORITES_LEAN_ONLY = True
+# Early-week favorite-ML trial (Nov 17, 2026, Alex's call): a favorite moneyline at 3%+ edge is a bet when it's 2+ days
+# before kickoff and we don't already bet that team's spread. Model vs DraftKings' Wednesday 10 AM lines: 3%+
+# favorites +5.9% (47) / +14.8% (23) / +8.2% (12) in 2024 / 2025 / 2026; without QB-change games +3.4u (21) / +3.6u
+# (11) / -0.4u (5). Live favorite leans 19-9 (+2.3u) through Week 10. At closing lines (2012-26) favorites lose, so
+# later in the week they stay leans. The weekly review ends the trial (set False) if trial bets are losing after 25,
+# or beat the close less than half the time.
+ML_FAV_EARLY_TRIAL = True
+ML_FAV_EARLY_HOURS = 48
 KELLY_FRACTION = 0.25
 MAX_STAKE_PCT = 0.03
 BANKROLL = 1000.0
