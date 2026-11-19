@@ -548,6 +548,8 @@ def main():
     fe = sub.add_parser("fetch-early", help="Sunday-morning pull for early (international) games: props + game lines only if a game kicks off soon")
     fe.add_argument("--hours", type=float, default=3.5)
     sub.add_parser("fetch-games", help="spreads/totals/moneylines at every US book -> game_lines.csv (3 credits)")
+    ft = sub.add_parser("fetch-first-td", help="first-touchdown scorer odds (all prop books) -> first_td_books.csv")
+    ft.add_argument("--hours", type=float, default=None)
     sub.add_parser("fetch-plan", help="hourly: decide which Odds API pulls to make now (paid-plan schedule)")
     fh = sub.add_parser("fetch-history", help="one-off: closing game lines for past weeks (historical odds, paid plan)")
     fh.add_argument("--weeks", default="2025:1-18,2026:1-7")
@@ -585,6 +587,7 @@ def main():
      "fetch-props": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch"]).fetch(a.prop_lines, a.hours),
      "fetch-early": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_early"]).fetch_early(a.hours),
      "fetch-games": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_games"]).fetch_games(),
+     "fetch-first-td": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_first_td"]).fetch_first_td(a.hours),
      "fetch-plan": lambda a: __import__("nflmodel.odds_api", fromlist=["fetch_plan"]).fetch_plan(),
      "fetch-history": lambda a: (__import__("nflmodel.historical", fromlist=["run_early"]).run_early(load_games(refresh=True), a.weeks, a.max_credits, a.test, a.floor)
                                  if a.early else __import__("nflmodel.historical", fromlist=["run_props"]).run_props(load_games(refresh=True), a.weeks, a.max_credits, a.floor)

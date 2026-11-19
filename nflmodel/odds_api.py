@@ -307,6 +307,55 @@ def fetch_extras(hours: float | None = None) -> tuple[int, int]:
     return len(alt), len(tt)
 
 
+FIRST_TD_COLS = ["game", "kickoff", "player", "book", "odds", "as_of"]
+
+
+def fetch_first_td(hours: float | None = None, path: str = "first_td_books.csv") -> int:
+    """First-touchdown scorer odds (market player_1st_td) at every named prop book for this week's games
+    (Nov 19, 2026) -> first_td_books.csv (latest per game) + first_td_history.csv (every pull). ~1 credit per game."""
+    key = api_key()
+    now = datetime.now(CT)
+    events = week_events(key, now)
+    if hours is not None:
+        events = [e for e in events if _ct(e["commence_time"]) <= now + timedelta(hours=hours)]
+    rows, left, fetched = [], None, set()
+    for e in events:
+        try:
+            r = requests.get(f"{BASE}/events/{e['id']}/odds", timeout=30, params={
+                "apiKey": key, "bookmakers": ",".join(PROP_BOOKS), "markets": "player_1st_td", "oddsFormat": "american"})
+            r.raise_for_status()
+        except Exception as ex:
+            print(f"  first TD skipped for {_game(e)} ({ex})")
+            continue
+        left = r.headers.get("x-requests-remaining")
+        fetched.add(_game(e))
+        for bm in r.json().get("bookmakers", []):
+            for m in bm.get("markets", []):
+                as_of = _stamp(_ct(m.get("last_update") or bm["last_update"]))
+                for o in m.get("outcomes", []):
+                    player = (o.get("description") or o.get("name") or "").strip()
+                    if player and str(o.get("name", "")).lower() not in ("no", "under"):
+                        rows.append(dict(game=_game(e), kickoff=e["commence_time"], player=player, book=bm["key"],
+                                         odds=o.get("price"), as_of=as_of))
+    new = pd.DataFrame(rows, columns=FIRST_TD_COLS)
+    p_ = Path(path)
+    old = pd.read_csv(p_) if p_.exists() else pd.DataFrame(columns=FIRST_TD_COLS)
+    if len(old):
+        ko = pd.to_datetime(old.kickoff, utc=True, errors="coerce")
+        old = old[~old.game.isin(fetched) & (ko > pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=12))]
+    pd.concat([old, new], ignore_index=True).to_csv(p_, index=False)
+    _archive("first_td_history.csv", new, now)
+    print(f"First TD: {len(new)} prices from {len(fetched)} games" + (f"  (Odds API credits left: {left})" if left else ""))
+    return len(new)
+
+
+def _first_td(hours: float | None = None) -> None:
+    try:
+        fetch_first_td(hours)
+    except Exception as e:                       # never let it stop the regular pulls
+        print(f"  first TD failed ({e})")
+
+
 CREDIT_FLOOR = 1500             # below this many credits left, keep only the near-kickoff pulls
 
 
@@ -336,12 +385,14 @@ def fetch_plan(now: datetime | None = None) -> None:
     slot = _due_slot(now, wd, hr)
     if not low and slot is not None and slot[0] == "week":
         fetch()
+        _first_td()
         if wd == 2 and slot[1] == 9:          # Wednesday morning: early-week alternate lines + team totals
             _extras()
         _mark_full_pull(now)
     elif not low and slot is not None and slot[0] == "sunday":
         fetch(hours=14)
         _extras(hours=14)
+        _first_td(hours=14)
         _mark_full_pull(now)
     elif LINES_FROM <= hr <= LINES_TO:
         fetch(hours=NEAR_KICKOFF_H)
