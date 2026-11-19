@@ -1168,18 +1168,33 @@ SHOW_FIRST_TD = True   # First TD tab + one line per game card (Nov 19, 2026; le
 
 
 def _ftd_row(r, game=False) -> str:
-    edge = f'<span class="{"good" if r.edge >= 0 else "muted"}">{_signed_pct(r.edge)}</span>' if pd.notna(r.edge) else "—"
+    """Ours vs the book's chance (DraftKings, margin removed), the best price, and a check when it beats our fair odds.
+    The edge % is left off on purpose: books keep 20-40% here, so it reads negative on every favorite and huge on
+    long shots (Alex, Nov 19, 2026); it's still logged for the track record."""
     price = f"{_odds(r.odds)}<sup>{r.book}</sup>" if pd.notna(r.odds) else '<span class="muted">—</span>'
-    mkt = f"{r.market * 100:.1f}%" if pd.notna(r.market) else "—"
-    size = f'<span class="cell-sub">{r.size:g}u</span>' if pd.notna(getattr(r, "size", np.nan)) and pd.notna(r.edge) and r.edge >= 0 else ""
+    book = f"{r.market * 100:.1f}%" if pd.notna(r.market) else "—"
+    if pd.notna(r.gap):
+        gap = f'<span class="cell-sub {"good" if r.gap > 0 else "muted"}">{r.gap * 100:+.1f} pts</span>'
+    else:
+        gap = ""
+    if bool(r.value):
+        sz = f" {r.size:g}u" if pd.notna(getattr(r, "size", np.nan)) else ""
+        val = f'<span class="cell-sub good" title="Price pays more than our fair odds">✓ value{sz}</span>'
+    else:
+        val = ""
     sub = f"{r.position} · {r.team}" + (f" · {escape(r.game)}" if game else "")
     return (f'<tr><td>{escape(r.player)}<span class="cell-sub">{sub}</span></td>'
-            f'<td class="n">{r.p * 100:.1f}%<span class="cell-sub">fair {_odds(r.fair)}</span></td><td class="n hide-sm">{mkt}</td>'
-            f'<td class="n">{price}</td><td class="n">{edge}{size}</td></tr>')
+            f'<td class="n">{r.p * 100:.1f}%<span class="cell-sub">fair {_odds(r.fair)}</span></td>'
+            f'<td class="n">{book}{gap}</td><td class="n">{price}{val}</td></tr>')
 
 
-_FTD_HEAD = ('<thead><tr><th>Player</th><th class="n">Chance</th><th class="n hide-sm">Market</th>'
-             '<th class="n">Price</th><th class="n">Edge</th></tr></thead>')
+_FTD_HEAD = ('<thead><tr><th>Player</th><th class="n">Ours</th><th class="n">Book</th>'
+             '<th class="n">Price</th></tr></thead>')
+
+
+def _ftd_sort(d):
+    """Biggest gap between our chance and the book's first; players the book doesn't price go last."""
+    return d.assign(_g=d.gap.fillna(-1)).sort_values(["_g", "p"], ascending=False).drop(columns="_g")
 
 
 def _card_ftd(ft) -> str:
@@ -1189,9 +1204,9 @@ def _card_ftd(ft) -> str:
     teams = ft.drop_duplicates("team").sort_values("pteam", ascending=False)
     chance = " · ".join(f"{t.team} {t.pteam * 100:.0f}%" for t in teams.itertuples())
     top = ft.sort_values("p", ascending=False).iloc[0]
-    v = ft[ft.value].sort_values("edge", ascending=False)
-    val = (f' · best value {escape(v.iloc[0].player)} {_odds(v.iloc[0].odds)} {v.iloc[0].book} ({_signed_pct(v.iloc[0].edge)})'
-           if len(v) else "")
+    v = _ftd_sort(ft[ft.value])
+    val = (f' · best value {escape(v.iloc[0].player)} {_odds(v.iloc[0].odds)} {v.iloc[0].book} '
+           f'(ours {v.iloc[0].p * 100:.1f}% vs book {v.iloc[0].market * 100:.1f}%)' if len(v) and pd.notna(v.iloc[0].market) else "")
     return (f'<p class="tdval"><b>First TD:</b> {chance} · top pick {escape(top.player)} {top.p * 100:.0f}% '
             f'(fair {_odds(top.fair)}){val} · <a href="#firsttd" data-goto="firsttd">full list</a></p>')
 
@@ -1203,10 +1218,10 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
         body = '<p class="note">No first-touchdown board yet this week.</p>'
     else:
         ft = ft[ft.game.isin(upcoming_keys)]
-        vals = ft[ft.value].sort_values("edge", ascending=False)
+        vals = _ftd_sort(ft[ft.value])
         top_v, rest_v = vals.head(4), vals.iloc[4:]
         vals_html = (f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{"".join(_ftd_row(r, True) for r in top_v.itertuples())}</tbody></table></div>'
-                     if len(vals) else '<p class="note">No first-TD price beats our fair odds by 3% right now.</p>')
+                     if len(vals) else '<p class="note">No first-TD price beats our fair odds right now.</p>')
         if len(rest_v):
             vals_html += (f'<details class="more"><summary>Show all {len(vals)} values</summary><div class="tablebox"><table>{_FTD_HEAD}'
                           f'<tbody>{"".join(_ftd_row(r, True) for r in rest_v.itertuples())}</tbody></table></div></details>')
@@ -1214,7 +1229,7 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
         for g, d in ft.groupby("game", sort=False):
             teams = d.drop_duplicates("team").sort_values("pteam", ascending=False)
             head = " · ".join(f"{t.team} scores first {t.pteam * 100:.0f}%" for t in teams.itertuples())
-            d = d.sort_values("p", ascending=False)
+            d = _ftd_sort(d)
             rows = "".join(_ftd_row(r) for r in d.head(4).itertuples())
             rest = d.iloc[4:]
             more = (f'<details class="more"><summary>Show all {len(d)} players</summary><div class="tablebox"><table>{_FTD_HEAD}'
@@ -1222,7 +1237,7 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
             blocks.append(f'<h4>{escape(g)} <span class="muted">({head})</span></h4>'
                           f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{rows}</tbody></table></div>{more}')
         body = (f'<h3>Best first-TD values</h3>{vals_html}'
-                f'<h3>Most likely first TD scorers, by game</h3>{"".join(blocks)}')
+                f'<h3>By game: biggest gaps between our chance and the book\'s</h3>{"".join(blocks)}')
     rec = ""
     if rec_rows:
         rr = "".join(f'<tr><td>{escape(r["group"])}</td><td class="n">{r["wins"]}-{r["n"] - r["wins"]}</td>'
@@ -1232,9 +1247,10 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
                f'<th class="n">Units (1u)</th><th class="n">Units (size)</th><th class="n">Hit rate</th><th class="n">Expected</th>'
                f'</tr></thead><tbody>{rr}</tbody></table></div>')
     return f"""<section id="firsttd"><h2>First touchdown</h2>
-    <p class="lede">Chance = his team's chance to score the game's first touchdown x his share of the team's touchdowns this season
-    (recent games weighted most). Price is the better of DraftKings and FanDuel; books keep 20-40% on this market, so most prices
-    sit below fair odds.</p>
+    <p class="lede">Ours = his team's chance to score the game's first touchdown x his share of the team's touchdowns this season
+    (recent games weighted most). Book = DraftKings' chance with its margin removed; the points under it are how much higher
+    or lower we are. Price is the better of DraftKings and FanDuel; ✓ value = it pays more than our fair odds. Lists are ranked
+    by how much higher we are than the book.</p>
     <p class="beta-note"><b>Leans only.</b> Not yet tested against past first-TD prices, so nothing here is a Best bet. Sizes are
     small longshot sizes.</p>
     {body}{rec}</section>"""

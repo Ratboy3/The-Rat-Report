@@ -99,8 +99,9 @@ def compute(auto_props: pd.DataFrame, books_path: Path | str = BOOKS) -> pd.Data
     t["size"] = t.odds.map(lambda o: suggested_units(o) if pd.notna(o) else np.nan)
     t["book"] = t.book.map({"draftkings": "DK", "fanduel": "FD"})
     t["rank"] = t.groupby(["game", "team"]).p.rank(ascending=False, method="first").astype(int)
-    t["value"] = t.edge >= VALUE_EDGE
-    cols = ["game", "kickoff", "team", "player", "position", "p", "fair", "pteam", "market", "book", "odds", "edge",
+    t["gap"] = t.p - t.market                              # our chance minus the book's (no-vig), in probability
+    t["value"] = t.edge > 0                                  # the price pays more than our fair odds
+    cols = ["game", "kickoff", "team", "player", "position", "p", "fair", "pteam", "market", "gap", "book", "odds", "edge",
             "size", "rank", "value"]
     return t[cols].sort_values(["game", "team", "rank"]).reset_index(drop=True)
 
@@ -181,7 +182,7 @@ def record(lg: pd.DataFrame, season: int) -> list[dict]:
         return []
     g = lg[(lg.season == season) & lg.result.isin(["win", "loss"])].copy()
     out = []
-    for name, x in (("Values (edge 3%+)", g[g.value.astype(str).str.lower() == "true"]),
+    for name, x in (("Values (price beats our fair odds)", g[g.value.astype(str).str.lower() == "true"]),
                     ("Model's top pick per team", g[g["rank"] == 1]),
                     ("Every player listed", g)):
         if len(x):
