@@ -145,5 +145,25 @@ H.integrity(2026, 9, [dict(g=G(), opts=[])], props5, {}, prop_books=str(tmp), be
 check("TD bet longer than +600 is held", not bool(props5.loc[0, "flag"]))
 check("prop pricing makes longshot TDs leans", "odds > LONGSHOT_TD_LEAN_ODDS" in pr)
 
+# 11. First TD tracking (Nov 19, 2026): whole board logged, close kept separate from the first price, graded from ESPN text
+import tempfile
+from nflmodel import first_td as FT
+_ft = pd.DataFrame([dict(game="IND @ HOU", kickoff="2099-01-01T00:00:00Z", team="IND", player="Jonathan Taylor", position="RB",
+                         p=0.105, fair=852.0, pteam=0.3, market=0.08, gap=0.025, book="DK", odds=800.0, edge=0.05, size=0.2,
+                         rank=1, rank_gap=1, value=True),
+                    dict(game="IND @ HOU", kickoff="2099-01-01T00:00:00Z", team="HOU", player="Nico Collins", position="WR",
+                         p=0.12, fair=733.0, pteam=0.65, market=0.13, gap=-0.01, book="FD", odds=600.0, edge=-0.1, size=0.2,
+                         rank=1, rank_gap=2, value=False)])
+_lp = Path(tempfile.mkdtemp()) / "ftlog.csv"
+FT.log(_ft, 2099, 1, _lp)
+FT.log(_ft.assign(odds=[700.0, 600.0]), 2099, 1, _lp)
+_l = pd.read_csv(_lp)
+check("first TD log keeps every priced player", len(_l) == 2)
+check("first TD log keeps the first price and updates the close",
+      float(_l.loc[_l.player == "Jonathan Taylor", "odds"].iloc[0]) == 800 and float(_l.loc[_l.player == "Jonathan Taylor", "close_odds"].iloc[0]) == 700)
+check("first TD closing line value computed", float(_l.loc[_l.player == "Jonathan Taylor", "clv"].iloc[0]) > 0)
+check("ESPN scorer text matches the player", FT._scored_espn("Jonathan Taylor", "Jonathan Taylor 7 Yd Run (Ka'imi Fairbairn Kick)")
+      and not FT._scored_espn("Jonathan Taylor", "Michael Pittman Jr. 12 Yd pass from Jonathan Taylor"))
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)

@@ -416,6 +416,14 @@ def _write(out: dict, out_dir: str) -> None:
     if out.get("fav_trial"):
         md += ["", "## Favorite-ML trial (bets 2+ days before kickoff, since Nov 17; ends if losing after 25 or beating the close <50%)",
                pd.DataFrame([out["fav_trial"]]).to_markdown(index=False)]
+    try:   # First TD model (Nov 19, 2026): leans only until the 2025 price backtest; season record by group
+        from . import first_td as FT
+        ftr = FT.record(FT.grade(out["season"]), out["season"])
+        if ftr:
+            md += ["", "## First TD model (leans only; season, at the first price shown)", pd.DataFrame(ftr).to_markdown(index=False),
+                   "Hit rate vs Expected shows calibration; Beat close = first price longer than the last pre-game price."]
+    except Exception as e:
+        md += ["", f"## First TD model: skipped ({e})"]
     if out.get("market_move"):
         md += ["", "## Market-move alarm: props by DraftKings' move against our side before logging (season)", pd.DataFrame(out["market_move"]).to_markdown(index=False)]
     if out.get("recrush"):

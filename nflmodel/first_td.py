@@ -40,8 +40,15 @@ PER_TEAM = 4              # shown per team on the tab: covers ~78% of a team's f
 VALUE_EDGE = 0.03
 FIRST_TD_BETS = False
 CT = ZoneInfo("America/Chicago")
+# First-seen columns (the price we first showed, like bets_log.csv), then close_* = the last board before kickoff
+# (updated on every run until kickoff), then the grade. Every priced player is logged, not just the ones shown, so the
+# backtest has the whole board (Alex, Nov 19, 2026: "make sure we are tracking these numbers").
 LOG_COLS = ["key", "logged_at", "season", "week", "game", "kickoff", "team", "player", "position", "p", "fair",
-            "pteam", "market", "book", "odds", "edge", "rank", "value", "result", "pnl"]
+            "pteam", "market", "gap", "book", "odds", "edge", "rank", "rank_gap", "value",
+            "close_at", "close_p", "close_market", "close_gap", "close_book", "close_odds", "close_edge", "close_value",
+            "close_rank_gap", "clv", "scorer", "result", "pnl"]
+CLOSE_MAP = {"p": "close_p", "market": "close_market", "gap": "close_gap", "book": "close_book", "odds": "close_odds",
+             "edge": "close_edge", "value": "close_value", "rank_gap": "close_rank_gap"}
 
 
 def _key(n) -> str:
@@ -101,32 +108,63 @@ def compute(auto_props: pd.DataFrame, books_path: Path | str = BOOKS) -> pd.Data
     t["rank"] = t.groupby(["game", "team"]).p.rank(ascending=False, method="first").astype(int)
     t["gap"] = t.p - t.market                              # our chance minus the book's (no-vig), in probability
     t["value"] = t.edge > 0                                  # the price pays more than our fair odds
+    t["rank_gap"] = t.gap.fillna(-1).groupby(t.game).rank(ascending=False, method="first").astype(int)   # order shown on the tab
     cols = ["game", "kickoff", "team", "player", "position", "p", "fair", "pteam", "market", "gap", "book", "odds", "edge",
-            "size", "rank", "value"]
+            "size", "rank", "rank_gap", "value"]
     return t[cols].sort_values(["game", "team", "rank"]).reset_index(drop=True)
 
 
-def log(ft: pd.DataFrame, season: int, week: int, path: Path | str = LOG) -> pd.DataFrame:
-    """Keep the first price we showed for each player-game (top picks and values), like bets_log.csv."""
+def _load(path: Path | str = LOG) -> pd.DataFrame:
     p_ = Path(path)
-    old = pd.read_csv(p_) if p_.exists() else pd.DataFrame(columns=LOG_COLS)
+    lg = pd.read_csv(p_) if p_.exists() else pd.DataFrame(columns=LOG_COLS)
+    for c in LOG_COLS:
+        if c not in lg:
+            lg[c] = np.nan
+    if lg.gap.isna().any():                                   # rows logged before Nov 19 evening had no gap column
+        lg["gap"] = lg.gap.fillna(lg.p - lg.market)
+    for c in ("book", "close_book", "close_at", "scorer", "result", "logged_at", "value", "close_value"):
+        lg[c] = lg[c].astype(object)
+    return lg[LOG_COLS]
+
+
+def log(ft: pd.DataFrame, season: int, week: int, path: Path | str = LOG) -> pd.DataFrame:
+    """Every priced player before kickoff: the first price we showed is kept (p, odds, ...), and the close_* columns
+    are overwritten on each run until kickoff, so they end as the last pre-game board (closing line value + backtest)."""
+    p_ = Path(path)
+    old = _load(p_)
     if ft is None or ft.empty:
         return old
     now = datetime.now(CT)
-    x = ft[(ft["rank"] <= PER_TEAM) | ft.value].copy()
-    x = x[x.odds.notna()]
+    x = ft[ft.odds.notna()].copy()
     ko = pd.to_datetime(x.kickoff, utc=True, errors="coerce")
     x = x[ko > pd.Timestamp.now(tz="UTC")]                    # only before kickoff
-    x["key"] = [f"{season}|{week}|{g}|{_key(pl)}" for g, pl in zip(x.game, x.player)]
-    x = x[~x.key.isin(set(old.key))]
     if x.empty:
         return old
-    x["logged_at"] = now.strftime("%a %b %-d, %-I:%M %p CT")
-    x["season"], x["week"] = season, week
-    new = x.assign(result=np.nan, pnl=np.nan)[LOG_COLS]
-    out = pd.concat([old, new], ignore_index=True)
-    out.to_csv(p_, index=False)
-    return out
+    x["key"] = [f"{season}|{week}|{g}|{_key(pl)}" for g, pl in zip(x.game, x.player)]
+    stamp = now.strftime("%a %b %-d, %-I:%M %p CT")
+    # the latest pre-game board for players already logged
+    x = x.drop_duplicates("key")
+    cur = x.set_index("key")
+    hit = old.key.isin(cur.index)
+    if hit.any():
+        for src, dst in CLOSE_MAP.items():
+            old[dst] = old[dst].astype(object)
+            old.loc[hit, dst] = old.loc[hit, "key"].map(cur[src]).astype(object)
+        old.loc[hit, "close_at"] = stamp
+    new = x[~x.key.isin(set(old.key))].copy()
+    if len(new):
+        new["logged_at"] = stamp
+        new["season"], new["week"] = season, week
+        new["close_at"] = stamp
+        for src, dst in CLOSE_MAP.items():
+            new[dst] = new[src]
+        new = new.assign(clv=np.nan, scorer=np.nan, result=np.nan, pnl=np.nan)[LOG_COLS]
+        old = pd.concat([old, new], ignore_index=True) if len(old) else new
+    # closing line value: how much better the first price was than the last pre-game price (same book or not)
+    both = old.odds.notna() & old.close_odds.notna()
+    old.loc[both, "clv"] = [decimal(float(a)) / decimal(float(b)) - 1 for a, b in zip(old.odds[both], old.close_odds[both])]
+    old.to_csv(p_, index=False)
+    return old
 
 
 def _abbr(n: str) -> str:
@@ -134,60 +172,149 @@ def _abbr(n: str) -> str:
     return f"{p[0][0]}.{p[-1]}" if len(p) > 1 else str(n)
 
 
-def grade(season: int, path: Path | str = LOG, pbp=None) -> pd.DataFrame:
-    """Grade logged rows once the game is in nflverse play-by-play: win if he scored the game's first TD."""
+def _name_key(s) -> str:
+    return " ".join(str(s).lower().replace(".", " ").replace("'", "").replace("-", " ").split())
+
+
+def espn_first_tds(days_back: int = 10, timeout: int = 20) -> dict:
+    """{(away, home): (team, scoring-play text)} for the first touchdown of each finished game, from ESPN's scoring
+    plays, so the First TD tab grades the night of the game (nflverse play-by-play can take a day). Never raises."""
+    import json
+    import urllib.request
+    from .scores import ESPN_TO_NFLVERSE
+    hdr = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    end = datetime.now(CT) + pd.Timedelta(days=1)
+    start = end - pd.Timedelta(days=days_back + 1)
+    out = {}
+    try:
+        url = ("https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+               f"?dates={start:%Y%m%d}-{end:%Y%m%d}&limit=100")
+        with urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=timeout) as r:
+            evs = json.load(r).get("events", [])
+    except Exception as e:
+        print(f"  ESPN first TDs unavailable ({e})")
+        return out
+    for ev in evs:
+        try:
+            comp = ev["competitions"][0]
+            if not comp.get("status", ev.get("status", {})).get("type", {}).get("completed"):
+                continue
+            side = {c["homeAway"]: ESPN_TO_NFLVERSE.get(c["team"]["abbreviation"], c["team"]["abbreviation"])
+                    for c in comp["competitors"]}
+            ids = {c["team"]["id"]: ESPN_TO_NFLVERSE.get(c["team"]["abbreviation"], c["team"]["abbreviation"])
+                   for c in comp["competitors"]}
+            su = f"https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event={ev['id']}"
+            with urllib.request.urlopen(urllib.request.Request(su, headers=hdr), timeout=timeout) as r:
+                plays = json.load(r).get("scoringPlays", [])
+            tds = [p for p in plays if "touchdown" in str(p.get("type", {}).get("text", "")).lower()
+                   or str(p.get("scoringType", {}).get("abbreviation", "")).upper() == "TD"]
+            if not tds:
+                out[(side["away"], side["home"])] = (None, "No touchdown")
+                continue
+            f = tds[0]
+            out[(side["away"], side["home"])] = (ids.get(str(f.get("team", {}).get("id")), None), str(f.get("text", "")))
+        except Exception:
+            continue
+    return out
+
+
+def _scored_espn(player: str, text: str) -> bool:
+    """ESPN scoring text starts with the scorer: 'Derrick Henry 5 Yd Run (...)', 'Zay Flowers 12 Yd pass from ...'."""
+    t, n = _name_key(text), _name_key(player)
+    return bool(n) and (t == n or t.startswith(n + " "))
+
+
+def grade(season: int, path: Path | str = LOG, pbp=None, espn=None) -> pd.DataFrame:
+    """Grade logged rows once the game is over: win if he scored the game's first TD. ESPN's scoring plays first
+    (same night), nflverse play-by-play as the fallback."""
     p_ = Path(path)
     if not p_.exists():
         return pd.DataFrame(columns=LOG_COLS)
-    lg = pd.read_csv(p_)
+    lg = _load(p_)
     todo = lg.result.isna() & (pd.to_datetime(lg.kickoff, utc=True, errors="coerce")
-                               < pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=5))
+                               < pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=3))
     if not todo.any():
         return lg
-    try:
-        if pbp is None:
-            url = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.csv.gz"
-            pbp = pd.read_csv(url, low_memory=False, usecols=["game_id", "season", "week", "home_team", "away_team",
-                                                              "play_id", "touchdown", "td_team", "td_player_name", "posteam"])
-    except Exception as e:
-        print(f"  first TD grading skipped ({e})")
-        return lg
-    td = pbp[(pbp.touchdown == 1) & pbp.td_team.notna()].sort_values(["game_id", "play_id"]).groupby("game_id").head(1)
-    td = td.assign(game=td.away_team + " @ " + td.home_team)
-    first = {(int(r.week), r.game): (r.td_team, str(r.td_player_name)) for r in td.itertuples()}
-    played = set(zip(pbp.week.astype(int), pbp.away_team + " @ " + pbp.home_team))
     ina = set()
     ip = ROOT / "inactives.csv"
     if ip.exists():
         ia = pd.read_csv(ip, comment="#")
         ina = {(int(r.season), int(r.week), _key(r.player), r.team) for r in ia.itertuples()}
+    espn = espn_first_tds() if espn is None else espn
+    first, played = {}, set()
+    try:
+        if pbp is None:
+            url = f"https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.csv.gz"
+            pbp = pd.read_csv(url, low_memory=False, usecols=["game_id", "season", "week", "home_team", "away_team",
+                                                              "play_id", "touchdown", "td_team", "td_player_name", "posteam"])
+        td = pbp[(pbp.touchdown == 1) & pbp.td_team.notna()].sort_values(["game_id", "play_id"]).groupby("game_id").head(1)
+        td = td.assign(game=td.away_team + " @ " + td.home_team)
+        first = {(int(r.week), r.game): (r.td_team, str(r.td_player_name)) for r in td.itertuples()}
+        played = set(zip(pbp.week.astype(int), pbp.away_team + " @ " + pbp.home_team))
+    except Exception as e:
+        print(f"  first TD play-by-play unavailable ({e})")
     for i in lg[todo].index:
         r = lg.loc[i]
         k = (int(r.week), r.game)
+        aw, hm = str(r.game).split(" @ ")
         if (int(r.season), int(r.week), _key(r.player), r.team) in ina:
             lg.loc[i, ["result", "pnl"]] = ["void", 0.0]
             continue
-        if k not in played:
+        if (aw, hm) in espn:
+            team, text = espn[(aw, hm)]
+            win = team == r.team and _scored_espn(r.player, text)
+            who = text.split(" (")[0]
+            lg.loc[i, "scorer"] = f"{who} ({team})" if team else who
+        elif k in played:
+            team, who = first.get(k, (None, ""))
+            win = team == r.team and who == _abbr(r.player)
+            lg.loc[i, "scorer"] = f"{who} ({team})" if team else "No touchdown"
+        else:
             continue
-        team, who = first.get(k, (None, ""))
-        win = team == r.team and who == _abbr(r.player)
-        lg.loc[i, ["result", "pnl"]] = ["win", decimal(float(r.odds)) - 1] if win else ["loss", -1.0]
+        odds = float(r.odds)
+        lg.loc[i, ["result", "pnl"]] = ["win", decimal(odds) - 1] if win else ["loss", -1.0]
     lg.to_csv(p_, index=False)
     return lg
 
 
+def frozen(lg: pd.DataFrame, game: str, season: int, week: int) -> pd.DataFrame:
+    """The last pre-game board for a game that has kicked off, from the log (same columns as compute())."""
+    if lg is None or lg.empty:
+        return pd.DataFrame()
+    d = lg[(lg.season == season) & (lg.week == week) & (lg.game == game)].copy()
+    if d.empty:
+        return d
+    for src, dst in CLOSE_MAP.items():
+        d[src] = d[dst].where(d[dst].notna(), d[src])
+    d["value"] = d.value.astype(str).str.lower() == "true"
+    d["fair"] = d.p.map(fair_american)
+    d["size"] = d.odds.map(lambda o: suggested_units(o) if pd.notna(o) else np.nan)
+    return d
+
+
 def record(lg: pd.DataFrame, season: int) -> list[dict]:
-    """Track record by group: values (edge 3%+), the model's #1 pick per team, everything logged."""
+    """Track record by group, at the first price we showed: values (✓), the top 4 per game by gap over the book (what
+    the tab lists first), the model's #1 pick per team, everything logged. Beat close = first price better than the
+    last pre-game price."""
     if lg is None or lg.empty:
         return []
     g = lg[(lg.season == season) & lg.result.isin(["win", "loss"])].copy()
+    if g.empty:
+        return []
+    rg = g.close_rank_gap.where(g.close_rank_gap.notna(), g.rank_gap)
+    if rg.isna().any():                                       # rows from before rank_gap was logged
+        alt = g.gap.fillna(-1).groupby([g.season, g.week, g.game]).rank(ascending=False, method="first")
+        rg = rg.fillna(alt)
     out = []
     for name, x in (("Values (price beats our fair odds)", g[g.value.astype(str).str.lower() == "true"]),
+                    ("Top 4 per game by gap over the book", g[rg <= PER_TEAM]),
                     ("Model's top pick per team", g[g["rank"] == 1]),
-                    ("Every player listed", g)):
+                    ("Every player logged", g)):
         if len(x):
             sz = x.odds.map(lambda o: suggested_units(o))
+            clv = x.clv.dropna()
             out.append(dict(group=name, n=len(x), wins=int((x.result == "win").sum()),
                             units=round(float(x.pnl.sum()), 1), sized=round(float((x.pnl * sz).sum()), 1),
-                            hit=round(float((x.result == "win").mean()), 3), exp=round(float(x.p.mean()), 3)))
+                            hit=round(float((x.result == "win").mean()), 3), exp=round(float(x.p.mean()), 3),
+                            beat_close=round(float((clv > 0).mean()), 3) if len(clv) else None))
     return out

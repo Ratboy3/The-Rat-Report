@@ -393,8 +393,9 @@ def cmd_report(a):
             mkt["first_td_by_game"] = {g: d for g, d in ft.groupby("game", sort=False)}
             if a.bets_log:
                 FT.log(ft, season, week)
-        if a.bets_log:
-            mkt["first_td_record"] = FT.record(FT.grade(season), season)
+        lg = FT.grade(season) if a.bets_log else FT._load()
+        mkt["first_td_log"] = lg
+        mkt["first_td_record"] = FT.record(lg, season)
     except Exception as e:
         print(f"  first TD skipped: {e}")
     news, checked = None, None
