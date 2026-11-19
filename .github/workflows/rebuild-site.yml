@@ -64,12 +64,14 @@ jobs:
           mkdir -p /tmp/run
           cp "$f" /tmp/run/index.html
           cp bets_log.csv lines_history.csv /tmp/run/
+          cp first_td_log.csv /tmp/run/ 2>/dev/null || true
           git config user.name "Rat Report site bot"
           git config user.email "actions@users.noreply.github.com"
           for i in 1 2 3 4 5; do
             git reset -q --hard
             git pull -q --rebase origin main
             cp /tmp/run/index.html index.html
+            [ -f /tmp/run/first_td_log.csv ] && cp /tmp/run/first_td_log.csv first_td_log.csv
             python run.py merge-logs --extra /tmp/run --save-bot
             git add index.html bets_log.csv lines_history.csv first_td_log.csv
             git add -f data/bets_log_bot.csv data/lines_history_bot.csv
