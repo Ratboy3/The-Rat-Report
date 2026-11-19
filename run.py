@@ -385,6 +385,18 @@ def cmd_report(a):
             clv_log = clv.update(a.bets_log, season, week, proj, games_out, sm, auto_props, games_g)
         except Exception as e:
             print(f"Bet log skipped: {e}")
+    try:   # first touchdown scorer model (separate model and tab, Nov 19, 2026)
+        from nflmodel import first_td as FT
+        ft = FT.compute(auto_props)
+        if ft is not None and len(ft):
+            mkt["first_td"] = ft
+            mkt["first_td_by_game"] = {g: d for g, d in ft.groupby("game", sort=False)}
+            if a.bets_log:
+                FT.log(ft, season, week)
+        if a.bets_log:
+            mkt["first_td_record"] = FT.record(FT.grade(season), season)
+    except Exception as e:
+        print(f"  first TD skipped: {e}")
     news, checked = None, None
     if a.news and Path(a.news).exists():
         news = pd.read_csv(a.news, comment="#")

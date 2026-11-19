@@ -71,7 +71,7 @@ jobs:
             git pull -q --rebase origin main
             cp /tmp/run/index.html index.html
             python run.py merge-logs --extra /tmp/run --save-bot
-            git add index.html bets_log.csv lines_history.csv
+            git add index.html bets_log.csv lines_history.csv first_td_log.csv
             git add -f data/bets_log_bot.csv data/lines_history_bot.csv
             if git diff --cached --quiet; then echo "No change"; exit 0; fi
             git commit -q -m "Site rebuild: ${gen}"

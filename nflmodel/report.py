@@ -381,7 +381,7 @@ def _game_card(item, news=None, tds=None, props=None, gi=0, inj=None, mkt=None) 
           <dt></dt><dd class="n">{g.away_team} {_odds(g.away_moneyline)}</dd></dl>
           {lean('moneyline')}</div>
       </div>
-      <details class="xtra" open><summary>Touchdown scorers and props</summary><div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div></details>
+      <details class="xtra" open><summary>Touchdown scorers and props</summary><div class="card-extra">{_card_tds(tds, (mkt or {}).get('best_props', {}))}{_card_ftd((mkt or {}).get('first_td_by_game', {}).get(game_key))}{_card_props(props, gi, (mkt or {}).get('best_props', {}))}</div></details>
       {_card_injuries(g, inj, (mkt or {}).get('qb'))}
       {_card_news(news, (mkt or {}).get('dk_used', {}).get(game_key))}
       </div>
@@ -1164,6 +1164,78 @@ TABS_JS = """
 """
 
 
+SHOW_FIRST_TD = True   # First TD tab + one line per game card (Nov 19, 2026; leans only until tested on past prices)
+
+
+def _ftd_row(r, game=False) -> str:
+    edge = f'<span class="{"good" if r.edge >= 0 else "muted"}">{_signed_pct(r.edge)}</span>' if pd.notna(r.edge) else "—"
+    price = f"{_odds(r.odds)}<sup>{r.book}</sup>" if pd.notna(r.odds) else '<span class="muted">—</span>'
+    mkt = f"{r.market * 100:.1f}%" if pd.notna(r.market) else "—"
+    size = f'<span class="cell-sub">{r.size:g}u</span>' if pd.notna(getattr(r, "size", np.nan)) and pd.notna(r.edge) and r.edge >= 0 else ""
+    sub = f"{r.position} · {r.team}" + (f" · {escape(r.game)}" if game else "")
+    return (f'<tr><td>{escape(r.player)}<span class="cell-sub">{sub}</span></td>'
+            f'<td class="n">{r.p * 100:.1f}%<span class="cell-sub">fair {_odds(r.fair)}</span></td><td class="n hide-sm">{mkt}</td>'
+            f'<td class="n">{price}</td><td class="n">{edge}{size}</td></tr>')
+
+
+_FTD_HEAD = ('<thead><tr><th>Player</th><th class="n">Chance</th><th class="n hide-sm">Market</th>'
+             '<th class="n">Price</th><th class="n">Edge</th></tr></thead>')
+
+
+def _card_ftd(ft) -> str:
+    """One line on the game card: each team's chance to score first, the model's top pick, the best value."""
+    if not SHOW_FIRST_TD or ft is None or len(ft) == 0:
+        return ""
+    teams = ft.drop_duplicates("team").sort_values("pteam", ascending=False)
+    chance = " · ".join(f"{t.team} {t.pteam * 100:.0f}%" for t in teams.itertuples())
+    top = ft.sort_values("p", ascending=False).iloc[0]
+    v = ft[ft.value].sort_values("edge", ascending=False)
+    val = (f' · best value {escape(v.iloc[0].player)} {_odds(v.iloc[0].odds)} {v.iloc[0].book} ({_signed_pct(v.iloc[0].edge)})'
+           if len(v) else "")
+    return (f'<p class="tdval"><b>First TD:</b> {chance} · top pick {escape(top.player)} {top.p * 100:.0f}% '
+            f'(fair {_odds(top.fair)}){val} · <a href="#firsttd" data-goto="firsttd">full list</a></p>')
+
+
+def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
+    if not SHOW_FIRST_TD:
+        return ""
+    if ft is None or len(ft) == 0:
+        body = '<p class="note">No first-touchdown board yet this week.</p>'
+    else:
+        ft = ft[ft.game.isin(upcoming_keys)]
+        vals = ft[ft.value].sort_values("edge", ascending=False)
+        top_v, rest_v = vals.head(10), vals.iloc[10:]
+        vals_html = (f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{"".join(_ftd_row(r, True) for r in top_v.itertuples())}</tbody></table></div>'
+                     if len(vals) else '<p class="note">No first-TD price beats our fair odds by 3% right now.</p>')
+        if len(rest_v):
+            vals_html += (f'<details class="more"><summary>Show all {len(vals)} values</summary><div class="tablebox"><table>{_FTD_HEAD}'
+                          f'<tbody>{"".join(_ftd_row(r, True) for r in rest_v.itertuples())}</tbody></table></div></details>')
+        blocks = []
+        for g, d in ft.groupby("game", sort=False):
+            teams = d.drop_duplicates("team").sort_values("pteam", ascending=False)
+            head = " · ".join(f"{t.team} scores first {t.pteam * 100:.0f}%" for t in teams.itertuples())
+            rows = "".join(_ftd_row(r) for r in d[d["rank"] <= 4].sort_values("p", ascending=False).itertuples())
+            blocks.append(f'<h4>{escape(g)} <span class="muted">({head})</span></h4>'
+                          f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{rows}</tbody></table></div>')
+        body = (f'<h3>Best first-TD values</h3>{vals_html}'
+                f'<h3>Most likely first TD scorers, by game</h3>{"".join(blocks)}')
+    rec = ""
+    if rec_rows:
+        rr = "".join(f'<tr><td>{escape(r["group"])}</td><td class="n">{r["wins"]}-{r["n"] - r["wins"]}</td>'
+                     f'<td class="n">{r["units"]:+.1f}u</td><td class="n">{r["sized"]:+.1f}u</td>'
+                     f'<td class="n">{r["hit"] * 100:.1f}%</td><td class="n">{r["exp"] * 100:.1f}%</td></tr>' for r in rec_rows)
+        rec = (f'<h3>First TD track record</h3><div class="tablebox"><table><thead><tr><th>Group</th><th class="n">W-L</th>'
+               f'<th class="n">Units (1u)</th><th class="n">Units (size)</th><th class="n">Hit rate</th><th class="n">Expected</th>'
+               f'</tr></thead><tbody>{rr}</tbody></table></div>')
+    return f"""<section id="firsttd"><h2>First touchdown</h2>
+    <p class="lede">Chance = his team's chance to score the game's first touchdown x his share of the team's touchdowns this season
+    (recent games weighted most). Price is the better of DraftKings and FanDuel; books keep 20-40% on this market, so most prices
+    sit below fair odds.</p>
+    <p class="beta-note"><b>Leans only.</b> Not yet tested against past first-TD prices, so nothing here is a Best bet. Sizes are
+    small longshot sizes.</p>
+    {body}{rec}</section>"""
+
+
 def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize, data_through,
            news=None, checked=None, auto_props=None, lines_checked=None, injuries=None, clv_log=None,
            prop_bt=None, market_info=None) -> str:
@@ -1203,8 +1275,8 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     cards = "".join(card(gi, it) for gi, it in enumerate(live))
     if done:
         cards += '<h3 class="final-head">Final</h3>' + "".join(card(len(live) + gi, it) for gi, it in enumerate(done))
-    tabs = [("bets", "Best bets"), ("games", "Games"), ("leans", "Leans"), ("results", "Results"), ("ratings", "Ratings"),
-            ("backtest", "Track record"), ("how", "Glossary")]
+    tabs = [("bets", "Best bets"), ("games", "Games"), ("leans", "Leans")] + ([("firsttd", "First TD")] if SHOW_FIRST_TD else []) + [
+            ("results", "Results"), ("ratings", "Ratings"), ("backtest", "Track record"), ("how", "Glossary")]
     toc = [f'<a href="#{k}" role="tab" data-tab="{k}" aria-controls="{k}">{v}</a>' for k, v in tabs]
     from zoneinfo import ZoneInfo
     now = datetime.now(ZoneInfo("America/Chicago"))
@@ -1242,6 +1314,7 @@ def render(*, season, week, sm, games, ratings, play, acc, rec, props, summarize
     <p class="note">Edge is the expected profit per dollar bet: +5% means about $5 back per $100 over many bets. Bets need at least a {C.MIN_EV:.0%} edge; smaller positive edges are leans.
     Hover or long-press a win % to see the break-even rate.</p></section>
   {_leans_section(upcoming, open_props, clv_log)}
+  {_first_td_section((market_info or {}).get("first_td"), (market_info or {}).get("first_td_record"), {f"{it['g'].away_team} @ {it['g'].home_team}" for it in upcoming})}
   {_results_section(clv_log)}
   <section id="games"><h2>Games</h2>
     <p class="lede">Projected score beside each team. "Pure model" is the model alone; "Projection" blends it with the market.
