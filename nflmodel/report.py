@@ -1243,8 +1243,10 @@ def _ftd_game_block(g, d, state="upcoming") -> str:
     head = " · ".join(f"{t.team} scores first {t.pteam * 100:.0f}%" for t in teams.itertuples())
     d = _ftd_sort(d)
     row = lambda r: _ftd_row(r, result=getattr(r, "result", None) if state == "final" else None)
-    # every ✓ value (our leans) stays in view, plus the top 4 by gap; only the rest folds (Alex, Nov 19, 2026)
-    show = d.index.isin(d.index[:4]) | d.value.astype(bool).values
+    # 4 rows per game: ✓ values (our leans) first, then the biggest gaps; shown in gap order, the rest folds
+    # (Alex, Nov 19, 2026: games only, top 4 with checkmarks listed)
+    pick = d.assign(_v=d.value.astype(bool)).sort_values("_v", ascending=False, kind="stable").index[:4]
+    show = d.index.isin(pick)
     rows = "".join(row(r) for r in d[show].itertuples())
     rest = d[~show]
     more = (f'<details class="more"><summary>Show the other {len(rest)} players</summary><div class="tablebox"><table>{_FTD_HEAD}'
@@ -1301,9 +1303,7 @@ def _first_td_section(ft, rec_rows, order, lg=None, season=None, week=None) -> s
         if len(rest_v):
             vals_html += (f'<details class="more"><summary>Show all {len(vals)} values</summary><div class="tablebox"><table>{_FTD_HEAD}'
                           f'<tbody>{"".join(_ftd_row(r, True) for r in rest_v.itertuples())}</tbody></table></div></details>')
-        body = (f'<h3>Best first-TD values</h3>{vals_html}'
-                f'<h3>By game: biggest gaps between our chance and the book\'s</h3>{"".join(blocks)}'
-                + (f'<h3 class="final-head">Final</h3>{"".join(finals)}' if finals else ""))
+        body = "".join(blocks) + (f'<h3 class="final-head">Final</h3>{"".join(finals)}' if finals else "")
     rec = ""
     if rec_rows:
         rr = "".join(f'<tr><td>{escape(r["group"])}</td><td class="n">{r["wins"]}-{r["n"] - r["wins"]}</td>'
@@ -1314,10 +1314,8 @@ def _first_td_section(ft, rec_rows, order, lg=None, season=None, week=None) -> s
                f'<th class="n">Units (1u)</th><th class="n">Units (size)</th><th class="n">Hit rate</th><th class="n">Expected</th>'
                f'<th class="n">Beat close</th></tr></thead><tbody>{rr}</tbody></table></div>')
     return f"""<section id="firsttd"><h2>First touchdown</h2>
-    <p class="lede">Ours = his team's chance to score the game's first touchdown x his share of the team's touchdowns this season
-    (recent games weighted most). Book = DraftKings' chance with its margin removed; the points under it are how much higher
-    or lower we are. Price is the better of DraftKings and FanDuel; ✓ value = it pays more than our fair odds. Lists are ranked
-    by how much higher we are than the book.</p>
+    <p class="lede">Ours = our chance he scores the game's first TD. Book = DraftKings' chance, margin removed (points = how far
+    we're above or below). ✓ value = the price pays more than our fair odds. Top 4 per game, checkmarks first.</p>
     <p class="beta-note"><b>Leans only.</b> Not yet tested against past first-TD prices, so nothing here is a Best bet. Sizes are
     small longshot sizes.</p>
     {body}{rec}</section>"""
