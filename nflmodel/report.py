@@ -1228,9 +1228,11 @@ def _ftd_game_block(g, d, state="upcoming") -> str:
     head = " · ".join(f"{t.team} scores first {t.pteam * 100:.0f}%" for t in teams.itertuples())
     d = _ftd_sort(d)
     row = lambda r: _ftd_row(r, result=getattr(r, "result", None) if state == "final" else None)
-    rows = "".join(row(r) for r in d.head(4).itertuples())
-    rest = d.iloc[4:]
-    more = (f'<details class="more"><summary>Show all {len(d)} players</summary><div class="tablebox"><table>{_FTD_HEAD}'
+    # every ✓ value (our leans) stays in view, plus the top 4 by gap; only the rest folds (Alex, Nov 19, 2026)
+    show = d.index.isin(d.index[:4]) | d.value.astype(bool).values
+    rows = "".join(row(r) for r in d[show].itertuples())
+    rest = d[~show]
+    more = (f'<details class="more"><summary>Show the other {len(rest)} players</summary><div class="tablebox"><table>{_FTD_HEAD}'
             f'<tbody>{"".join(row(r) for r in rest.itertuples())}</tbody></table></div></details>') if len(rest) else ""
     note = ""
     if state == "started":
@@ -1270,7 +1272,7 @@ def _first_td_section(ft, rec_rows, order, lg=None, season=None, week=None) -> s
     else:
         open_ft = ft[ft.game.isin(up)] if len(ft) else ft
         vals = _ftd_sort(open_ft[open_ft.value]) if len(open_ft) else open_ft
-        top_v, rest_v = vals.head(4), vals.iloc[4:]
+        top_v, rest_v = vals, vals.iloc[0:0]                   # every ✓ value listed, no dropdown (Alex, Nov 19)
         vals_html = (f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{"".join(_ftd_row(r, True) for r in top_v.itertuples())}</tbody></table></div>'
                      if len(vals) else '<p class="note">No first-TD price beats our fair odds right now.</p>')
         if len(rest_v):
