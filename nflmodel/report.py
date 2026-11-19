@@ -1204,7 +1204,7 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
     else:
         ft = ft[ft.game.isin(upcoming_keys)]
         vals = ft[ft.value].sort_values("edge", ascending=False)
-        top_v, rest_v = vals.head(10), vals.iloc[10:]
+        top_v, rest_v = vals.head(4), vals.iloc[4:]
         vals_html = (f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{"".join(_ftd_row(r, True) for r in top_v.itertuples())}</tbody></table></div>'
                      if len(vals) else '<p class="note">No first-TD price beats our fair odds by 3% right now.</p>')
         if len(rest_v):
@@ -1214,9 +1214,13 @@ def _first_td_section(ft, rec_rows, upcoming_keys) -> str:
         for g, d in ft.groupby("game", sort=False):
             teams = d.drop_duplicates("team").sort_values("pteam", ascending=False)
             head = " · ".join(f"{t.team} scores first {t.pteam * 100:.0f}%" for t in teams.itertuples())
-            rows = "".join(_ftd_row(r) for r in d[d["rank"] <= 4].sort_values("p", ascending=False).itertuples())
+            d = d.sort_values("p", ascending=False)
+            rows = "".join(_ftd_row(r) for r in d.head(4).itertuples())
+            rest = d.iloc[4:]
+            more = (f'<details class="more"><summary>Show all {len(d)} players</summary><div class="tablebox"><table>{_FTD_HEAD}'
+                    f'<tbody>{"".join(_ftd_row(r) for r in rest.itertuples())}</tbody></table></div></details>') if len(rest) else ""
             blocks.append(f'<h4>{escape(g)} <span class="muted">({head})</span></h4>'
-                          f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{rows}</tbody></table></div>')
+                          f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{rows}</tbody></table></div>{more}')
         body = (f'<h3>Best first-TD values</h3>{vals_html}'
                 f'<h3>Most likely first TD scorers, by game</h3>{"".join(blocks)}')
     rec = ""
