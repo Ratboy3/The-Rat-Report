@@ -1215,6 +1215,21 @@ def _card_ftd(ft) -> str:
             f'(fair {_odds(top.fair)}){val} · <a href="#firsttd" data-goto="firsttd">full list</a></p>')
 
 
+def _ftd_slot(ko) -> str:
+    """Kickoff window in Central time: Thursday night, Sunday morning (international), noon, afternoon, night, Monday night."""
+    try:
+        t = pd.Timestamp(ko).tz_convert("America/Chicago")
+    except Exception:
+        return "Time TBD"
+    day = t.strftime("%A")
+    if day == "Sunday":
+        w = ("Sunday morning" if t.hour < 11 else "Sunday noon" if t.hour < 14
+             else "Sunday afternoon" if t.hour < 18 else "Sunday night")
+    else:
+        w = f"{day} night" if t.hour >= 17 else f"{day} {t.strftime('%-I:%M %p')}"
+    return w
+
+
 def _pct0(x) -> str:
     return "—" if x is None or pd.isna(x) else f"{x * 100:.0f}%"
 
@@ -1273,8 +1288,16 @@ def _first_td_section(ft, rec_rows, order, lg=None, season=None, week=None) -> s
         open_ft = ft[ft.game.isin(up)] if len(ft) else ft
         vals = _ftd_sort(open_ft[open_ft.value]) if len(open_ft) else open_ft
         top_v, rest_v = vals, vals.iloc[0:0]                   # every ✓ value listed, no dropdown (Alex, Nov 19)
-        vals_html = (f'<div class="tablebox"><table>{_FTD_HEAD}<tbody>{"".join(_ftd_row(r, True) for r in top_v.itertuples())}</tbody></table></div>'
-                     if len(vals) else '<p class="note">No first-TD price beats our fair odds right now.</p>')
+        if len(vals):                                          # split by kickoff window, earliest first (Alex, Nov 19)
+            sl = vals.assign(_s=vals.kickoff.map(_ftd_slot))
+            sl["_k"] = pd.to_datetime(sl.kickoff, utc=True, errors="coerce")
+            parts = []
+            for lab, d in sorted(sl.groupby("_s", sort=False), key=lambda x: x[1]._k.min()):
+                parts.append(f'<h4>{escape(lab)} <span class="muted">({len(d)})</span></h4><div class="tablebox"><table>{_FTD_HEAD}'
+                             f'<tbody>{"".join(_ftd_row(r, True) for r in _ftd_sort(d).itertuples())}</tbody></table></div>')
+            vals_html = "".join(parts)
+        else:
+            vals_html = '<p class="note">No first-TD price beats our fair odds right now.</p>'
         if len(rest_v):
             vals_html += (f'<details class="more"><summary>Show all {len(vals)} values</summary><div class="tablebox"><table>{_FTD_HEAD}'
                           f'<tbody>{"".join(_ftd_row(r, True) for r in rest_v.itertuples())}</tbody></table></div></details>')
