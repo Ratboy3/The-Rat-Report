@@ -1053,6 +1053,8 @@ table.props td{vertical-align:middle}
 .card-extra>.tds{border-top:0}
 .card-extra>.tds+div,.card-extra>.tds+.tds{border-left:1px solid var(--line)}
 .card-extra details.allprops{grid-column:1/-1;border-top:1px solid var(--line);padding:8px 14px 10px}
+.card-extra>.ftdline{grid-column:1/-1;order:1;margin:0;max-width:none;padding:9px 14px;border-top:1px solid var(--line)}
+.card-extra details.allprops{order:2}
 .allprops summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:13px}
 .allprops summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .allprops .tablebox{margin-top:8px}
@@ -1211,7 +1213,7 @@ def _card_ftd(ft) -> str:
     v = _ftd_sort(ft[ft.value])
     val = (f' · best value {escape(v.iloc[0].player)} {_odds(v.iloc[0].odds)} {v.iloc[0].book} '
            f'(ours {v.iloc[0].p * 100:.1f}% vs book {v.iloc[0].market * 100:.1f}%)' if len(v) and pd.notna(v.iloc[0].market) else "")
-    return (f'<p class="tdval"><b>First TD:</b> {chance} · top pick {escape(top.player)} {top.p * 100:.0f}% '
+    return (f'<p class="tdval ftdline"><b>First TD:</b> {chance} · top pick {escape(top.player)} {top.p * 100:.0f}% '
             f'(fair {_odds(top.fair)}){val} · <a href="#firsttd" data-goto="firsttd">full list</a></p>')
 
 
