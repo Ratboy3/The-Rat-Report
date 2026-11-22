@@ -375,6 +375,18 @@ def fetch_plan(now: datetime | None = None) -> None:
       props for games kicking off within 3 hours, every hour (inactives, late moves) ~300/week"""
     now = now or datetime.now(CT)
     wd, hr = now.weekday(), now.hour          # Mon = 0 ... Sun = 6
+    # Backup schedule (Nov 22, 2026): GitHub dropped every :20 run from 4 AM to 11 AM CT on a Sunday, so the
+    # workflow also runs at :50. The hourly pulls skip if another run did them in the last 40 minutes; a full
+    # pull still runs if its slot is due (props_full_pull.txt keeps it to once per slot).
+    try:
+        last = datetime.fromisoformat(LAST_PLAN_FILE.read_text().strip())
+    except Exception:
+        last = None
+    recent = last is not None and (now - last).total_seconds() < 40 * 60
+    if recent and _due_slot(now, wd, hr) is None:
+        print(f"{_stamp(now)}: pulled {int((now - last).total_seconds() // 60)} min ago, skipping")
+        return
+    LAST_PLAN_FILE.write_text(now.isoformat())
     left = credits_left()
     print(f"{_stamp(now)}: {left} credits left")
     low = left is not None and left < CREDIT_FLOOR
@@ -406,6 +418,7 @@ def _extras(hours: float | None = None) -> None:
 
 
 FULL_PULL_FILE = Path(__file__).resolve().parent.parent / "props_full_pull.txt"
+LAST_PLAN_FILE = Path(__file__).resolve().parent.parent / "last_fetch_plan.txt"
 
 
 def _last_full_pull():

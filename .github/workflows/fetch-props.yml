@@ -12,6 +12,7 @@ name: Fetch DraftKings props
 on:
   schedule:
     - cron: "20 * * * *"
+    - cron: "50 * * * *"   # backup: GitHub drops scheduled runs at busy times; skips if the :20 run already pulled
   workflow_dispatch:
     inputs:
       hours:
@@ -70,7 +71,7 @@ jobs:
         run: |
           git config user.name "Rat Report props bot"
           git config user.email "actions@users.noreply.github.com"
-          git add prop_lines.csv prop_books.csv game_lines.csv prop_books_history.csv game_lines_history.csv props_full_pull.txt prop_alt_history.csv team_totals_history.csv first_td_books.csv first_td_history.csv 2>/dev/null || true
+          git add prop_lines.csv prop_books.csv game_lines.csv prop_books_history.csv game_lines_history.csv props_full_pull.txt prop_alt_history.csv team_totals_history.csv first_td_books.csv first_td_history.csv last_fetch_plan.txt 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Props and game lines from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
           for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
