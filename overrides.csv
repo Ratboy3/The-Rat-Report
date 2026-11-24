@@ -3,10 +3,11 @@
 # Lines: DraftKings only, and only when two sources published in the last 12 hours agree (check article dates;
 # many odds pages show days-old DraftKings numbers). spread_line > 0 means the HOME team is favored.
 game_id,home_qb_name,home_qb_change,away_qb_name,away_qb_change,spread_line,home_spread_odds,away_spread_odds,total_line,over_odds,under_odds,home_moneyline,away_moneyline
-2026_11_BAL_CAR,,,Jacoby Brissett,1,,,,,,,,
-2026_11_MIA_BUF,,,Kyle McCord,1,,,,,,,,
-2026_11_JAX_NYG,J.J. McCarthy,1,,,,,,,,,,
-2026_11_ARI_KC,,,Josh Johnson,1,,,,,,,,
-2026_11_LV_DEN,,,Fernando Mendoza,1,,,,,,,,
-2026_11_MIN_SF,,,Kirk Cousins,1,,,,,,,,
-2026_11_PIT_PHI,Joe Milton III,1,,,,,,,,,,
+2026_12_PHI_DAL,,,Joe Milton III,1,,,,,,,,
+2026_12_BAL_HOU,,,Jacoby Brissett,1,,,,,,,,
+2026_12_LV_CLE,,,Fernando Mendoza,1,,,,,,,,
+2026_12_NE_LAC,,,Tommy DeVito,1,,,,,,,,
+2026_12_NYG_IND,Anthony Richardson,1,J.J. McCarthy,1,,,,,,,,
+2026_12_NYJ_MIA,Kyle McCord,1,,,,,,,,,,
+2026_12_ATL_MIN,Kirk Cousins,1,,,,,,,,,,
+2026_12_WAS_ARI,Josh Johnson,1,,,,,,,,,,
