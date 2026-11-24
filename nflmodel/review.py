@@ -314,12 +314,38 @@ def _longshot_ml(log: pd.DataFrame, season: int, out: dict) -> None:
     if l.empty:
         return
     out["longshot_ml"] = []
+
+    def _luck(g):
+        """Expected wins at the prices taken (break-even chance, so a fair-price reading) and the chance of winning this
+        few or fewer by luck alone (exact, each bet its own chance)."""
+        o = pd.to_numeric(g.odds, errors="coerce").dropna().astype(float)
+        ps = [100 / (x + 100) if x > 0 else -x / (-x + 100) for x in o]
+        dist = np.array([1.0])
+        for q in ps:
+            dist = np.convolve(dist, [1 - q, q])
+        w = int((g.result == "win").sum())
+        return round(float(sum(ps)), 1), round(float(dist[: w + 1].sum()), 3)
+
     for t, x in l.groupby("tier"):
         g = x[x.result.isin(["win", "loss", "push"])]
+        ew, lp = _luck(g) if t.startswith("+300") and len(g) else (np.nan, np.nan)
         out["longshot_ml"].append(dict(tier=t, n=len(x), wins=int((g.result == "win").sum()), losses=int((g.result == "loss").sum()),
                                        units=round(float(g.pnl.astype(float).sum()), 2),
                                        clv=round(float(x.clv.mean()) * 100, 2) if x.clv.notna().any() else np.nan,
-                                       avg_odds=round(float(pd.to_numeric(x.odds).median()))))
+                                       avg_odds=round(float(pd.to_numeric(x.odds).median())), exp_wins=ew, luck_p=lp))
+    # +300 watch (Alex, Nov 24, 2026: "keep an eye on those longshot ML games"): bets and leans together vs what the
+    # prices expect. The cut rule stays 25 graded price bets losing; this only raises a flag earlier.
+    ls = l[l.tier.str.startswith("+300") & l.result.isin(["win", "loss", "push"])]
+    if len(ls):
+        ew, lp = _luck(ls)
+        w = int((ls.result == "win").sum())
+        out["longshot_watch"] = dict(graded=len(ls), wins=w, exp_wins=ew, luck_p=lp,
+                                     units=round(float(ls.pnl.astype(float).sum()), 1),
+                                     bets_graded=int((ls.tier == "+300 bet").sum()))
+        if lp < 0.05:
+            out["flags"].append(f"+300 moneylines (bets + leans) {w}-{len(ls) - w}, {ew:.1f} wins expected at the prices; "
+                                f"{lp:.1%} chance of this few by luck. Cut rule: 25 graded bets "
+                                f"({int((ls.tier == '+300 bet').sum())} so far)")
     # early-week favorite-ML trial (config.ML_FAV_EARLY_TRIAL, Nov 17, 2026): bets logged since the trial began
     from .props import _parse_asof
     ref = pd.Timestamp(f"{season}-11-15")
@@ -413,6 +439,11 @@ def _write(out: dict, out_dir: str) -> None:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("longshot_ml"):
         md += ["", "## Moneylines: favorites and +300 or longer (season; favorites are leans only since Nov 3)", pd.DataFrame(out["longshot_ml"]).to_markdown(index=False)]
+        if out.get("longshot_watch"):
+            w_ = out["longshot_watch"]
+            md += [f"+300 watch: {w_['wins']}-{w_['graded'] - w_['wins']} (bets + leans), {w_['units']:+.1f}u; "
+                   f"{w_['exp_wins']:.1f} wins expected at the prices taken; {w_['luck_p']:.1%} chance of this few by luck. "
+                   f"Cut rule at 25 graded bets ({w_['bets_graded']} so far)."]
     if out.get("fav_trial"):
         md += ["", "## Favorite-ML trial (bets 2+ days before kickoff, since Nov 17; ends if losing after 25 or beating the close <50%)",
                pd.DataFrame([out["fav_trial"]]).to_markdown(index=False)]
