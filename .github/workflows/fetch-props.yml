@@ -15,6 +15,10 @@ on:
     - cron: "50 * * * *"   # backup: GitHub drops scheduled runs at busy times; skips if the :20 run already pulled
   workflow_dispatch:
     inputs:
+      plan:
+        description: "Run the hourly plan (used by the Odds clock workflow) instead of a manual pull"
+        type: boolean
+        default: false
       hours:
         description: "Manual props pull: only games kicking off within this many hours (6 credits per game)"
         default: "12"
@@ -33,6 +37,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: fetch-props
@@ -48,22 +53,22 @@ jobs:
           python-version: "3.12"
       - run: pip install pandas numpy scipy requests
       - name: Scheduled pulls
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || inputs.plan
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-plan
       - name: Manual props pull
-        if: github.event_name == 'workflow_dispatch' && inputs.props
+        if: github.event_name == 'workflow_dispatch' && !inputs.plan && inputs.props
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-props --hours "${{ inputs.hours }}"
       - name: Manual first-TD pull
-        if: github.event_name == 'workflow_dispatch' && inputs.first_td
+        if: github.event_name == 'workflow_dispatch' && !inputs.plan && inputs.first_td
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-first-td --hours "${{ inputs.hours }}"
       - name: Manual game lines
-        if: github.event_name == 'workflow_dispatch' && inputs.game_lines
+        if: github.event_name == 'workflow_dispatch' && !inputs.plan && inputs.game_lines
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: python run.py fetch-games
@@ -74,5 +79,8 @@ jobs:
           git add prop_lines.csv prop_books.csv game_lines.csv prop_books_history.csv game_lines_history.csv props_full_pull.txt prop_alt_history.csv team_totals_history.csv first_td_books.csv first_td_history.csv last_fetch_plan.txt 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "Props and game lines from The Odds API $(TZ=America/Chicago date '+%a %b %-d, %-I:%M %p') CT"
-          for i in 1 2 3; do git pull --rebase -X theirs && git push && exit 0; sleep 10; done
-          exit 1
+          for i in 1 2 3; do git pull --rebase -X theirs && git push && break; sleep 10; done
+          # runs started by the Odds clock use GITHUB_TOKEN, whose runs may not fire the rebuild's workflow_run trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then gh workflow run rebuild-site.yml || true; fi
+        env:
+          GH_TOKEN: ${{ github.token }}

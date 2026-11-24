@@ -1,0 +1,42 @@
+# Odds clock (Nov 24, 2026). GitHub's own hourly schedule for "Fetch DraftKings props" fired only every 4-7 hours
+# on Nov 22-24, so prices went stale on game days. This job stays running and starts the hourly plan itself at :20
+# every hour, then restarts itself before GitHub's 6-hour job limit. The repo is public, so the minutes are free.
+# fetch-plan skips any hour already pulled in the last 40 minutes, so the old cron runs can't double-spend credits.
+# The cron below only restarts the clock if it ever stops; while one is running, a new start just waits in line.
+name: Odds clock
+
+on:
+  schedule:
+    - cron: "5 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: odds-clock
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Start the hourly plan at :20 for about 5.5 hours
+        run: |
+          end=$(( $(date +%s) + 330*60 ))
+          while :; do
+            now=$(date +%s)
+            next=$(( (now / 3600) * 3600 + 20*60 ))
+            [ $next -le $now ] && next=$(( next + 3600 ))
+            [ $next -ge $end ] && break
+            sleep $(( next - now ))
+            echo "$(TZ=America/Chicago date '+%a %-I:%M %p') CT: starting the hourly plan"
+            gh workflow run fetch-props.yml -f plan=true || echo "dispatch failed"
+          done
+      - name: Restart the clock
+        if: always()
+        run: gh workflow run odds-clock.yml
