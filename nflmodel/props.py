@@ -220,6 +220,13 @@ TD_MODEL_MUST_CLEAR = True
 # rushing Over leans beat the close on 100+.
 LEAN_ONLY_SIDES = {("rush_yds", "Over")}
 
+# Props are bets only 2+ days before kickoff (Nov 24, 2026, Alex). Live 2026 Weeks 7-11, non-TD props (bets + leans)
+# logged 2+ days before kickoff +48.9u on 854 (beat the close 52-54%) vs under 2 days -46.3u on 497 (16-34%); early
+# beat late in all 5 weeks (wk7 +2.5/-2.0, wk8 +8.9/-21.9, wk9 +30.7/+6.1, wk10 +10.0/-18.0, wk11 -3.2/-10.5).
+# Anytime TDs: under 2 days -39.4u (168) vs 2+ days -6.4u (179). Late in the week the books have priced the news, so
+# a late "edge" is usually information we don't have. Inside 48 h a prop is a lean; bets logged earlier stay bets.
+PROP_BET_MIN_HOURS = 48
+
 # Books Alex can bet at. DraftKings stays the market anchor (its own price tested more accurate than the other
 # books' consensus); each bet is priced at whichever of these books pays more for it (line shopping, Oct 27, 2026).
 BET_BOOKS = {"draftkings": "DraftKings", "fanduel": "FanDuel"}
@@ -399,6 +406,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
     for g in week_proj.itertuples():
         team_pts[g.home_team] = g.proj_home_pts
         team_pts[g.away_team] = g.proj_away_pts
+    from .betting import _hours_to_kickoff
+    hours_to = {f"{g.away_team} @ {g.home_team}": _hours_to_kickoff(g) for _, g in week_proj.iterrows()}
     if books is not None and len(books) and "game" in books:
         # only this week's games: prop_books.csv can still hold last week's pull (Oct 27 fix: Week 7 FanDuel
         # lines were being matched by player name to Week 8 props)
@@ -519,6 +528,8 @@ def price_auto(players: pd.DataFrame, week_proj: pd.DataFrame, team_ppg: dict,
                 row.update(flag=False)       # stays a lean until a same-day Odds API DraftKings price confirms it
             if (p.stat, best) in LEAN_ONLY_SIDES:
                 row.update(flag=False)
+            if hours_to.get(p.game, 1e9) < PROP_BET_MIN_HOURS:
+                row.update(flag=False, why_late=1.0)          # inside 48 h of kickoff: leans only (Nov 24, 2026)
             if p.stat == "anytime_td" and best == "Over" and odds is not None and odds > LONGSHOT_TD_LEAN_ODDS:
                 row.update(flag=False, why_td_longshot=1.0)   # longer than +600: leans only (Nov 17, 2026)
             if (TD_MODEL_MUST_CLEAR and p.stat == "anytime_td" and best == "Over" and oo is not None

@@ -283,6 +283,8 @@ def integrity(season: int, week: int, games_out: list, props: pd.DataFrame | Non
                 from .props import LONGSHOT_TD_LEAN_ODDS as _lt
                 if float(r.over_odds) > _lt:
                     bad.append(f"TD bet longer than +{_lt} (leans only since Nov 17, 2026)")
+            if r.get("why_late", np.nan) == 1.0:
+                bad.append("prop inside 48 h of kickoff (bets only 2+ days out since Nov 24, 2026)")
             if bad:
                 props.at[i, "flag"] = False
                 props.at[i, "why_stale"] = "data check: " + "; ".join(bad)

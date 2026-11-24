@@ -165,5 +165,12 @@ check("first TD closing line value computed", float(_l.loc[_l.player == "Jonatha
 check("ESPN scorer text matches the player", FT._scored_espn("Jonathan Taylor", "Jonathan Taylor 7 Yd Run (Ka'imi Fairbairn Kick)")
       and not FT._scored_espn("Jonathan Taylor", "Michael Pittman Jr. 12 Yd pass from Jonathan Taylor"))
 
+# 12. Props inside 48 h of kickoff are leans (Nov 24, 2026)
+from nflmodel import props as _P
+check("props are bets only 2+ days out", _P.PROP_BET_MIN_HOURS == 48 and "hours_to.get(p.game, 1e9) < PROP_BET_MIN_HOURS" in pr)
+from nflmodel.betting import _hours_to_kickoff as _h2k
+_gs = pd.Series(dict(gameday="2099-01-01", gametime="13:00"))
+check("hours to kickoff is positive for a future game", _h2k(_gs) > 48)
+
 print(f"{len(FAILS)} failed" if FAILS else "all passed")
 sys.exit(1 if FAILS else 0)
