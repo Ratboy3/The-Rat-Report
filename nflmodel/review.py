@@ -220,7 +220,18 @@ def run(season: int, week: int, games: pd.DataFrame, props_csv: str, history="pr
         for (tier, kind), g in l.groupby(["tier", "kind"]):
             out["log"].append(dict(tier=tier, kind=kind, n=len(g), wins=int((g.result == "win").sum()),
                                    losses=int((g.result == "loss").sum()), units=round(float(g.pnl.astype(float).sum()), 2),
-                                   clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan))
+                                   clv=round(float(g.clv.mean()) * 100, 2) if g.clv.notna().any() else np.nan,
+                                   clv_median=round(float(g.clv.median()) * 100, 2) if g.clv.notna().any() else np.nan,
+                                   beat_close=round(float((g.clv.dropna() > 0).mean()), 2) if g.clv.notna().any() else np.nan))
+        # scoreboard (Nov 24, 2026): share of bets beating the close, the honest read of the edge; go-live bar > 50%
+        L_ = pd.read_csv(bets_log)
+        L_ = L_[(L_.season == season) & (L_.tier.fillna("bet") == "bet") & L_.clv.notna()]
+        if len(L_):
+            wk_ = L_[L_.week == week]
+            out["scoreboard"] = dict(week_bets=len(wk_), week_beat=round(float((wk_.clv > 0).mean()), 2) if len(wk_) else np.nan,
+                                     season_bets=len(L_), season_beat=round(float((L_.clv > 0).mean()), 2),
+                                     season_median=round(float(L_.clv.median()) * 100, 2),
+                                     season_avg=round(float(L_.clv.mean()) * 100, 2))
         _sizing(pd.read_csv(bets_log), season, week, out)
         _recrush(pd.read_csv(bets_log), season, week, out)
         _receptions_check(pd.read_csv(bets_log), season, out)
@@ -251,7 +262,7 @@ def _sizing(log: pd.DataFrame, season: int, week: int, out: dict) -> None:
     if l.empty:
         return
     l["tier"] = l.tier.fillna("bet")
-    l["u"] = [suggested_units(o) for o in l.odds]
+    l["u"] = [suggested_units(o, st) for o, st in zip(l.odds, l.stat)]
     l["pnl"] = l.pnl.astype(float)
     l["edge"] = pd.cut(l.ev, [0, 0.03, 0.05, 0.08, 10], labels=["0-3%", "3-5%", "5-8%", "8%+"])
     out["sizing"] = []
@@ -435,6 +446,12 @@ def _write(out: dict, out_dir: str) -> None:
                "Retest the rule if the 'below' group is up on 60+ lines across weeks (reviews.csv check=td_clear)."]
     if out.get("td_bands"):
         md += ["", "## Anytime TDs by DraftKings price (longshot check)", pd.DataFrame(out["td_bands"]).to_markdown(index=False)]
+    if out.get("scoreboard"):
+        sb = out["scoreboard"]
+        md += ["", "## Scoreboard: bets beating the closing line (go-live bar: more than 50%)",
+               f"This week {sb['week_beat']:.0%} of {sb['week_bets']} bets; season {sb['season_beat']:.0%} of {sb['season_bets']} "
+               f"(median CLV {sb['season_median']:+.2f}%, average {sb['season_avg']:+.2f}%). The average is pulled up by big "
+               "touchdown and moneyline moves; the share is the honest read. Props are bets only 2+ days out since Nov 24."]
     if out["log"]:
         md += ["", "## Bets and leans", pd.DataFrame(out["log"]).to_markdown(index=False)]
     if out.get("longshot_ml"):

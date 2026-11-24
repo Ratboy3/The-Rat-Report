@@ -125,11 +125,11 @@ def _leans_section(live, props, log) -> str:
             if not v or not v["bets"]:
                 cells.append(f'<div><span>{lab}</span><b>—</b><em>none logged yet</em></div>')
                 continue
-            clv = _signed_pct(v["clv"]) if v["with_close"] else "—"
-            cls = "good" if v["with_close"] and v["clv"] > 0 else ("bad" if v["with_close"] and v["clv"] < 0 else "")
+            clv = f'{v["beat"]:.0%}' if v["with_close"] else "—"
+            cls = "good" if v["with_close"] and v["beat"] > 0.5 else ("bad" if v["with_close"] and v["beat"] < 0.45 else "")
             pushes = v["settled"] - v["wins"] - v["losses"]
             cells.append(f'<div><span>{lab}</span><b>{v["wins"]}-{v["losses"]}{f"-{pushes}" if pushes else ""}</b>'
-                         f'<em>{v["units"]:+.1f} units · avg CLV <i class="{cls}">{clv}</i> · {v["bets"]} logged</em></div>')
+                         f'<em>{v["units"]:+.1f} units · beat the close <i class="{cls}">{clv}</i> · {v["bets"]} logged</em></div>')
         strip = f'<div class="leanstrip">{"".join(cells)}</div>'
 
     # open game leans
@@ -405,6 +405,13 @@ def _movement_html(g, mkt) -> str:
     return f'<div class="move cell-sub">{" · ".join(bits)}</div>' if bits else ""
 
 
+def _beat_cls(c) -> str:
+    if not len(c):
+        return ""
+    r = (c.clv > 0).mean()
+    return "good" if r > 0.5 else "bad" if r < 0.45 else ""
+
+
 def _record_tables(log) -> str:
     """Track record of bets (not leans) by market and by week: record, units, suggested-size units, ROI, CLV."""
     from .betting import suggested_units
@@ -417,7 +424,7 @@ def _record_tables(log) -> str:
     b["what"] = np.where(b.market == "prop", "Prop: " + b.stat.map(lab).fillna(b.stat.astype(str)), b.market.astype(str).str.capitalize())
     b["closed"] = pd.to_datetime(b.kickoff, utc=True, errors="coerce") <= pd.Timestamp.now(tz="UTC")
     b["pnl"] = pd.to_numeric(b.pnl, errors="coerce")
-    b["u"] = [suggested_units(o) for o in b.odds]
+    b["u"] = [suggested_units(o, st) for o, st in zip(b.odds, b.stat)]
 
     def row(name, x):
         g = x[x.result.isin(["win", "loss", "push"])]
@@ -431,16 +438,20 @@ def _record_tables(log) -> str:
                 f"""<td class="n {'good' if g.pnl.sum() > 0 else 'bad' if g.pnl.sum() < 0 else ''}">{g.pnl.sum():+.1f}</td>"""
                 f"""<td class="n hide-sm">{(g.u * g.pnl).sum():+.1f}</td>"""
                 f"""<td class="n hide-sm">{_signed_pct(roi) if pd.notna(roi) else '—'}</td>"""
-                f"""<td class="n {'good' if pd.notna(cl) and cl > 0 else 'bad' if pd.notna(cl) and cl < 0 else ''}">{_signed_pct(cl) if pd.notna(cl) else '—'}</td>"""
-                f"""<td class="n hide-sm">{f"{(c.clv > 0).mean():.0%}" if len(c) else '—'}</td></tr>""")
+                f"""<td class="n {_beat_cls(c)}">{f"{(c.clv > 0).mean():.0%}" if len(c) else '—'}</td>"""
+                f"""<td class="n hide-sm">{_signed_pct(c.clv.median()) if len(c) else '—'}</td>"""
+                f"""<td class="n hide-sm">{_signed_pct(cl) if pd.notna(cl) else '—'}</td></tr>""")
     head = ('<thead><tr><th></th><th class="n">W-L</th><th class="n">Units (1u)</th><th class="n hide-sm">Units (size)</th>'
-            '<th class="n hide-sm">ROI</th><th class="n">Avg CLV</th><th class="n hide-sm">Beat close</th></tr></thead>')
+            '<th class="n hide-sm">ROI</th><th class="n">Beat close</th><th class="n hide-sm">Median CLV</th>'
+            '<th class="n hide-sm">Avg CLV</th></tr></thead>')
     by_mkt = "".join(row(k, x) for k, x in sorted(b.groupby("what"), key=lambda t: (t[0].startswith("Prop"), t[0])))
     by_wk = "".join(row(f"{int(se)} Week {int(wk)}", x) for (se, wk), x in sorted(b.groupby(["season", "week"]), reverse=True))
     total = row("All bets", b)
     return f"""<h3>Track record by market</h3>
     <p class="note">Bets only (leans are separate). Units (1u) = 1 unit on every bet; Units (size) = the suggested size shown on Best bets.
-    Avg CLV = how much better our price was than the closing line, the most reliable early sign of a real edge.</p>
+    Beat close = share of bets whose price beat the closing line, the most reliable early sign of a real edge (sharp bettors
+    sit above 50%). Average CLV is shown too, but a few big touchdown and moneyline moves can pull it up while most bets
+    don't beat the close, so the share and the median are the honest read (Nov 24, 2026).</p>
     <div class="tablebox"><table>{head}<tbody>{by_mkt}{total}</tbody></table></div>
     <h3>Track record by week</h3>
     <div class="tablebox"><table>{head}<tbody>{by_wk}</tbody></table></div>"""
@@ -1547,12 +1558,12 @@ def _why_ctx(ratings, play, injuries, market_info) -> dict:
         return {}
 
 
-def _size_td(odds) -> str:
+def _size_td(odds, stat=None) -> str:
     """Suggested size cell: units to risk, and what a win pays."""
     if not SHOW_SIZE:
         return ""
     from .betting import decimal, suggested_units
-    u = suggested_units(odds)
+    u = suggested_units(odds, stat)
     try:
         wins = u * (decimal(float(odds)) - 1)
         sub = f'<span class="cell-sub">wins {wins:.1f}u</span>'
@@ -1561,12 +1572,12 @@ def _size_td(odds) -> str:
     return f'<td class="n size hide-sm"><b>{u:g}u</b>{sub}</td>'
 
 
-def _size_sm(odds) -> str:
+def _size_sm(odds, stat=None) -> str:
     """Phones: the size goes under the bet name (no room for its own column)."""
     if not SHOW_SIZE:
         return ""
     from .betting import decimal, suggested_units
-    u = suggested_units(odds)
+    u = suggested_units(odds, stat)
     try:
         w = f" · wins {u * (decimal(float(odds)) - 1):.1f}u"
     except (TypeError, ValueError):
@@ -1575,7 +1586,7 @@ def _size_sm(odds) -> str:
 
 
 SIZE_NOTE = (f'<p class="note size-note"><b>Size</b> is a suggestion in units (u): 1u on every bet, and less on prices longer than '
-             f'+{C.UNIT_LONGSHOT_ODDS} so a win pays about {C.UNIT_LONGSHOT_WIN:g}u. Pick a unit that fits your bankroll '
+             f'+{C.UNIT_LONGSHOT_ODDS} so a win pays about {C.UNIT_LONGSHOT_WIN:g}u. Anytime-TD bets are half that ({C.UNIT_TD_FACTOR:g}u, or a win of about {C.UNIT_LONGSHOT_WIN * C.UNIT_TD_FACTOR:g}u): they swing the most. Pick a unit that fits your bankroll '
              f'(many bettors use 1% to 2%). Bigger edges haven\'t won more often in our testing, so the size doesn\'t grow with the edge.</p>')
 
 
@@ -1638,7 +1649,7 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
             price = r.over_odds if r.best_side == "Over" else r.under_odds
             win = r.p_over if r.best_side == "Over" else 1 - r.p_over
             rows.append(dict(ev=r.ev, pick=f"{r.player} {what}", game=r.game, when="", book=str(getattr(r, "book", "") or "DraftKings"),
-                             odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r),
+                             odds=price, win=win, asof=str(r.as_of), mk=_mkt_key("prop", r.stat), extra=_books_note(r), stat=r.stat,
                              why=_why(lambda: W.prop_brief(r, wctx) if WHY_V2 else W.prop_why(r))))
     rows.sort(key=lambda x: -x["ev"])
     game_rows = [x for x in rows if x["mk"] not in ("prop", "td")]
@@ -1648,10 +1659,10 @@ def _now_section(upcoming, props, log, dk_used, now, sm=None, wctx=None) -> str:
     def _rows_html(rows):
         return "".join(
             f"""<tr class="fx" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td><b>{escape(x['pick'])}</b>
-        <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span>{_size_sm(x['odds'])}</td>
+        <span class="cell-sub">{escape(x['game'])}{(' · ' + x['when']) if x['when'] else ''}{x['extra']}</span>{_size_sm(x['odds'], x.get('stat'))}</td>
         <td><span class="bk bk-{'fd' if x['book'] == 'FanDuel' else 'dk'}">{'FD' if x['book'] == 'FanDuel' else 'DK'}</span></td>
         <td class="n">{_odds(x['odds'])}<span class="cell-sub age" data-asof="{_asof_iso(x['asof'], now)}">{escape(str(x['asof']).replace(' CT', ''))}</span></td>
-        <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td>{_size_td(x['odds'])}</tr>"""
+        <td class="n hide-sm">{_pct(x['win'], 1)}</td><td class="n good">{_signed_pct(x['ev'])}</td>{_size_td(x['odds'], x.get('stat'))}</tr>"""
             + (f"""<tr class="fx why-row" {_fx_attrs(x['book'], x['mk'], x['ev'])}><td colspan="{6 if SHOW_SIZE else 5}">{x['why']}</td></tr>""" if x['why'] else "")
             for x in rows)
 
@@ -1814,9 +1825,9 @@ def _results_section(log) -> str:
     def tile(t, lab):
         s, c = tot[t], cl[t]
         w, l_ = int((s.result == "win").sum()), int((s.result == "loss").sum())
-        clv = _signed_pct(c.clv.mean()) if len(c) else "—"
-        return (f'<div><span>{lab}</span><b>{w}-{l_}</b><em>{s.pnl.sum():+.1f} units · avg CLV '
-                f'<i class="{"good" if len(c) and c.clv.mean() > 0 else "bad" if len(c) and c.clv.mean() < 0 else ""}">{clv}</i> · {len(c)} closed</em></div>')
+        bc = f"{(c.clv > 0).mean():.0%}" if len(c) else "—"
+        return (f'<div><span>{lab}</span><b>{w}-{l_}</b><em>{s.pnl.sum():+.1f} units · beat the close '
+                f'<i class="{_beat_cls(c)}">{bc}</i> · {len(c)} closed</em></div>')
     return f"""<section id="results"><h2>Results</h2>
     <p class="lede">Every flagged bet and every lean since tracking began (Week 7, 2026), graded at the price it was posted.
     CLV compares that price with the closing line: over hundreds of bets it's the most reliable sign of a real edge, well before win-loss settles down.

@@ -45,15 +45,18 @@ def kelly_stake(probs, american, bankroll=C.BANKROLL) -> float:
     return bankroll * min(f * C.KELLY_FRACTION, C.MAX_STAKE_PCT)
 
 
-def suggested_units(american) -> float:
-    """Suggested size in units: 1u, or less at long plus-money prices so a win pays about UNIT_LONGSHOT_WIN units."""
+def suggested_units(american, stat=None) -> float:
+    """Suggested size in units: 1u, or less at long plus-money prices so a win pays about UNIT_LONGSHOT_WIN units.
+    Anytime-TD bets are half that (config.UNIT_TD_FACTOR, Nov 24, 2026)."""
+    f = getattr(C, "UNIT_TD_FACTOR", 1.0) if str(stat) == "anytime_td" else 1.0
     try:
         a = float(american)
     except (TypeError, ValueError):
-        return 1.0
+        return round(1.0 * f, 2)
     if a != a or a <= C.UNIT_LONGSHOT_ODDS:
-        return 1.0
-    return max(0.1, round(C.UNIT_LONGSHOT_WIN / (decimal(a) - 1), 1))
+        return round(1.0 * f, 2)
+    u = C.UNIT_LONGSHOT_WIN * f / (decimal(a) - 1)
+    return max(0.1, round(u, 1)) if f == 1.0 else max(0.05, round(u * 20) / 20)   # TDs in 0.05u steps
 
 
 def fmt_line(x: float) -> str:

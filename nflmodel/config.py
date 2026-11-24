@@ -68,6 +68,10 @@ BANKROLL = 1000.0
 # win pays about 1.5 units. Bigger edges did not win more often in testing, so size does not scale with edge.
 UNIT_LONGSHOT_ODDS = 150
 UNIT_LONGSHOT_WIN = 1.5
+# Anytime-TD bets at half size (Nov 24, 2026, Alex): season TD bets 113, expected +3.5u from CLV with a +/-26u standard
+# deviation, actual -23.3u; they add little expected profit and most of the swings. Half size keeps the small edge and
+# halves the swings: 0.5u at +150 or shorter, otherwise sized so a win pays ~0.75u.
+UNIT_TD_FACTOR = 0.5
 
 # --- props ---
 PROP_CV = {"pass_yds": 0.33, "rush_yds": 0.78, "rec_yds": 0.79}   # sd / mean of projection misses, measured by props-backtest 2025-26
