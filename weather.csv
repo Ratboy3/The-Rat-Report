@@ -1,10 +1,10 @@
-# checked: Tue Nov 24, 4:18 PM CT
+# checked: Wed Nov 25, 3:35 PM CT
 game_id,game,kickoff,wind_mph,temp_f,precip_mm,fetched_at
-2026_12_KC_BUF,KC @ BUF,"Thu Nov 26, 7:20 PM CT",14.8,36.5,0.1,"Tue Nov 24, 4:18 PM CT"
-2026_12_DEN_PIT,DEN @ PIT,"Fri Nov 27, 2:00 PM CT",14.1,37.5,0.3,"Tue Nov 24, 4:18 PM CT"
-2026_12_NO_CIN,NO @ CIN,"Sun Nov 29, 12:00 PM CT",8.2,56.0,0.0,"Tue Nov 24, 4:18 PM CT"
-2026_12_TEN_JAX,TEN @ JAX,"Sun Nov 29, 12:00 PM CT",1.1,70.1,0.0,"Tue Nov 24, 4:18 PM CT"
-2026_12_NYJ_MIA,NYJ @ MIA,"Sun Nov 29, 12:00 PM CT",9.2,75.1,1.2,"Tue Nov 24, 4:18 PM CT"
-2026_12_SEA_SF,SEA @ SF,"Sun Nov 29, 3:25 PM CT",9.6,64.8,1.9,"Tue Nov 24, 4:18 PM CT"
-2026_12_LV_CLE,LV @ CLE,"Sun Nov 29, 7:20 PM CT",14.2,47.6,0.0,"Tue Nov 24, 4:18 PM CT"
-2026_12_CAR_TB,CAR @ TB,"Mon Nov 30, 7:15 PM CT",12.3,65.7,0.3,"Tue Nov 24, 4:18 PM CT"
+2026_12_KC_BUF,KC @ BUF,"Thu Nov 26, 7:20 PM CT",20.6,37.9,12.6,"Wed Nov 25, 3:35 PM CT"
+2026_12_DEN_PIT,DEN @ PIT,"Fri Nov 27, 2:00 PM CT",12.1,37.5,0.1,"Wed Nov 25, 3:35 PM CT"
+2026_12_NO_CIN,NO @ CIN,"Sun Nov 29, 12:00 PM CT",11.4,52.7,3.3,"Wed Nov 25, 3:35 PM CT"
+2026_12_TEN_JAX,TEN @ JAX,"Sun Nov 29, 12:00 PM CT",4.4,67.4,0.0,"Wed Nov 25, 3:35 PM CT"
+2026_12_NYJ_MIA,NYJ @ MIA,"Sun Nov 29, 12:00 PM CT",8.8,78.3,0.0,"Wed Nov 25, 3:35 PM CT"
+2026_12_SEA_SF,SEA @ SF,"Sun Nov 29, 3:25 PM CT",10.6,65.0,0.0,"Wed Nov 25, 3:35 PM CT"
+2026_12_LV_CLE,LV @ CLE,"Sun Nov 29, 7:20 PM CT",11.2,48.6,4.6,"Wed Nov 25, 3:35 PM CT"
+2026_12_CAR_TB,CAR @ TB,"Mon Nov 30, 7:15 PM CT",8.3,69.2,0.0,"Wed Nov 25, 3:35 PM CT"
